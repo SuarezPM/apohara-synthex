@@ -53,3 +53,25 @@ test("watch: escalada de severidad => alerta escalated", async () => {
     assert.equal(alert.maxSeverity, 9);
   } finally { rmSync(store.path, { force: true }); }
 });
+
+test("watch: invoca los sinks con la inteligencia (Cognee/webhook)", async () => {
+  const store = tmpStore();
+  try {
+    const seen = [];
+    const sink = async (ctx) => seen.push(ctx);
+    await watchTarget("acme", { lens: "gtm", store, runner: async () => ev("h1", 7, ["s1"]), sinks: [sink] });
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].target, "acme");
+    assert.equal(seen[0].maxSeverity, 7);
+    assert.ok(seen[0].evidence);
+  } finally { rmSync(store.path, { force: true }); }
+});
+
+test("watch: un sink que falla no rompe el watch (best-effort)", async () => {
+  const store = tmpStore();
+  try {
+    const boom = async () => { throw new Error("sink down"); };
+    const r = await watchTarget("acme", { lens: "gtm", store, runner: async () => ev("h1", 7, ["s1"]), sinks: [boom] });
+    assert.ok(r.evidence); // no tiró pese al sink roto
+  } finally { rmSync(store.path, { force: true }); }
+});

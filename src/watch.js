@@ -20,7 +20,7 @@ function maxSeverityOf(evidence) {
  *   runner: inyectable (default runPipeline) para testear sin red.
  */
 export async function watchTarget(target, opts = {}) {
-  const { lens = "security", store, runner = runPipeline, hmacKey } = opts;
+  const { lens = "security", store, runner = runPipeline, hmacKey, sinks = [] } = opts;
   const mem = store ?? new MemoryStore();
 
   const prior = mem.recall({ target, lens });
@@ -41,6 +41,13 @@ export async function watchTarget(target, opts = {}) {
   const alert = shouldAlert
     ? { target, lens, maxSeverity, newSignals, escalated, isFirstRun, evidenceHash: evidence.contentHash, at: evidence.sealedAt }
     : null;
+
+  // Sinks opcionales (best-effort, no rompen el watch): ingesta a Cognee (grafo de
+  // conocimiento), delivery de alertas a un webhook, etc.
+  for (const sink of sinks) {
+    try { await sink({ target, lens, evidence, alert, signals, maxSeverity }); }
+    catch (e) { if (process.env.SYNTHEX_DEBUG) console.error("[watch] sink error:", e.message); }
+  }
 
   return { evidence, alert, isFirstRun, newSignals, escalated, maxSeverity };
 }
