@@ -29,9 +29,9 @@ test("memory: persiste entre instancias", () => {
   } finally { rmSync(path, { force: true }); }
 });
 
-test("cognee: cliente expone connect/cognify/search/close", () => {
+test("cognee: cliente expone connect/remember/recall/close (tools reales del MCP)", () => {
   const c = new CogneeClient();
-  for (const fn of ["connect", "cognify", "search", "close"]) {
+  for (const fn of ["connect", "remember", "recall", "forget", "close"]) {
     assert.equal(typeof c[fn], "function");
   }
 });

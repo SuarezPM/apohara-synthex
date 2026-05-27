@@ -5,7 +5,7 @@
 /**
  * Ingiere la inteligencia clasificada en el knowledge graph de Cognee (OSS, vía su MCP).
  * Cumple el challenge "agents that remember, reason, and improve over time".
- * @param {{cognify: Function}} cogneeClient  un CogneeClient ya conectado.
+ * @param {{remember: Function}} cogneeClient  un CogneeClient ya conectado.
  */
 export function cogneeSink(cogneeClient) {
   return async ({ target, lens, evidence, signals, maxSeverity }) => {
@@ -13,7 +13,7 @@ export function cogneeSink(cogneeClient) {
     const text =
       `Synthex web intelligence — target=${target} lens=${lens} severity=${maxSeverity} ` +
       `signals=[${signals.join(", ")}] evidenceHash=${evidence.contentHash}. ${summaries}`;
-    await cogneeClient.cognify(text);
+    await cogneeClient.remember(text);
   };
 }
 

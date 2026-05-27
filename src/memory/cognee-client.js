@@ -33,11 +33,13 @@ export class CogneeClient {
   async listTools() { return (await this.client.listTools()).tools; }
   async call(name, args = {}) { return this.client.callTool({ name, arguments: args }); }
 
-  // Helpers sobre las tools del cognee MCP (nombres confirmados vía listTools al conectar):
-  /** Ingerir datos al knowledge graph. */
-  cognify(data) { return this.call("cognify", { data }); }
-  /** Consultar la memoria/grafo. */
-  search(query) { return this.call("search", { search_query: query }); }
+  // Tools reales del cognee MCP (verificadas live + en su server.py): remember/recall/forget.
+  /** Ingerir datos al knowledge graph (tool MCP: remember(data, dataset_name?, session_id?)). */
+  remember(data, opts = {}) { return this.call("remember", { data, ...opts }); }
+  /** Consultar la memoria/grafo (tool MCP: recall(query, search_type?, datasets?)). */
+  recall(query, opts = {}) { return this.call("recall", { query, ...opts }); }
+  /** Olvidar del grafo (tool MCP: forget). */
+  forget(args = {}) { return this.call("forget", args); }
 
   async close() {
     await this.client?.close?.();
