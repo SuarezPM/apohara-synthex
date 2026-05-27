@@ -8,7 +8,7 @@
 Turn the web your AI agents touch into classified intelligence, sealed with court-grade, verifiable evidence.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Tests](https://img.shields.io/badge/tests-75%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-131%20%C2%B7%20122%20pass%20%C2%B7%209%20skip-brightgreen)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
 ![Runtime](https://img.shields.io/badge/100%25-JavaScript-f7df1e?logo=javascript&logoColor=000)
 ![MCP](https://img.shields.io/badge/MCP-companion-7c3aed)
@@ -28,7 +28,7 @@ Turn the web your AI agents touch into classified intelligence, sealed with cour
 > Do you know what they found, what they classified, and what you can *prove*?
 
 Synthex is a **100% JavaScript MCP server** that wraps [`brightdata-mcp`](https://github.com/brightdata/brightdata-mcp) and turns raw web scraping into a defensible intelligence pipeline:
-**scrape → dedup & screen → classify (GTM · Finance · Security) → remember → seal as verifiable evidence → react.**
+**scrape → dedup & screen → classify (GTM · Finance · Security · Supply-chain) → remember → seal as verifiable evidence → react.**
 
 **For** AI Operations & Security teams running agents with web access that must account for *what those agents found and decided* — under EU AI Act / DORA.
 
@@ -39,22 +39,22 @@ Synthex is a **100% JavaScript MCP server** that wraps [`brightdata-mcp`](https:
 ## ◆ Architecture
 
 ```
- Triggerware ─(react)─┐                                   ┌─(act)─► alert + webhook
-                      ▼                                   │
-   FETCH ─────► FORGE ──────────► CLASSIFY ─────► MEMORY ─────► PROVE
-   Bright Data  SHA-256 dedup +   AI/ML API       Cognee        HMAC-SHA256
-   (MCP tools)  OWASP prefilter   (frontier LLM)  (graph) +     + RFC 3161 TSA
-                                  GTM/Fin/Sec      local store   (DigiCert)
+ Triggerware ─(react)─┐                                       ┌─(act)─► alert + webhook
+                      ▼                                       │
+   FETCH ─────► FORGE ──────────► CLASSIFY ─────► PROVE ─────► OBSERVE ─────► MEMORY
+   Bright Data  SHA-256 dedup +   AI/ML API       HMAC-SHA256  OpenTelemetry  Cognee (graph)
+   (5 APIs)     28-rule prefilter (frontier LLM)  + RFC 3161   GenAI spans    + local store
+                                  4 lenses ‖       TSA + PDF    (OTLP opt-in)  (opt-in / CLI)
 ```
 
 | Stage | What it does |
 |------|--------------|
-| **FETCH** | Consumes the real `brightdata-mcp` tools over stdio (`search_engine`, `scrape_as_markdown`, `scrape_batch`…), **or** the Bright Data Web Unlocker REST API for serverless (Vercel). *No Bright Data, no data.* |
-| **FORGE** | SHA-256 dedup + a **20-rule** OWASP prefilter (incl. BrowseSafe / VPI-Bench 2026 injection vectors) that blocks malicious content **before** spending an LLM call. |
-| **CLASSIFY** | A frontier model via **AI/ML API** extracts structured signals under one lens — or all **three lenses in parallel** (`lens="all"` → GTM + Finance + Security). |
-| **MEMORY** | Local store for deltas + **Cognee** (OSS, self-hosted) for the knowledge graph. |
-| **PROVE** | Every report sealed with HMAC-SHA256 **and** an RFC 3161 timestamp from **DigiCert** — exportable as a **downloadable PDF Evidence Report**, verifiable by anyone. |
-| **OBSERVE** | Every stage emits OpenTelemetry GenAI spans (`gen_ai.client.operation.duration`, token usage, blocked count). OTLP export is opt-in; latencies show in the demo/UI. |
+| **FETCH** | Routes each target to the right Bright Data surface: **Web Unlocker** (MCP stdio + REST), **SERP API** (zone `serp_api1`), **Browser API** (Playwright `connectOverCDP`), **Web Scraper / Datasets API** (`datasets/v3/scrape`), and **Crawl API**. *No Bright Data, no data.* |
+| **FORGE** | SHA-256 dedup + a **28-rule** prefilter (SSRF, prototype-pollution, MCP tool poisoning, indirect prompt-injection + BrowseSafe / VPI-Bench text vectors) that blocks malicious content **before** spending an LLM call. |
+| **CLASSIFY** | A frontier model via **AI/ML API** extracts structured signals under one lens — or all **four lenses in parallel** (`lens="all"` → GTM + Finance + Security + Supply-chain). |
+| **PROVE** | Every report sealed with HMAC-SHA256 **and** an RFC 3161 timestamp from **DigiCert** — exportable as a **6-page downloadable PDF Evidence Report** (4-buyer framing: CISO · CFO · General Counsel · Broker) with a Synthex Risk Score 0–100. |
+| **OBSERVE** | Every stage emits OpenTelemetry GenAI spans (`gen_ai.client.operation.duration`, token usage, blocked count). OTLP export is opt-in; latencies stream into the UI over SSE. |
+| **MEMORY** | Local store for deltas + **Cognee** (OSS knowledge graph) — default in the local/CLI path, off on the public endpoint to control cost. |
 | **WATCH / REACT** | Always-on loop: detect change → run the pipeline → alert. No human in the loop. |
 
 ---
@@ -77,9 +77,12 @@ node server.js  # run as an MCP server (companion to brightdata-mcp)
 
 **Web UI / Vercel:** `public/` + `api/` deploy as a static site + serverless functions
 (`vercel deploy`). The deployed `/api/analyze` runs the **full live pipeline** via the Bright
-Data REST API; set `BRIGHT_DATA_TOKEN`, `WEB_UNLOCKER_ZONE`, `AIML_API_KEY`, `SYNTHEX_HMAC_KEY`
+Data REST API; `/api/stream` pushes per-stage progress to the UI over **SSE** (cinematic
+stage view). Set `BRIGHT_DATA_TOKEN`, `WEB_UNLOCKER_ZONE`, `AIML_API_KEY`, `SYNTHEX_HMAC_KEY`
 in the project env (without them it falls back to a labeled cached demo). The public endpoint is
-guarded (SSRF block + per-IP rate-limit). → **[apohara-synthex.vercel.app](https://apohara-synthex.vercel.app)**
+guarded (SSRF block + per-IP rate-limit); Cognee memory stays off there to control cost.
+→ **[apohara-synthex.vercel.app](https://apohara-synthex.vercel.app)** (custom domain
+`synthex.apohara.dev` pending DNS).
 
 ---
 
@@ -88,11 +91,11 @@ guarded (SSRF block + per-IP rate-limit). → **[apohara-synthex.vercel.app](htt
 Don't trust the claims — run them.
 
 ```bash
-npm test                                   # → 75 pass · 5 skip (opt-in network) · 0 fail
+npm test                                   # → 131 tests · 122 pass · 9 skip (opt-in live) · 0 fail
 npm run demo                               # → Evidence Report; verify → hash OK · HMAC OK · TSA OK
 
 # Real, live, end-to-end (needs BRIGHT_DATA_TOKEN + AIML_API_KEY):
-node scripts/check-pipeline-live.mjs "https://en.wikipedia.org/wiki/Bright_Data" all   # 3 lenses in parallel
+node scripts/check-pipeline-live.mjs "https://en.wikipedia.org/wiki/Bright_Data" all   # 4 lenses in parallel
 ```
 
 Opt-in live checks (gated by env flags so the suite never fakes a pass): `AIML_LIVE=1` · `TRIGGERWARE_LIVE=1` · `COGNEE_LIVE=1`.
@@ -103,10 +106,17 @@ Opt-in live checks (gated by env flags so the suite never fakes a pass): `AIML_L
 
 | Partner | Role in Synthex | Verified |
 |---|---|:--:|
-| **Bright Data** | FETCH substrate (MCP tools, web unlocker) | ✅ live connect + scrape |
+| **Bright Data — Web Unlocker** | FETCH (MCP stdio + REST) | ✅ live |
+| **Bright Data — SERP API** | FETCH (structured JSON, zone `serp_api1`) | ✅ live |
+| **Bright Data — Browser API** | FETCH (Playwright `connectOverCDP`, JS-heavy) | ✅ live (local/flag) |
+| **Bright Data — Web Scraper / Datasets** | FETCH (`datasets/v3/scrape`) | ✅ live |
+| **Bright Data — Crawl API** | FETCH (async trigger → snapshot) | ⚠️ implemented, pending a Crawl `dataset_id` |
+| **Bright Data — MCP** | FETCH substrate (`server.js` companion) | ✅ live |
 | **AI/ML API** | CLASSIFY brain (frontier model, extraction) | ✅ live classification |
 | **Cognee** | MEMORY knowledge graph (OSS, via its MCP) | ✅ tools `remember`/`recall` confirmed |
 | **Triggerware** | REACT (poll deltas → fire pipeline) | ✅ live API (`GET /triggers` 200) |
+
+**5 of 6 Bright Data APIs verified LIVE with real code; Crawl is implemented and pending a Crawl `dataset_id`.**
 
 ---
 
@@ -114,10 +124,13 @@ Opt-in live checks (gated by env flags so the suite never fakes a pass): `AIML_L
 
 The pitch *is* honesty — so it applies to us too.
 
-- **Proven live:** Bright Data scrape (MCP **and** REST) · AI/ML classification (single + tri-lens) · DigiCert RFC 3161 timestamp · downloadable PDF · Vercel deploy (`/api/analyze` live, end-to-end) · Triggerware API · Cognee MCP tools.
-- **Opt-in (cost/credentials):** Cognee's `remember` ingest uses an LLM → behind `COGNEE_LIVE`. OTel OTLP export only runs if `OTEL_EXPORTER_OTLP_ENDPOINT` is set (otherwise spans are no-op / console-only). Network tests are env-gated so the suite never fabricates a pass.
-- **Prefilter scope:** the 20-rule FORGE filter covers **text/HTML** injection (incl. BrowseSafe / VPI-Bench vectors). It does **not** stop *visual* prompt injection (VPI in rendered screenshots/images) — that's a different threat model. CSS-hiding rules flag the delivery technique (REVIEW); the payload text is what triggers BLOCK.
+- **Proven live:** Bright Data — Web Unlocker (MCP **and** REST), SERP API, Browser API, Web Scraper / Datasets API, native MCP server (`server.js`) · AI/ML classification (single + 4-lens parallel) · DigiCert RFC 3161 timestamp · downloadable 6-page PDF · Vercel deploy (`/api/analyze` live, end-to-end) · Triggerware API · Cognee MCP tools.
+- **Implemented, not yet verified live:** the Bright Data **Crawl API** is implemented but **not** verified live — it needs a Crawl-type `dataset_id` (`gd_…`) we don't have yet. **5 of 6** Bright Data APIs are verified live; we do **not** claim 6/6.
+- **Risk Score is an internal estimate:** the PDF's Synthex Risk Score (0–100) is a deterministic heuristic computed from the report's own data, with the formula printed on the page. It is **NOT** a Munich Re rating or any third-party underwriting score.
+- **Opt-in (cost/credentials):** Cognee memory is default in the local/CLI path but **off** on the public endpoint; its `remember` ingest uses an LLM → behind `COGNEE_LIVE`. OTel OTLP export only runs if `OTEL_EXPORTER_OTLP_ENDPOINT` is set (otherwise spans are no-op / console-only). Network tests are env-gated so the suite never fabricates a pass.
+- **Prefilter scope:** the 28-rule FORGE filter covers **text/HTML** injection (SSRF, prototype-pollution, MCP tool poisoning, indirect prompt-injection, BrowseSafe / VPI-Bench vectors). The rules are **heuristic regex** — *aligned with* the SkillFortify benchmark (arXiv 2603.00195), not a formal guarantee. It does **not** stop *visual* prompt injection (VPI in rendered screenshots/images) — a different threat model.
 - **Endpoint guard is best-effort:** the public rate-limit is in-memory per warm instance (a hard multi-instance limit would need Vercel KV). The SSRF block filters the hostname (literal + obfuscated/IPv6 private ranges) but does **not** resolve DNS, so a public domain pointing at a private IP (DNS rebinding) would pass — low risk here because the scrape runs on Bright Data's *remote* proxy, not the function's network.
+- **Research grounding (cited, not implemented):** the parallel multi-lens design is grounded in **KVCOMM** (NeurIPS 2025); KV-cache memory is a stated future direction per **MemArt** (ICLR 2026). These are foundations we cite — not features Synthex ships.
 - **Prior art, not pipeline:** the **INV-15** invariant ([Context_Forge paper](https://doi.org/10.5281/zenodo.20277875)) ships as a module and is cited as prior art — it is *not* part of this scraping pipeline.
 - **Not claimed:** Synthex doesn't bypass any site's ToS — it uses Bright Data's compliant infrastructure. The timestamp proves *when* evidence existed, not the truth of its content.
 
