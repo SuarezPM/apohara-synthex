@@ -3,8 +3,10 @@
 // fetcher y classifier son inyectables para testear sin red (y para el demo determinista).
 import { BrightDataClient } from "./fetch/bright-data-client.js";
 import { dedupe, prefilter } from "./forge/index.js";
-import { classify as defaultClassify } from "./classify/aiml-client.js";
+import { classify as defaultClassify, classifyTriLens } from "./classify/aiml-client.js";
 import { buildEvidence } from "./prove/evidence-report.js";
+
+const TRI_LENSES = ["gtm", "finance", "security"];
 
 /** Extrae el texto de un resultado de tool MCP ({content:[{type:'text',text}]}). */
 export function mcpText(result) {
@@ -56,12 +58,25 @@ export async function runPipeline(target, opts = {}) {
   const blocked = screened.filter((d) => d.screen.action === "BLOCK");
   const safe = screened.filter((d) => d.screen.action !== "BLOCK");
 
-  // 3. CLASSIFY (cada doc seguro, bajo la lente pedida)
+  // 3. CLASSIFY (cada doc seguro). lens="all" → tri-lente (GTM+Finance+Security) en paralelo;
+  // si no, la lente pedida (retrocompat). El classifier inyectable se respeta en ambos modos.
   const doClassify = classifier ?? defaultClassify;
-  const findings = [];
-  for (const d of safe) {
-    const c = await doClassify(d.content, lens);
-    findings.push({ url: d.url, contentHash: d.contentHash, ...c });
+  let findings;
+  if (lens === "all") {
+    findings = await Promise.all(
+      safe.map(async (d) => {
+        const tri = classifier
+          ? Object.fromEntries(await Promise.all(TRI_LENSES.map(async (l) => [l, await classifier(d.content, l)])))
+          : await classifyTriLens(d.content);
+        return { url: d.url, contentHash: d.contentHash, trilens: tri };
+      })
+    );
+  } else {
+    findings = [];
+    for (const d of safe) {
+      const c = await doClassify(d.content, lens);
+      findings.push({ url: d.url, contentHash: d.contentHash, ...c });
+    }
   }
 
   // 4. PROVE: sellar el reporte

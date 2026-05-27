@@ -42,6 +42,25 @@ test("pipeline: lente Security clasifica y sella", async () => {
   assert.equal(ev.payload.lens, "security");
 });
 
+test("pipeline: lens='all' clasifica bajo las 3 lentes (tri-lens) por doc", async () => {
+  const fetcher = async () => [{ url: "x", content: "Competidor recortó precio y tuvo un breach de datos." }];
+  // classifier inyectado lens-aware: severidad distinta por lente para verificar paralelismo
+  const sev = { gtm: 7, finance: 4, security: 9 };
+  const classifier = async (text, lens) => ({ lens, severity: sev[lens], summary: `s-${lens}`, signals: [lens] });
+  const ev = await runPipeline("acme.com", { lens: "all", fetcher, classifier, requestTsa: false });
+
+  assert.equal(ev.payload.lens, "all");
+  assert.equal(ev.payload.findings.length, 1);
+  const tri = ev.payload.findings[0].trilens;
+  assert.deepEqual(Object.keys(tri).sort(), ["finance", "gtm", "security"]);
+  assert.equal(tri.gtm.severity, 7);
+  assert.equal(tri.security.severity, 9);
+  // sello sigue siendo verificable con el shape tri-lens
+  const v = verifyEvidence(ev, { hmacKey: "synthex-dev" });
+  assert.equal(v.hashOk, true);
+  assert.equal(v.hmacOk, true);
+});
+
 test("pipeline: multi-fuente (array de targets) consolida en un Evidence Report", async () => {
   // fetcher devuelve 1 doc por fuente (usa el target recibido)
   const fetcher = async (t) => [{ url: `${t}/page`, content: `contenido de ${t}` }];

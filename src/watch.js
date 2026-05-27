@@ -6,11 +6,16 @@
 import { runPipeline } from "./pipeline.js";
 import { MemoryStore } from "./memory/index.js";
 
+// Normaliza findings a un array plano {severity, signals}, soportando tanto el shape
+// plano (lente única) como el tri-lente (lens="all" → {trilens:{gtm,finance,security}}).
+function flatFindings(evidence) {
+  return (evidence.payload?.findings ?? []).flatMap((f) => (f.trilens ? Object.values(f.trilens) : [f]));
+}
 function signalsOf(evidence) {
-  return [...new Set((evidence.payload?.findings ?? []).flatMap((f) => f.signals ?? []))];
+  return [...new Set(flatFindings(evidence).flatMap((f) => f.signals ?? []))];
 }
 function maxSeverityOf(evidence) {
-  return (evidence.payload?.findings ?? []).reduce((m, f) => Math.max(m, f.severity ?? 0), 0);
+  return flatFindings(evidence).reduce((m, f) => Math.max(m, f.severity ?? 0), 0);
 }
 
 /**
