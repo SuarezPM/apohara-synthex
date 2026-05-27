@@ -24,13 +24,13 @@ A MCP server that **wraps `brightdata-mcp`** and adds a pipeline: scrape → ded
         │                                                              │
         ▼                                                              ▲
    FETCH ──────► FORGE ──────────► CLASSIFY ───────► MEMORY ──────► PROVE
-   Bright Data   dedup +           AI/ML API         Cognee          HMAC-SHA256
-   (MCP tools)   INV-15 gate +     (frontier LLM)    (graph) +       + RFC 3161 TSA
-                 OWASP prefilter   GTM/Fin/Sec        local store     (DigiCert)
+   Bright Data   SHA-256 dedup +   AI/ML API         Cognee          HMAC-SHA256
+   (MCP tools)   OWASP prefilter   (frontier LLM)    (graph) +       + RFC 3161 TSA
+                                   GTM/Fin/Sec        local store     (DigiCert)
 ```
 
 - **FETCH** — consumes the real `brightdata-mcp` tools over stdio (`search_engine`, `scrape_as_markdown`, `scrape_batch`, …). No Bright Data, no data.
-- **FORGE** — SHA-256 dedup, the **INV-15 safety gate** (heuristic ported from the [Context_Forge paper](https://doi.org/10.5281/zenodo.20277875)), and an OWASP prefilter that blocks prompt-injection before spending an LLM call.
+- **FORGE** — SHA-256 dedup + an OWASP prefilter that blocks prompt-injection before spending an LLM call. *(The **INV-15** invariant from the [Context_Forge paper](https://doi.org/10.5281/zenodo.20277875) ships as a module and is cited as prior art — it is not part of this scraping pipeline.)*
 - **CLASSIFY** — a frontier model via **AI/ML API** (`deepseek/deepseek-non-thinking-v3.2-exp` by default) extracts structured signals under one of three lenses.
 - **MEMORY** — a local store for deltas + **Cognee** (OSS, self-hosted) for the knowledge graph.
 - **PROVE** — every report sealed with HMAC-SHA256 (always) and an **RFC 3161 timestamp from DigiCert** (verifiable by any third party).
@@ -59,7 +59,7 @@ Run as an MCP server (companion to brightdata-mcp): `node server.js` — exposes
 ## Verify it yourself (≈60 seconds)
 
 ```bash
-npm test                                   # 45 pass / 4 skip (opt-in network) / 0 fail
+npm test                                   # 47 pass / 4 skip (opt-in network) / 0 fail
 npm run demo                               # prints an Evidence Report; verify → hash/HMAC/TSA OK
 
 # Real, live, end-to-end (needs BRIGHT_DATA_TOKEN + AIML_API_KEY):

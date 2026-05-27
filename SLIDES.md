@@ -6,7 +6,7 @@
 ---
 
 **1 · Hero.** "Your AI agents are scraping the live web right now. Do you know what they found, what they classified, and what you can **prove**?"
-*Stats strip: 49 tests green · RFC 3161 timestamp verifiable · 4 Bright Data tools · 3 lenses, 1 pipeline.*
+*Stats strip: 47 tests pass · RFC 3161 timestamp verifiable · 4 Bright Data tools · 3 lenses, 1 pipeline.*
 
 **2 · The drama (May 2026).** Agents are in production scraping the open web — with **no audit trail of what they classified**. EU AI Act (Art. 12 logging) + DORA make that a liability. SIEMs see the agent's infra, not the web content it touched.
 
@@ -26,12 +26,12 @@
 
 **10 · Partner stack (each verified against the real service).** AI/ML API = the brain (frontier model, extraction). Cognee = the memory (OSS knowledge graph, `remember`/`recall`). Triggerware = react-and-act. Bright Data = the substrate.
 
-**11 · Verify it yourself (60s).** `npm test` (45/4/0) · `npm run demo` (signed report) · `check-pipeline-live.mjs` (live e2e). Public repo: github.com/SuarezPM/apohara-synthex. MIT.
+**11 · Verify it yourself (60s).** `npm test` (47 pass / 4 skip / 0 fail) · `npm run demo` (signed report) · `check-pipeline-live.mjs` (live e2e). Public repo: github.com/SuarezPM/apohara-synthex. MIT.
 
 **12 · What we do NOT claim (honesty).** We don't bypass any ToS — we use Bright Data's compliant infra. The TSA proves *when* evidence existed, not the truth of content. Cognee ingest (LLM) is opt-in by cost. Network tests are opt-in so the suite never fakes a pass.
 
 **13 · Multi-track fit.** One submission spans GTM + Finance + Security. The signed audit trail is the enterprise wedge (compliance/security teams *depend* on it).
 
-**14 · Built honestly, fast.** 18 commits, every module test-verified; a real bug (dedup collision) caught by an adversarial test and fixed. Prior art: Context_Forge INV-15 (Zenodo DOI).
+**14 · Built honestly, fast.** Every module test-verified; a real bug (dedup collision) caught by an adversarial test and fixed; even an over-claim (INV-15 "in the pipeline") caught in review and corrected. Prior art: Context_Forge INV-15 (Zenodo DOI).
 
 **15 · Close.** "**Synthex — scrape it, classify it, prove it.** The web your agents touch, now classified and provable." → live demo + the verification commands.
