@@ -2,7 +2,7 @@
 // AI/ML API es OpenAI-compatible (/chat/completions). Key: process.env.AIML_API_KEY.
 // El parseo está separado de la llamada de red para poder testear la lógica sin gastar API.
 const DEFAULT_BASE = process.env.AIML_BASE_URL || "https://api.aimlapi.com/v1";
-const DEFAULT_MODEL = process.env.AIML_MODEL || "openai/gpt-4o-mini";
+const DEFAULT_MODEL = process.env.AIML_MODEL || "alibaba/qwen3.5-plus-20260218";
 
 export const LENSES = {
   gtm: "GTM/competitive intelligence: pricing, hiring, product launches, market moves, competitor signals",
