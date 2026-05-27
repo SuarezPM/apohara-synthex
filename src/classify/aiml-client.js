@@ -59,6 +59,7 @@ export async function classify(text, lens = "security", opts = {}) {
     throw new Error(`AI/ML API HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
   }
   const data = await res.json();
+  if (opts.onUsage && data.usage) opts.onUsage(data.usage); // telemetría de tokens (sin contaminar el finding)
   const content = data.choices?.[0]?.message?.content ?? "{}";
   return parseClassification(content, lens);
 }
