@@ -86,6 +86,19 @@ test("watch: soporta evidence tri-lens (lens='all') — extrae señales y maxSev
   } finally { rmSync(store.path, { force: true }); }
 });
 
+test("watch: sinks:[] explícito desactiva los defaults (no arranca Cognee aunque haya COGNEE_LIVE)", async () => {
+  const store = tmpStore();
+  const prev = process.env.COGNEE_LIVE;
+  process.env.COGNEE_LIVE = "1"; // si watch ignorara el [] explícito, intentaría conectar el MCP real
+  try {
+    const r = await watchTarget("acme", { lens: "gtm", store, runner: async () => ev("h1", 7, ["s1"]), sinks: [] });
+    assert.ok(r.evidence); // no intentó conectar Cognee: el [] explícito ganó
+  } finally {
+    if (prev === undefined) delete process.env.COGNEE_LIVE; else process.env.COGNEE_LIVE = prev;
+    rmSync(store.path, { force: true });
+  }
+});
+
 test("watch: un sink que falla no rompe el watch (best-effort)", async () => {
   const store = tmpStore();
   try {

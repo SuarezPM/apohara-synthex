@@ -5,6 +5,7 @@
 // "improve through structured knowledge" (Cognee) y "signals before they appear in a feed".
 import { runPipeline } from "./pipeline.js";
 import { MemoryStore } from "./memory/index.js";
+import { defaultSinks } from "./sinks.js";
 
 // Normaliza findings a un array plano {severity, signals}, soportando tanto el shape
 // plano (lente única) como el tri-lente (lens="all" → {trilens:{gtm,finance,security}}).
@@ -25,7 +26,11 @@ function maxSeverityOf(evidence) {
  *   runner: inyectable (default runPipeline) para testear sin red.
  */
 export async function watchTarget(target, opts = {}) {
-  const { lens = "security", store, runner = runPipeline, hmacKey, sinks = [] } = opts;
+  const { lens = "security", store, runner = runPipeline, hmacKey } = opts;
+  // Sinks: si el caller NO los especifica (undefined), se arman los DEFAULTS de entorno
+  // (Cognee si COGNEE_LIVE, webhook si SYNTHEX_WEBHOOK_URL). Pasar `sinks: []` explícito
+  // los desactiva. El endpoint público no usa watch, así que nunca llega acá.
+  const sinks = opts.sinks ?? (await defaultSinks());
   const mem = store ?? new MemoryStore();
 
   const prior = mem.recall({ target, lens });
