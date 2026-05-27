@@ -1,7 +1,8 @@
-// Test del Evidence Report en PDF. Valida que se genera un PDF real (magic %PDF) sin red.
+// Test del Evidence Report en PDF (6 páginas, framing 4-buyer). Valida que se genera un PDF real
+// (magic %PDF) sin red, para los distintos shapes de evidence, y que el Risk Score es honesto.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildPDFReport } from "../src/prove/pdf-report.js";
+import { buildPDFReport, riskScore } from "../src/prove/pdf-report.js";
 
 const baseEvidence = (overrides = {}) => ({
   payload: {
@@ -10,22 +11,24 @@ const baseEvidence = (overrides = {}) => ({
     fetchedAt: "2026-05-27T00:00:00.000Z",
     sources: ["https://competitor.example"],
     blocked: [{ url: "https://x", reason: "prompt-injection" }],
+    dedup: { uniqueBlocks: 2, duplicateBlocks: 1, bytesSaved: 4096, dedupRatio: 1 / 3 },
     findings: [{ url: "https://competitor.example", lens: "security", severity: 9, summary: "Breach expuesto.", signals: ["breach", "cve"] }],
     ...overrides.payload,
   },
   contentHash: "a".repeat(64),
   seal: { hmacSha256: "b".repeat(64), rfc3161Tsa: { standard: "RFC 3161", authority: "digicert", genTime: "2026-05-27T00:00:01Z", serial: "deadbeef" }, method: "HMAC-SHA256 + RFC 3161 TSA" },
   sealedAt: "2026-05-27T00:00:02.000Z",
+  timings: { FETCH: 812.4, FORGE: 1.2, CLASSIFY: 430.9, PROVE: 95.3 },
   ...overrides,
 });
 
 function assertIsPdf(buf) {
   assert.ok(Buffer.isBuffer(buf), "debe ser Buffer");
-  assert.ok(buf.length > 1000, `PDF demasiado chico: ${buf.length} bytes`);
+  assert.ok(buf.length > 5000, `PDF demasiado chico para 6 páginas: ${buf.length} bytes`);
   assert.equal(buf.subarray(0, 5).toString("latin1"), "%PDF-", "debe empezar con el magic %PDF-");
 }
 
-test("pdf: genera un PDF válido para evidence con TSA (shape plano)", async () => {
+test("pdf: genera un PDF válido (>5KB, 6 páginas) para evidence con TSA (shape plano)", async () => {
   const buf = await buildPDFReport(baseEvidence());
   assertIsPdf(buf);
 });
@@ -50,4 +53,43 @@ test("pdf: genera un PDF válido para findings tri-lens (lens='all')", async () 
   });
   const buf = await buildPDFReport(ev);
   assertIsPdf(buf);
+});
+
+test("pdf: genera un PDF válido sin dedup/timings (campos opcionales ausentes)", async () => {
+  const ev = baseEvidence();
+  delete ev.payload.dedup;
+  delete ev.timings;
+  const buf = await buildPDFReport(ev);
+  assertIsPdf(buf);
+});
+
+test("riskScore: fórmula honesta sobre severidad máxima + bloqueos", () => {
+  // maxSev=9 (70%) + blockTerm = min(1,5)/5*10 = 2 (30%) → round((9*0.7 + 2*0.3)*10) = round(69) = 69
+  const r = riskScore(baseEvidence());
+  assert.equal(r.maxSev, 9);
+  assert.equal(r.blocked, 1);
+  assert.equal(r.score, 69);
+  assert.equal(r.band, "MEDIUM");
+});
+
+test("riskScore: trilens toma la severity máxima entre lentes", () => {
+  const ev = baseEvidence({
+    payload: {
+      blocked: [],
+      findings: [{ url: "a", trilens: { gtm: { severity: 3 }, finance: { severity: 4 }, security: { severity: 10 } } }],
+    },
+  });
+  const r = riskScore(ev);
+  assert.equal(r.maxSev, 10);
+  assert.equal(r.blocked, 0);
+  // round((10*0.7 + 0*0.3)*10) = 70 → HIGH
+  assert.equal(r.score, 70);
+  assert.equal(r.band, "HIGH");
+});
+
+test("riskScore: sin findings ni bloqueos → 0 / LOW", () => {
+  const ev = baseEvidence({ payload: { findings: [], blocked: [] } });
+  const r = riskScore(ev);
+  assert.equal(r.score, 0);
+  assert.equal(r.band, "LOW");
 });
