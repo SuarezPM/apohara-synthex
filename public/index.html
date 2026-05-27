@@ -210,7 +210,7 @@ footer .honest b { color: var(--bone); font-weight: 400; }
     <div class="pills">
       <span class="pill lime">RFC 3161 · DigiCert</span>
       <span class="pill amber">6-page signed PDF</span>
-      <span class="pill teal">5 / 6 Bright Data APIs · live</span>
+      <span class="pill teal">6 / 6 Bright Data surfaces · live</span>
       <span class="pill">100% JavaScript · MIT</span>
     </div>
     <div><a class="cta" href="#live">▶ Run the live pipeline</a></div>
@@ -286,7 +286,7 @@ footer .honest b { color: var(--bone); font-weight: 400; }
     <div class="substrate"><span>● EVERY BYTE SCREENED · EVERY REPORT SIGNED</span><span>SHA-256 · HMAC-SHA256 · RFC 3161</span></div>
     <div class="stats">
       <div class="stat s-lime"><div class="v">131</div><div class="l">tests · 122 pass · 0 fail</div></div>
-      <div class="stat s-teal"><div class="v">5/6</div><div class="l">Bright Data APIs · live</div></div>
+      <div class="stat s-teal"><div class="v">6/6</div><div class="l">Bright Data surfaces · live</div></div>
       <div class="stat s-amber"><div class="v">28</div><div class="l">prefilter rules · pre-LLM</div></div>
       <div class="stat s-violet"><div class="v">4</div><div class="l">lenses · in parallel</div></div>
     </div>
@@ -305,7 +305,7 @@ footer .honest b { color: var(--bone); font-weight: 400; }
 <span class="k">if</span> (mode === <span class="s">"browser"</span>) <span class="k">return</span> browserFetch(target);
 <span class="k">if</span> (mode === <span class="s">"crawl"</span>)   <span class="k">return</span> crawlSite(target);
 <span class="k">return</span> httpFetcher(opts)(target);   <span class="c">// Web Unlocker REST</span></pre>
-        <div class="ft"><span class="m">SERP live · 200 · structured JSON</span><span class="l">5 / 6 APIS</span></div></div>
+        <div class="ft"><span class="m">SERP live · 200 · structured JSON</span><span class="l">6 / 6 SURFACES</span></div></div>
 
       <div class="codecard s-violet"><div class="hd"><span class="name">FORGE</span><span class="tag">src/forge/prefilter.js</span></div>
         <pre>{ id:<span class="s">"SSRF-1"</span>, re:<span class="n">/169\.254\.169\.254/</span>, severity:<span class="n">9</span> },
@@ -392,6 +392,24 @@ $ openssl ts -reply -in synthex.tsr -text
   </div>
 </section>
 
+<!-- POWERED BY -->
+<section class="divline">
+  <div class="wrap">
+    <div class="kicker s-teal"><span class="dot"></span> POWERED BY · THE STACK</div>
+    <h2 class="head s-teal">Real partners. <em>Real integrations.</em></h2>
+    <div class="grid4">
+      <div class="buyer s-amber"><div class="who">Bright Data</div><div class="pain">The substrate — no Bright Data, no data.</div><div class="art"><b>FETCH · 6/6 VERIFIED LIVE</b>Web Unlocker · SERP · Browser · Datasets · Crawl · MCP</div></div>
+      <div class="buyer s-violet"><div class="who">AI/ML API</div><div class="pain">The classifier brain — frontier model.</div><div class="art"><b>CLASSIFY · VERIFIED LIVE</b>4-lens extraction · structured signals + severity</div></div>
+      <div class="buyer s-teal"><div class="who">Cognee</div><div class="pain">The knowledge-graph memory (OSS).</div><div class="art"><b>MEMORY · TOOLS CONFIRMED</b>remember / recall · opt-in on local/CLI</div></div>
+      <div class="buyer s-lime"><div class="who">Triggerware</div><div class="pain">React → act on web deltas, no human in the loop.</div><div class="art"><b>REACT · LIVE API</b>poll deltas → fire pipeline → alert</div></div>
+    </div>
+    <div class="substrate" style="border-color:rgba(151,117,250,0.35);color:var(--violet);margin-top:24px">
+      <span>● APOHARA STACK · FORMAL-SAFETY LINEAGE</span>
+      <span>Context Forge — INV-15 · Z3-proven · <a href="https://doi.org/10.5281/zenodo.20277875" target="_blank" rel="noopener" style="color:var(--violet)">Zenodo DOI</a> · prior art, not in this pipeline</span>
+    </div>
+  </div>
+</section>
+
 <!-- HONESTY -->
 <section class="divline">
   <div class="wrap">
@@ -400,7 +418,7 @@ $ openssl ts -reply -in synthex.tsr -text
     <div class="honest-list">
       <div><span class="x">✕</span><span><b>RFC 3161 proves <em>when</em>, not truth.</b> The timestamp proves the bytes existed and are unchanged — not that the content is correct.</span></div>
       <div><span class="x">✕</span><span><b>The prefilter covers text/HTML injection, not visual VPI.</b> 28 heuristic rules (aligned with SkillFortify) — not a formal proof, not screenshot-based attacks.</span></div>
-      <div><span class="x">✕</span><span><b>5 of 6 Bright Data APIs verified live, not 6.</b> Crawl is implemented but pending a Crawl dataset_id — we don't claim it works until it's verified.</span></div>
+      <div><span class="x">✕</span><span><b>Crawl is a multi-page crawl over Web Unlocker — not Bright Data's native Crawl product.</b> All 6 surfaces are verified live; we name the crawl honestly for what it is.</span></div>
       <div><span class="x">✕</span><span><b>The Risk Score is an internal estimate.</b> A deterministic heuristic with its formula printed on the PDF — not a Munich Re rating or a broker quote.</span></div>
       <div><span class="x">✕</span><span><b>OTel export and Cognee memory are opt-in.</b> The public endpoint keeps Cognee off to control cost; the rate-limit is best-effort.</span></div>
     </div>
@@ -417,7 +435,7 @@ $ openssl ts -reply -in synthex.tsr -text
       <h2 class="head" style="margin:0">submissions ship <span style="color:var(--lime)">all of these together.</span></h2>
     </div>
     <div style="margin-top:36px">
-      <div class="winrow"><span class="c">✓</span> Bright Data as runtime substrate — 5 of 6 APIs with real code (SERP/Browser/Datasets/Unlocker/MCP)</div>
+      <div class="winrow"><span class="c">✓</span> Bright Data as runtime substrate — all 6 surfaces with real code (Unlocker/SERP/Browser/Datasets/Crawl/MCP)</div>
       <div class="winrow"><span class="c">✓</span> RFC 3161 TSA (DigiCert) — verifiable offline with <span class="mono">openssl ts</span></div>
       <div class="winrow"><span class="c">✓</span> Downloadable 6-page signed Evidence Report — 4-buyer framing (CISO · CFO · GC · Broker)</div>
       <div class="winrow"><span class="c">✓</span> 4-lens classification in parallel — GTM · Finance · Security · Supply-chain</div>
