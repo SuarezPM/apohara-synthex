@@ -23,14 +23,16 @@ const demoClassifier = async (text, lens) => {
   return { lens, ...DEMO_CLASSIFICATIONS[cat] };
 };
 
-/** Corre el demo y devuelve el Evidence Report. requestTsa=false en tests para rapidez. */
-export async function runDemo({ requestTsa = true } = {}) {
+/** Corre el demo y devuelve el Evidence Report. requestTsa=false en tests para rapidez.
+ *  emitter (opcional) se reenvía al pipeline para el stream SSE de la UI en modo demo. */
+export async function runDemo({ requestTsa = true, emitter, lens = "gtm" } = {}) {
   return runPipeline("Competitor X", {
-    lens: "gtm",
+    lens,
     fetcher: async () => CACHED_DOCS,
     classifier: demoClassifier,
     hmacKey: process.env.SYNTHEX_HMAC_KEY || "synthex-demo",
     requestTsa,
+    emitter,
   });
 }
 

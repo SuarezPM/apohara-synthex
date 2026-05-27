@@ -3,11 +3,11 @@
 // fetcher y classifier son inyectables para testear sin red (y para el demo determinista).
 import { BrightDataClient } from "./fetch/bright-data-client.js";
 import { dedupe, prefilter } from "./forge/index.js";
-import { classify as defaultClassify, classifyTriLens } from "./classify/aiml-client.js";
+import { classify as defaultClassify } from "./classify/aiml-client.js";
 import { buildEvidence } from "./prove/evidence-report.js";
 import { withSpan, recordTokens, recordBlocked, recordSealed, startTelemetry } from "./telemetry/otel.js";
 
-const TRI_LENSES = ["gtm", "finance", "security"];
+const LENS_SET = ["gtm", "finance", "security", "supply-chain"];
 
 /** Extrae el texto de un resultado de tool MCP ({content:[{type:'text',text}]}). */
 export function mcpText(result) {
@@ -37,7 +37,7 @@ async function defaultFetch(target, { maxResults = 3 } = {}) {
 /**
  * Ejecuta el pipeline completo y devuelve un Evidence Report.
  * @param {string} target  URL o término objetivo.
- * @param {{lens?:string, hmacKey?:string, requestTsa?:boolean, fetcher?:Function, classifier?:Function}} opts
+ * @param {{lens?:string, hmacKey?:string, requestTsa?:boolean, fetcher?:Function, classifier?:Function, emitter?:Function}} opts
  */
 export async function runPipeline(target, opts = {}) {
   const {
@@ -46,17 +46,29 @@ export async function runPipeline(target, opts = {}) {
     requestTsa = true,
     fetcher,
     classifier,
+    emitter,
   } = opts;
 
   await startTelemetry(); // arranca el exporter OTLP solo si hay endpoint (idempotente)
+
+  // Emisión de eventos de progreso (SSE/stream). Best-effort: si el emitter falla o no existe,
+  // el pipeline NO se rompe. Eventos por stage: {status:"start"} y {status:"done", ms, ...}.
+  const emit = async (stage, evt) => {
+    if (!emitter) return;
+    try { await emitter({ stage, ...evt }); } catch { /* no romper el pipeline por el emitter */ }
+  };
 
   // Duraciones por etapa (wall-clock) que se devuelven al caller (UI/stream); NO entran al
   // payload sellado → no afectan hashOk/verify. Independiente del export OTel de withSpan.
   const timings = {};
   const timed = async (stage, fn) => {
     const s = performance.now();
-    try { return await withSpan(stage, fn); }
-    finally { timings[stage] = +(performance.now() - s).toFixed(1); }
+    await emit(stage, { status: "start" });
+    try {
+      const out = await withSpan(stage, fn);
+      await emit(stage, { status: "done", ms: +(performance.now() - s).toFixed(1) });
+      return out;
+    } finally { timings[stage] = +(performance.now() - s).toFixed(1); }
   };
 
   // 1. FETCH — target puede ser un string o un array de fuentes (multi-fuente / scale).
@@ -80,25 +92,27 @@ export async function runPipeline(target, opts = {}) {
     return { blocked, safe, dedup: stats };
   });
 
-  // 3. CLASSIFY (cada doc seguro). lens="all" → tri-lente (GTM+Finance+Security) en paralelo;
-  // si no, la lente pedida (retrocompat). El classifier inyectable se respeta en ambos modos.
+  // 3. CLASSIFY (cada doc seguro). lens="all" → las 4 lentes (GTM+Finance+Security+SupplyChain)
+  // en paralelo; si no, la lente pedida (retrocompat). El classifier inyectable se respeta en
+  // ambos modos; solo se pasa {onUsage} cuando NO hay classifier inyectado (= defaultClassify).
   const doClassify = classifier ?? defaultClassify;
+  const classifyOpts = classifier ? {} : { onUsage: recordTokens };
   const findings = await timed("CLASSIFY", async ({ record }) => {
     record("lens", lens);
     record("docs", safe.length);
     if (lens === "all") {
       return Promise.all(
         safe.map(async (d) => {
-          const tri = classifier
-            ? Object.fromEntries(await Promise.all(TRI_LENSES.map(async (l) => [l, await classifier(d.content, l)])))
-            : await classifyTriLens(d.content, { onUsage: recordTokens });
+          const tri = Object.fromEntries(
+            await Promise.all(LENS_SET.map(async (l) => [l, await doClassify(d.content, l, classifyOpts)])),
+          );
           return { url: d.url, contentHash: d.contentHash, trilens: tri };
-        })
+        }),
       );
     }
     const out = [];
     for (const d of safe) {
-      const c = await doClassify(d.content, lens, { onUsage: recordTokens });
+      const c = await doClassify(d.content, lens, classifyOpts);
       out.push({ url: d.url, contentHash: d.contentHash, ...c });
     }
     return out;

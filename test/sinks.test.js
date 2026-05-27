@@ -1,7 +1,7 @@
-// Tests de los sinks (delivery de inteligencia). Clientes mockeados — sin red.
+// Tests de los sinks (delivery de inteligencia). Clientes mockeados — sin red ni LLM.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cogneeSink, webhookSink } from "../src/sinks.js";
+import { cogneeSink, webhookSink, defaultSinks } from "../src/sinks.js";
 
 test("cogneeSink: ingiere la inteligencia al grafo vía cogneeClient.remember", async () => {
   let remembered = null;
@@ -32,4 +32,43 @@ test("webhookSink: postea la alerta; sin alerta no hace nada", async () => {
   } finally {
     globalThis.fetch = origFetch;
   }
+});
+
+test("defaultSinks: con COGNEE_LIVE seteado => incluye el cogneeSink (Cognee default en LOCAL/CLI)", async () => {
+  let connected = false, remembered = null;
+  const fakeCognee = {
+    connect: async () => { connected = true; return fakeCognee; },
+    remember: async (text) => { remembered = text; },
+  };
+  const sinks = await defaultSinks({
+    env: { COGNEE_LIVE: "1" },
+    cogneeClientFactory: () => fakeCognee,
+  });
+  assert.equal(sinks.length, 1, "debe haber exactamente un sink (Cognee)");
+  assert.equal(connected, true, "debe conectar el CogneeClient antes de usarlo");
+  await sinks[0]({
+    target: "acme", lens: "gtm",
+    evidence: { contentHash: "h1", payload: { findings: [{ summary: "signal" }] } },
+    signals: ["price-cut"], maxSeverity: 7,
+  });
+  assert.match(remembered, /acme/);
+});
+
+test("defaultSinks: sin COGNEE_LIVE => NO incluye Cognee (no se dispara LLM por default)", async () => {
+  let factoryCalled = false;
+  const sinks = await defaultSinks({
+    env: {}, // como en el endpoint público (Vercel): COGNEE_LIVE ausente
+    cogneeClientFactory: () => { factoryCalled = true; return {}; },
+  });
+  assert.equal(sinks.length, 0, "sin COGNEE_LIVE no debe haber sinks");
+  assert.equal(factoryCalled, false, "no debe ni instanciar el CogneeClient");
+});
+
+test("defaultSinks: COGNEE_LIVE + SYNTHEX_WEBHOOK_URL => Cognee + webhook", async () => {
+  const fakeCognee = { connect: async () => fakeCognee, remember: async () => {} };
+  const sinks = await defaultSinks({
+    env: { COGNEE_LIVE: "1", SYNTHEX_WEBHOOK_URL: "https://hook.example/x" },
+    cogneeClientFactory: () => fakeCognee,
+  });
+  assert.equal(sinks.length, 2);
 });

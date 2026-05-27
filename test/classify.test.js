@@ -30,8 +30,8 @@ test("classify: lanza error claro sin AIML_API_KEY", async () => {
   await assert.rejects(() => classify("x", "security", { apiKey: null }), /AIML_API_KEY/);
 });
 
-test("LENSES expone las 3 lentes", () => {
-  assert.deepEqual(Object.keys(LENSES).sort(), ["finance", "gtm", "security"]);
+test("LENSES expone las 4 lentes", () => {
+  assert.deepEqual(Object.keys(LENSES).sort(), ["finance", "gtm", "security", "supply-chain"]);
 });
 
 test("classify: red real AI/ML API clasifica (requiere AIML_LIVE=1 + saldo)", { skip: !live }, async () => {

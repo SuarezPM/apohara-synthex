@@ -42,23 +42,48 @@ test("pipeline: lente Security clasifica y sella", async () => {
   assert.equal(ev.payload.lens, "security");
 });
 
-test("pipeline: lens='all' clasifica bajo las 3 lentes (tri-lens) por doc", async () => {
-  const fetcher = async () => [{ url: "x", content: "Competidor recortó precio y tuvo un breach de datos." }];
+test("pipeline: lens='all' clasifica bajo las 4 lentes por doc", async () => {
+  const fetcher = async () => [{ url: "x", content: "Competidor recortó precio, tuvo un breach y un proveedor falló." }];
   // classifier inyectado lens-aware: severidad distinta por lente para verificar paralelismo
-  const sev = { gtm: 7, finance: 4, security: 9 };
+  const sev = { gtm: 7, finance: 4, security: 9, "supply-chain": 6 };
   const classifier = async (text, lens) => ({ lens, severity: sev[lens], summary: `s-${lens}`, signals: [lens] });
   const ev = await runPipeline("acme.com", { lens: "all", fetcher, classifier, requestTsa: false });
 
   assert.equal(ev.payload.lens, "all");
   assert.equal(ev.payload.findings.length, 1);
   const tri = ev.payload.findings[0].trilens;
-  assert.deepEqual(Object.keys(tri).sort(), ["finance", "gtm", "security"]);
+  assert.deepEqual(Object.keys(tri).sort(), ["finance", "gtm", "security", "supply-chain"]);
   assert.equal(tri.gtm.severity, 7);
   assert.equal(tri.security.severity, 9);
-  // sello sigue siendo verificable con el shape tri-lens
+  assert.equal(tri["supply-chain"].severity, 6);
+  // sello sigue siendo verificable con el shape de 4 lentes
   const v = verifyEvidence(ev, { hmacKey: "synthex-dev" });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
+});
+
+test("pipeline: emitter recibe start/done de las 4 stages", async () => {
+  const fetcher = async () => [{ url: "x", content: "señal de prueba" }];
+  const classifier = async (text, lens) => ({ lens, severity: 5, summary: "ok", signals: [] });
+  const events = [];
+  const emitter = async (e) => { events.push(e); };
+  await runPipeline("acme.com", { lens: "gtm", fetcher, classifier, requestTsa: false, emitter });
+
+  const stages = ["FETCH", "FORGE", "CLASSIFY", "PROVE"];
+  for (const stage of stages) {
+    assert.ok(events.some((e) => e.stage === stage && e.status === "start"), `falta start de ${stage}`);
+    const done = events.find((e) => e.stage === stage && e.status === "done");
+    assert.ok(done, `falta done de ${stage}`);
+    assert.equal(typeof done.ms, "number");
+  }
+});
+
+test("pipeline: emitter que falla no rompe el pipeline (best-effort)", async () => {
+  const fetcher = async () => [{ url: "x", content: "señal" }];
+  const classifier = async (text, lens) => ({ lens, severity: 5, summary: "ok", signals: [] });
+  const emitter = async () => { throw new Error("emitter caído"); };
+  const ev = await runPipeline("acme.com", { lens: "gtm", fetcher, classifier, requestTsa: false, emitter });
+  assert.ok(ev.seal.hmacSha256); // el pipeline completó pese al emitter roto
 });
 
 test("pipeline: multi-fuente (array de targets) consolida en un Evidence Report", async () => {
