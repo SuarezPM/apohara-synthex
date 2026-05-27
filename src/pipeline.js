@@ -50,9 +50,18 @@ export async function runPipeline(target, opts = {}) {
 
   await startTelemetry(); // arranca el exporter OTLP solo si hay endpoint (idempotente)
 
+  // Duraciones por etapa (wall-clock) que se devuelven al caller (UI/stream); NO entran al
+  // payload sellado → no afectan hashOk/verify. Independiente del export OTel de withSpan.
+  const timings = {};
+  const timed = async (stage, fn) => {
+    const s = performance.now();
+    try { return await withSpan(stage, fn); }
+    finally { timings[stage] = +(performance.now() - s).toFixed(1); }
+  };
+
   // 1. FETCH — target puede ser un string o un array de fuentes (multi-fuente / scale).
   const targets = Array.isArray(target) ? target : [target];
-  const docs = await withSpan("FETCH", async ({ record }) => {
+  const docs = await timed("FETCH", async ({ record }) => {
     const out = [];
     for (const t of targets) out.push(...(fetcher ? await fetcher(t) : await defaultFetch(t)));
     record("urls", out.length);
@@ -60,7 +69,7 @@ export async function runPipeline(target, opts = {}) {
   });
 
   // 2. FORGE: deduplicar + pre-filtrar (bloquear contenido malicioso antes de gastar LLM)
-  const { blocked, safe, dedup } = await withSpan("FORGE", async ({ record }) => {
+  const { blocked, safe, dedup } = await timed("FORGE", async ({ record }) => {
     const { unique, stats } = dedupe(docs);
     const screened = unique.map((d) => ({ ...d, screen: prefilter(d.content) }));
     const blocked = screened.filter((d) => d.screen.action === "BLOCK");
@@ -74,7 +83,7 @@ export async function runPipeline(target, opts = {}) {
   // 3. CLASSIFY (cada doc seguro). lens="all" → tri-lente (GTM+Finance+Security) en paralelo;
   // si no, la lente pedida (retrocompat). El classifier inyectable se respeta en ambos modos.
   const doClassify = classifier ?? defaultClassify;
-  const findings = await withSpan("CLASSIFY", async ({ record }) => {
+  const findings = await timed("CLASSIFY", async ({ record }) => {
     record("lens", lens);
     record("docs", safe.length);
     if (lens === "all") {
@@ -105,11 +114,12 @@ export async function runPipeline(target, opts = {}) {
     blocked: blocked.map((d) => ({ url: d.url, reason: d.screen.category })),
     findings,
   };
-  const evidence = await withSpan("PROVE", async ({ record }) => {
+  const evidence = await timed("PROVE", async ({ record }) => {
     const ev = await buildEvidence(payload, { hmacKey, requestTsa });
     record("method", ev.seal.method);
     recordSealed();
     return ev;
   });
+  evidence.timings = timings; // hermano de payload (fuera del sello)
   return evidence;
 }
