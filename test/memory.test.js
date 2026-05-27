@@ -29,8 +29,17 @@ test("memory: persiste entre instancias", () => {
   } finally { rmSync(path, { force: true }); }
 });
 
-test("cognee: stub honesto — no fabrica, falla claro", async () => {
+test("cognee: cliente expone connect/cognify/search/close", () => {
   const c = new CogneeClient();
-  assert.equal(c.configured, false);
-  await assert.rejects(() => c.ingest(), /no configurado|pendiente/);
+  for (const fn of ["connect", "cognify", "search", "close"]) {
+    assert.equal(typeof c[fn], "function");
+  }
+});
+
+test("cognee: conecta al MCP local y lista tools (requiere COGNEE_LIVE=1)", { skip: !process.env.COGNEE_LIVE }, async () => {
+  const c = new CogneeClient();
+  await c.connect();
+  const tools = await c.listTools();
+  assert.ok(Array.isArray(tools) && tools.length > 0, "el cognee MCP debe exponer tools");
+  await c.close();
 });
