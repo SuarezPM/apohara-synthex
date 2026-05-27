@@ -1,32 +1,54 @@
-// TriggerWare.ai — integración de workflows event-driven (OPCIONAL).
+// TriggerWare — cliente de la API real (verificada: GET /triggers → 200).
+// Triggerware es un motor de "base de datos virtual" sobre connectors externos, con
+// TRIGGERS: queries en schedule que acumulan deltas (added/deleted) y se consumen por poll.
+// Eso es el monitoreo continuo de Synthex: creás un trigger en lenguaje natural, hacés poll
+// y disparás el pipeline cuando aparecen filas nuevas.
 //
-// HONESTIDAD: la documentación pública de la API de TriggerWare.ai no es accesible
-// (no aparece en búsqueda web; es un partner nuevo del hackathon). Por eso este cliente
-// define la INTERFAZ esperada pero NO ejecuta llamadas contra endpoints sin confirmar:
-// preferimos fallar con un mensaje claro antes que fabricar un endpoint que parezca real.
-//
-// El camino primario de monitoreo es Monitor (cron), en monitor.js — ese sí es funcional.
-//
-// TODO(partner): confirmar baseUrl, esquema de auth y endpoints reales con el equipo de
-// TriggerWare.ai (o su doc cuando esté disponible) y completar registerWorkflow()/fireEvent()
-// con verificación real (test de red opt-in, igual que CLASSIFY/FETCH).
+// Auth: header `Api-Key: <key>`. Base: https://api.triggerware.com
+const DEFAULT_BASE = process.env.TRIGGERWARE_BASE_URL || "https://api.triggerware.com";
 
 export class TriggerWareClient {
-  constructor({ apiKey = process.env.TRIGGERWARE_API_KEY, baseUrl } = {}) {
+  constructor({ apiKey = process.env.TRIGGERWARE_API_KEY, baseUrl = DEFAULT_BASE } = {}) {
     this.apiKey = apiKey ?? null;
-    this.baseUrl = baseUrl ?? null; // SIN default fabricado a propósito
-    this.configured = Boolean(this.apiKey && this.baseUrl);
+    this.baseUrl = baseUrl;
+    this.configured = Boolean(this.apiKey);
   }
 
-  /** Registraría un workflow que dispara el pipeline ante un cambio web. Pendiente de API real. */
-  async registerWorkflow() {
-    if (!this.configured) {
-      throw new Error(
-        "TriggerWare no configurado: falta baseUrl confirmado por el partner (ver TODO). " +
-        "Usá Monitor (cron) como camino primario."
-      );
-    }
-    // TODO(partner): POST `${this.baseUrl}/...` una vez confirmado el esquema real.
-    throw new Error("registerWorkflow: endpoint de TriggerWare pendiente de confirmar (no fabricado).");
+  async _req(method, path, body) {
+    if (!this.apiKey) throw new Error("Falta TRIGGERWARE_API_KEY.");
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method,
+      headers: { "Api-Key": this.apiKey, ...(body ? { "Content-Type": "application/json" } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(`Triggerware HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
   }
+
+  // --- Triggers (verificados en la doc) ---
+  /** GET /triggers → lista de triggers. (Verificado: 200.) */
+  listTriggers() { return this._req("GET", "/triggers"); }
+
+  /** POST /triggers — crea un trigger desde lenguaje natural. body p.ej. {description, schedule}.
+   *  NOTA: la doc muestra la respuesta (name/query/schedule/status) pero no el shape exacto del
+   *  request; se envía el objeto tal cual para no fabricar nombres de campos. */
+  createTrigger(body) { return this._req("POST", "/triggers", body); }
+
+  /** POST /triggers/{name}/poll → {added:[...], deleted:[...]}. Cada poll limpia la cola. */
+  poll(name) { return this._req("POST", `/triggers/${encodeURIComponent(name)}/poll`); }
+
+  /** PATCH /triggers/{name} — actualiza query/schedule/status. */
+  updateTrigger(name, patch) { return this._req("PATCH", `/triggers/${encodeURIComponent(name)}`, patch); }
+
+  /** DELETE /triggers/{name}. */
+  deleteTrigger(name) { return this._req("DELETE", `/triggers/${encodeURIComponent(name)}`); }
+
+  // --- Query (English→SQL o SQL directo sobre connectors instalados) ---
+  /** POST /query → {sql, signature, rows}. language: "english" (default) | "sql". */
+  query(text, { language = "english" } = {}) { return this._req("POST", "/query", { query: text, language }); }
+
+  /** GET /connectors/installed → connectors instalados en la instancia. */
+  listConnectors() { return this._req("GET", "/connectors/installed"); }
 }

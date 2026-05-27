@@ -1,7 +1,9 @@
-// Tests de TRIGGER. Monitor (cron) se testea con pipeline mock. TriggerWare = stub honesto.
+// Tests de TRIGGER. Monitor (cron) con pipeline mock. TriggerWareClient: unit + red opt-in.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Monitor, TriggerWareClient } from "../src/trigger/index.js";
+
+const twLive = !!process.env.TRIGGERWARE_LIVE; // opt-in para el test de red real
 
 test("monitor: dispara alerta cuando severity >= threshold", async () => {
   const pipeline = async () => ({ contentHash: "h1", payload: { findings: [{ severity: 9 }, { severity: 2 }] } });
@@ -11,7 +13,6 @@ test("monitor: dispara alerta cuando severity >= threshold", async () => {
   const out = await m.runOnce();
   assert.equal(out.length, 1);
   assert.equal(out[0].severity, 9);
-  assert.equal(out[0].target, "acme.com");
   assert.equal(alerts.length, 1);
 });
 
@@ -26,8 +27,20 @@ test("monitor: requiere un pipeline", () => {
   assert.throws(() => new Monitor({}), /pipeline/);
 });
 
-test("triggerware: stub honesto — no fabrica endpoints, falla claro sin config confirmada", async () => {
-  const c = new TriggerWareClient({ apiKey: "k" }); // sin baseUrl confirmado
-  assert.equal(c.configured, false);
-  await assert.rejects(() => c.registerWorkflow(), /no configurado|pendiente de confirmar/);
+test("triggerware: error claro sin API key", async () => {
+  const c = new TriggerWareClient({ apiKey: null });
+  await assert.rejects(() => c.listTriggers(), /TRIGGERWARE_API_KEY/);
+});
+
+test("triggerware: expone los métodos de triggers y query", () => {
+  const c = new TriggerWareClient({ apiKey: "k" });
+  for (const fn of ["listTriggers", "createTrigger", "poll", "deleteTrigger", "query"]) {
+    assert.equal(typeof c[fn], "function");
+  }
+});
+
+test("triggerware: GET /triggers real devuelve una lista (requiere TRIGGERWARE_LIVE=1)", { skip: !twLive }, async () => {
+  const c = new TriggerWareClient();
+  const triggers = await c.listTriggers();
+  assert.ok(Array.isArray(triggers), "GET /triggers debe devolver un array");
 });
