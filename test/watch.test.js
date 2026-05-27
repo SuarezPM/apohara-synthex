@@ -1,0 +1,55 @@
+// Tests del watch loop always-on (con runner y store inyectados — sin red).
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { rmSync } from "node:fs";
+import { MemoryStore } from "../src/memory/index.js";
+import { watchTarget } from "../src/watch.js";
+
+function tmpStore() {
+  return new MemoryStore({ path: join(tmpdir(), `synthex-watch-${Date.now()}-${Math.random().toString(36).slice(2)}.json`) });
+}
+const ev = (hash, sev, signals) => ({ contentHash: hash, sealedAt: new Date().toISOString(), payload: { findings: [{ severity: sev, signals }] } });
+
+test("watch: primera corrida con señales => alerta (isFirstRun)", async () => {
+  const store = tmpStore();
+  try {
+    const runner = async () => ev("h1", 7, ["price-cut"]);
+    const { alert, isFirstRun } = await watchTarget("acme", { lens: "gtm", store, runner });
+    assert.equal(isFirstRun, true);
+    assert.ok(alert);
+    assert.deepEqual(alert.newSignals, ["price-cut"]);
+  } finally { rmSync(store.path, { force: true }); }
+});
+
+test("watch: segunda corrida sin cambios => sin alerta", async () => {
+  const store = tmpStore();
+  try {
+    const runner = async () => ev("h1", 7, ["price-cut"]);
+    await watchTarget("acme", { lens: "gtm", store, runner });
+    const { alert } = await watchTarget("acme", { lens: "gtm", store, runner });
+    assert.equal(alert, null);
+  } finally { rmSync(store.path, { force: true }); }
+});
+
+test("watch: señal nueva en 2da corrida => alerta con newSignals", async () => {
+  const store = tmpStore();
+  try {
+    await watchTarget("acme", { lens: "gtm", store, runner: async () => ev("h1", 5, ["price-cut"]) });
+    const { alert } = await watchTarget("acme", { lens: "gtm", store, runner: async () => ev("h2", 5, ["price-cut", "layoffs"]) });
+    assert.ok(alert);
+    assert.deepEqual(alert.newSignals, ["layoffs"]);
+  } finally { rmSync(store.path, { force: true }); }
+});
+
+test("watch: escalada de severidad => alerta escalated", async () => {
+  const store = tmpStore();
+  try {
+    await watchTarget("vendor", { lens: "security", store, runner: async () => ev("h1", 4, ["cve"]) });
+    const { alert } = await watchTarget("vendor", { lens: "security", store, runner: async () => ev("h2", 9, ["cve"]) });
+    assert.ok(alert);
+    assert.equal(alert.escalated, true);
+    assert.equal(alert.maxSeverity, 9);
+  } finally { rmSync(store.path, { force: true }); }
+});
