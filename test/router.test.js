@@ -87,31 +87,26 @@ test("router: mode 'browser' enruta a browserFetch (sin WSS lanza error honesto)
   }
 });
 
-test("router: mode 'crawl' sin dataset de crawl propaga error honesto", async () => {
+test("router: mode 'crawl' sin token propaga error honesto", async () => {
   await assert.rejects(
-    () => smartFetcher({ apiToken: "tok", datasetId: null, mode: "crawl" })("https://acme.com"),
-    /BRIGHT_DATA_CRAWL_DATASET_ID/,
+    () => smartFetcher({ apiToken: null, mode: "crawl" })("https://acme.com"),
+    /Falta BRIGHT_DATA_TOKEN/,
   );
 });
 
-test("router: mode 'crawl' trigger→ready→snapshot devuelve [{url, content}]", async () => {
+test("router: mode 'crawl' → crawl multi-página vía Web Unlocker devuelve [{url, content}]", async () => {
   const orig = globalThis.fetch;
-  const urls = [];
-  globalThis.fetch = async (u) => {
-    urls.push(String(u));
-    if (String(u).includes("/trigger")) return { ok: true, json: async () => ({ snapshot_id: "snap_1" }) };
-    if (String(u).includes("/progress/")) return { ok: true, json: async () => ({ status: "ready" }) };
-    if (String(u).includes("/snapshot/")) return { ok: true, json: async () => [{ url: "https://acme.com", markdown: "crawl md" }] };
-    throw new Error(`URL inesperada: ${u}`);
+  const pages = {
+    "https://acme.com": "home [a](https://acme.com/a)",
+    "https://acme.com/a": "página A",
   };
+  globalThis.fetch = async (_u, init) => ({ ok: true, text: async () => pages[JSON.parse(init.body).url] ?? "?" });
   try {
-    const docs = await smartFetcher({ apiToken: "tok", datasetId: "gd_crawl", mode: "crawl" })("https://acme.com");
-    assert.equal(docs.length, 1);
-    assert.equal(docs[0].url, "https://acme.com");
-    assert.equal(docs[0].content, "crawl md");
-    assert.ok(urls.some((u) => u.includes("/trigger")));
-    assert.ok(urls.some((u) => u.includes("/progress/")));
-    assert.ok(urls.some((u) => u.includes("/snapshot/")));
+    const docs = await smartFetcher({ apiToken: "tok", zone: "z", mode: "crawl", maxPages: 2 })("https://acme.com");
+    assert.equal(docs[0].url, "https://acme.com");      // seed primero
+    assert.equal(docs.length, 2);                        // seed + 1 interna
+    assert.equal(docs[1].url, "https://acme.com/a");
+    assert.equal(docs[1].content, "página A");
   } finally { globalThis.fetch = orig; }
 });
 
