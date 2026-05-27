@@ -73,5 +73,3 @@ export function verifyTimestamp(respDer, hashBytes) {
     policy: String(tstInfo.policy ?? ""),
   };
 }
-
-export { DEFAULT_TSA_URL };
