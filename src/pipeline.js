@@ -45,8 +45,10 @@ export async function runPipeline(target, opts = {}) {
     classifier,
   } = opts;
 
-  // 1. FETCH
-  const docs = fetcher ? await fetcher(target) : await defaultFetch(target);
+  // 1. FETCH — target puede ser un string o un array de fuentes (multi-fuente / scale).
+  const targets = Array.isArray(target) ? target : [target];
+  const docs = [];
+  for (const t of targets) docs.push(...(fetcher ? await fetcher(t) : await defaultFetch(t)));
 
   // 2. FORGE: deduplicar + pre-filtrar (bloquear contenido malicioso antes de gastar LLM)
   const { unique, stats: dedup } = dedupe(docs);

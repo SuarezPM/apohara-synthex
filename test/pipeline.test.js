@@ -41,3 +41,13 @@ test("pipeline: lente Security clasifica y sella", async () => {
   assert.equal(ev.payload.findings[0].severity, 9);
   assert.equal(ev.payload.lens, "security");
 });
+
+test("pipeline: multi-fuente (array de targets) consolida en un Evidence Report", async () => {
+  // fetcher devuelve 1 doc por fuente (usa el target recibido)
+  const fetcher = async (t) => [{ url: `${t}/page`, content: `contenido de ${t}` }];
+  const classifier = async (text, lens) => ({ lens, severity: 5, summary: "ok", signals: [] });
+  const ev = await runPipeline(["acme.com", "globex.com", "initech.com"], { lens: "gtm", fetcher, classifier, requestTsa: false });
+  assert.equal(ev.payload.sources.length, 3);
+  assert.equal(ev.payload.findings.length, 3);
+  assert.deepEqual(ev.payload.target, ["acme.com", "globex.com", "initech.com"]);
+});
