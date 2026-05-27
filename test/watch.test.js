@@ -67,6 +67,25 @@ test("watch: invoca los sinks con la inteligencia (Cognee/webhook)", async () =>
   } finally { rmSync(store.path, { force: true }); }
 });
 
+test("watch: soporta evidence tri-lens (lens='all') — extrae señales y maxSeverity", async () => {
+  const store = tmpStore();
+  try {
+    // evidence con findings tri-lens (shape de lens='all')
+    const triEv = {
+      contentHash: "ht1", sealedAt: new Date().toISOString(),
+      payload: { findings: [{ trilens: {
+        gtm: { severity: 7, signals: ["price-cut"] },
+        finance: { severity: 4, signals: ["vendor-risk"] },
+        security: { severity: 9, signals: ["breach"] },
+      } }] },
+    };
+    const { alert, maxSeverity } = await watchTarget("acme", { lens: "all", store, runner: async () => triEv });
+    assert.equal(maxSeverity, 9); // toma el máximo entre las 3 lentes
+    assert.ok(alert);
+    assert.deepEqual(alert.newSignals.sort(), ["breach", "price-cut", "vendor-risk"]);
+  } finally { rmSync(store.path, { force: true }); }
+});
+
 test("watch: un sink que falla no rompe el watch (best-effort)", async () => {
   const store = tmpStore();
   try {

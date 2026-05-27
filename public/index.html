@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Synthex — the evidence layer inside Bright Data</title>
+<style>
+  :root {
+    --brand: #7c3aed; --brand-2: #5b21b6; --bg: #0b0b12; --panel: #15151f;
+    --line: #262633; --txt: #e7e7ef; --muted: #9a9aac; --ok: #22c55e; --warn: #f59e0b; --crit: #ef4444;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 600px at 50% -10%, #1c1430 0%, var(--bg) 60%); color: var(--txt);
+    font: 15px/1.55 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; min-height: 100vh; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 80px; }
+  header { text-align: center; margin-bottom: 34px; }
+  .logo { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 30px; letter-spacing: -0.02em; }
+  .diamond { width: 18px; height: 18px; background: linear-gradient(135deg, var(--brand), var(--brand-2)); transform: rotate(45deg); border-radius: 3px; }
+  .tag { color: var(--muted); margin-top: 6px; font-size: 15px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 18px; }
+  label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
+  input[type=text] { width: 100%; padding: 12px 14px; background: #0e0e16; border: 1px solid var(--line); border-radius: 10px; color: var(--txt); font-size: 15px; }
+  .lenses { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .lens { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; color: var(--muted); user-select: none; font-size: 13px; }
+  .lens.active { background: linear-gradient(135deg, var(--brand), var(--brand-2)); border-color: transparent; color: #fff; }
+  button.run { margin-top: 16px; width: 100%; padding: 13px; border: 0; border-radius: 10px; cursor: pointer;
+    background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; font-weight: 700; font-size: 15px; }
+  button.run:disabled { opacity: 0.55; cursor: progress; }
+  .stages { display: grid; gap: 8px; }
+  .stage { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; background: #0e0e16; opacity: 0.4; transition: opacity .25s; }
+  .stage.done { opacity: 1; }
+  .stage .ico { width: 18px; text-align: center; }
+  .stage .nm { font-weight: 600; width: 96px; }
+  .stage .meta { color: var(--muted); font-size: 13px; flex: 1; }
+  .stage .ms { font-family: var(--mono); color: var(--brand); font-size: 13px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .badge.live { background: rgba(34,197,94,.15); color: var(--ok); border: 1px solid rgba(34,197,94,.4); }
+  .badge.demo { background: rgba(245,158,11,.15); color: var(--warn); border: 1px solid rgba(245,158,11,.4); }
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px; font-size: 13px; }
+  .kv .k { color: var(--muted); }
+  .kv .v { font-family: var(--mono); word-break: break-all; }
+  .seal { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
+  .seal span { font-size: 13px; }
+  .finding { border-top: 1px solid var(--line); padding: 12px 0; }
+  .finding:first-child { border-top: 0; }
+  .sev { font-weight: 700; font-family: var(--mono); }
+  .signals { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  .dl { margin-top: 8px; padding: 11px 16px; border: 1px solid var(--brand); background: transparent; color: var(--txt); border-radius: 10px; cursor: pointer; font-weight: 600; }
+  .hide { display: none; }
+  .err { color: var(--crit); font-size: 14px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; }
+  a { color: var(--brand); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><span class="diamond"></span> SYNTHEX</div>
+    <div class="tag">The evidence layer that lives inside Bright Data — everything signed, nothing trusted.</div>
+  </header>
+
+  <div class="card">
+    <label for="target">Target URL or term</label>
+    <input id="target" type="text" placeholder="https://en.wikipedia.org/wiki/Bright_Data" value="https://en.wikipedia.org/wiki/Bright_Data" />
+    <div class="lenses" id="lenses">
+      <span class="lens" data-lens="gtm">GTM</span>
+      <span class="lens" data-lens="finance">Finance</span>
+      <span class="lens" data-lens="security">Security</span>
+      <span class="lens active" data-lens="all">All 3</span>
+    </div>
+    <button class="run" id="run">Analyze &amp; Seal</button>
+  </div>
+
+  <div class="card hide" id="result">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <strong>Pipeline</strong><span id="mode"></span>
+    </div>
+    <div class="stages" id="stages">
+      <div class="stage" data-st="FETCH"><span class="ico">⬡</span><span class="nm">FETCH</span><span class="meta">Bright Data</span><span class="ms"></span></div>
+      <div class="stage" data-st="FORGE"><span class="ico">⬢</span><span class="nm">FORGE</span><span class="meta">dedup + OWASP prefilter (pre-LLM)</span><span class="ms"></span></div>
+      <div class="stage" data-st="CLASSIFY"><span class="ico">◈</span><span class="nm">CLASSIFY</span><span class="meta">AI/ML API</span><span class="ms"></span></div>
+      <div class="stage" data-st="PROVE"><span class="ico">◆</span><span class="nm">PROVE</span><span class="meta">HMAC + RFC 3161 TSA</span><span class="ms"></span></div>
+    </div>
+    <div class="seal" id="seal"></div>
+    <div class="kv" id="custody"></div>
+    <div id="findings" style="margin-top:14px"></div>
+    <button class="dl hide" id="dl">📥 Download Evidence Report (PDF)</button>
+    <div class="err hide" id="err"></div>
+  </div>
+
+  <footer>
+    RFC 3161 proves <em>when</em> the content was sealed, not that it is <em>true</em>.
+    Cognee ingest is opt-in. The prefilter covers text/HTML injection, not visual VPI. ·
+    <a href="https://github.com/SuarezPM/apohara-synthex" target="_blank">source</a>
+  </footer>
+</div>
+
+<script type="module">
+  let lens = "all";
+  const $ = (s) => document.querySelector(s);
+  document.querySelectorAll(".lens").forEach((el) =>
+    el.addEventListener("click", () => {
+      document.querySelectorAll(".lens").forEach((l) => l.classList.remove("active"));
+      el.classList.add("active"); lens = el.dataset.lens;
+    }));
+
+  const sevColor = (s) => (s >= 8 ? "var(--crit)" : s >= 5 ? "var(--warn)" : "var(--ok)");
+  const stageEl = (st) => $(`.stage[data-st="${st}"]`);
+
+  async function animateStages(timings) {
+    for (const st of ["FETCH", "FORGE", "CLASSIFY", "PROVE"]) {
+      const el = stageEl(st); const ms = timings?.[st];
+      el.querySelector(".ms").textContent = ms != null ? `${ms} ms` : "";
+      el.classList.add("done");
+      await new Promise((r) => setTimeout(r, 220));
+    }
+  }
+
+  function renderFindings(findings) {
+    const box = $("#findings"); box.innerHTML = "";
+    for (const f of findings ?? []) {
+      const rows = f.trilens ? Object.entries(f.trilens).map(([l, c]) => ({ lens: l, ...c })) : [f];
+      for (const r of rows) {
+        const div = document.createElement("div"); div.className = "finding";
+        div.innerHTML = `<span class="sev" style="color:${sevColor(r.severity || 0)}">[${(r.lens||"").toUpperCase()}] ${r.severity ?? 0}/10</span> ${r.summary ?? ""}` +
+          (r.signals?.length ? `<div class="signals">signals: ${r.signals.join(" · ")}</div>` : "");
+        box.appendChild(div);
+      }
+    }
+  }
+
+  let lastEvidence = null;
+  $("#run").addEventListener("click", async () => {
+    const target = $("#target").value.trim();
+    const btn = $("#run"); btn.disabled = true; btn.textContent = "Running pipeline…";
+    $("#result").classList.remove("hide"); $("#err").classList.add("hide"); $("#dl").classList.add("hide");
+    document.querySelectorAll(".stage").forEach((s) => { s.classList.remove("done"); s.querySelector(".ms").textContent = ""; });
+    try {
+      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ target, lens }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "pipeline error");
+      lastEvidence = data.evidence;
+      const ev = data.evidence, seal = ev.seal || {}, v = data.verify || {};
+      $("#mode").innerHTML = `<span class="badge ${data.mode}">${data.mode.toUpperCase()}</span>`;
+      await animateStages(ev.timings);
+      $("#seal").innerHTML =
+        `<span>hash <b style="color:${v.hashOk ? "var(--ok)" : "var(--crit)"}">${v.hashOk ? "OK" : "FAIL"}</b></span>` +
+        `<span>HMAC <b style="color:${v.hmacOk ? "var(--ok)" : "var(--crit)"}">${v.hmacOk ? "OK" : "—"}</b></span>` +
+        `<span>RFC 3161 TSA <b style="color:${v.tsaOk ? "var(--ok)" : "var(--muted)"}">${v.tsaOk === true ? "DigiCert OK" : "none"}</b></span>` +
+        `<span>blocked pre-LLM: <b>${(ev.payload?.blocked || []).length}</b></span>`;
+      $("#custody").innerHTML =
+        `<span class="k">SHA-256</span><span class="v">${ev.contentHash}</span>` +
+        `<span class="k">Seal</span><span class="v">${seal.method || "—"}</span>` +
+        (seal.rfc3161Tsa ? `<span class="k">TSA serial</span><span class="v">${seal.rfc3161Tsa.serial}</span>` : "");
+      renderFindings(ev.payload?.findings);
+      $("#dl").classList.remove("hide");
+    } catch (e) {
+      $("#err").textContent = e.message; $("#err").classList.remove("hide");
+    } finally {
+      btn.disabled = false; btn.textContent = "Analyze & Seal";
+    }
+  });
+
+  $("#dl").addEventListener("click", async () => {
+    if (!lastEvidence) return;
+    const res = await fetch("/api/report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ evidence: lastEvidence }) });
+    if (!res.ok) { $("#err").textContent = "PDF error"; $("#err").classList.remove("hide"); return; }
+    const blob = await res.blob();
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click();
+    URL.revokeObjectURL(a.href);
+  });
+</script>
+</body>
+</html>
