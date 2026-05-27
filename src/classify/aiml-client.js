@@ -8,6 +8,7 @@ export const LENSES = {
   gtm: "GTM/competitive intelligence: pricing, hiring, product launches, market moves, competitor signals",
   finance: "Finance/market intelligence: vendor & supplier risk, regulatory exposure, earnings/pre-earnings signals",
   security: "Security & compliance: threats, CVEs, leaked credentials, brand/data exposure, regulatory changes",
+  "supply-chain": "Supply chain disruption: supplier/vendor failures, logistics & shipping disruption, raw-material shortages, multi-tier supplier risk, force majeure",
 };
 
 /** Normaliza la salida del modelo a {lens, severity 0-10, summary, signals[]}. Fallback seguro. */

@@ -23,10 +23,10 @@ export const tools = [
   {
     name: "synthex_scrape_classify_prove",
     description:
-      "Pipeline completo: scrapea el target vía Bright Data, deduplica y pre-filtra, clasifica bajo la lente pedida (GTM/Finance/Security, o 'all' para las tres en paralelo) y devuelve un Evidence Report sellado.",
+      "Pipeline completo: scrapea el target vía Bright Data, deduplica y pre-filtra, clasifica bajo la lente pedida (GTM/Finance/Security/Supply-chain, o 'all' para las cuatro en paralelo) y devuelve un Evidence Report sellado.",
     parameters: z.object({
       target: z.string().describe("URL o término objetivo"),
-      lens: z.enum(["gtm", "finance", "security", "all"]).default("security").describe("Lente de clasificación; 'all' corre las tres en paralelo"),
+      lens: z.enum(["gtm", "finance", "security", "supply-chain", "all"]).default("security").describe("Lente de clasificación; 'all' corre las cuatro en paralelo"),
     }),
     execute: async ({ target, lens }) => {
       const ev = await runPipeline(target, { lens });
