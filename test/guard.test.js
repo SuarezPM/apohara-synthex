@@ -17,6 +17,12 @@ test("guard: bloquea SSRF (localhost, loopback, metadata, rangos privados)", () 
   }
 });
 
+test("guard: bloquea IPs ofuscadas (decimal/hex) e IPv6 privado", () => {
+  for (const bad of ["http://2130706433/", "http://0x7f000001/", "http://[fe80::1]/", "http://[fc00::1]/"]) {
+    assert.throws(() => assertSafeTarget(bad), /SSRF/i, `debería bloquear ${bad}`);
+  }
+});
+
 test("guard: rechaza protocolos no http/https y target vacío", () => {
   assert.throws(() => assertSafeTarget("ftp://x.com"), /http/i); // isUrlTarget=false → cae como término... validamos URL real
   assert.throws(() => assertSafeTarget(""), /vac/i);

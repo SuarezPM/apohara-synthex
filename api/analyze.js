@@ -34,6 +34,7 @@ export default async function handler(req, res) {
     const verify = verifyEvidence(evidence, { hmacKey: verifyKey });
     res.status(200).json({ mode, evidence, verify });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error("[analyze] error:", e); // detalle server-side; al cliente, mensaje genérico
+    res.status(500).json({ error: "pipeline failed" });
   }
 }

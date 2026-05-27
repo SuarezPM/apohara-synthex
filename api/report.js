@@ -14,6 +14,7 @@ export default async function handler(req, res) {
     res.setHeader("Content-Disposition", "attachment; filename=synthex-evidence.pdf");
     res.status(200).send(pdf);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error("[report] error:", e);
+    res.status(500).json({ error: "report failed" });
   }
 }
