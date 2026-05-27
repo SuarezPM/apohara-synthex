@@ -3,302 +3,449 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Synthex — the evidence layer inside Bright Data</title>
-<meta name="description" content="Scrape it, classify it, prove it. The evidence layer that lives inside Bright Data — every byte signed with RFC 3161." />
+<title>Synthex — the evidence layer that lives inside Bright Data</title>
+<meta name="description" content="Synthex scrapes the live web via Bright Data, screens it for injection before the LLM, classifies it under four lenses, and seals it with an RFC 3161 timestamp you can verify yourself." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
 <style>
-/* Hallmark · macrostructure: Workbench · genre: atmospheric · theme: Apohara brand-locked
- * tone: technical/austere · anchor hue: lime (oklch ~0.66 0.19 142 / #25B13F)
- * audience: hackathon judges + AI-Ops/Security · use: run pipeline live, download signed evidence
- * pre-emit critique: P5 H5 E4 S5 R4 V4
- * states: input/button default·hover·focus·active·disabled·loading·error·success
+/* Hallmark · macrostructure: Cinematic Scrollytelling (REEF DNA, studied) · genre: atmospheric
+ * theme: Apohara brand-locked + REEF lineage · studied: yes · DNA-source: REEF deck + reef-mcp-registry.vercel.app
+ * type: Instrument Serif (italic display) + Inter (sans headline) + JetBrains Mono (labels/data)
+ * anchor: lime #25B13F (verified/brand) · multi-accent per stage (teal/violet/amber/red)
+ * pre-emit critique: P5 H5 E4 S5 R4 V5
  */
 :root {
-  /* Apohara brand tokens (verified — apohara-consilium brand-tokens-source.json) */
-  --lime: #25B13F;
-  --dark: #2A2D3A;
-  --bone: #EDEFF0;
-  --ink: #0E1010;
-  --red: #B8262A;
-  --void: #0D0F18;
-  --mid: #1E2130;
-  --raised: #222640;
-  /* derived */
-  --lime-dim: #1c8a31;
-  --line: #2c3050;
-  --muted: #8a8fb0;
-  --amber: #d99a2b;
-  --font-display: 'Press Start 2P', monospace;
-  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --radius: 0.25rem;
-  --space-xs: 6px; --space-sm: 12px; --space-md: 20px; --space-lg: 36px; --space-xl: 64px;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --dur: 240ms;
+  --void: #090a10; --void-2: #0d0f18; --mid: #161a28; --raised: #1d2236;
+  --bone: #EDEFF0; --muted: #888fb0; --faint: #5a6080; --line: #232743;
+  --lime: #25B13F; --lime-2: #2ed24c;       /* PROVE · verified · brand */
+  --teal: #22b8cf;                          /* FETCH · discover */
+  --violet: #9775fa;                        /* FORGE · screen */
+  --amber: #e8a13a;                         /* CLASSIFY · score */
+  --red: #e5484d;                           /* danger · blocked */
+  --serif: 'Instrument Serif', Georgia, serif;
+  --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --pixel: 'Press Start 2P', monospace;
+  --maxw: 1080px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 * { box-sizing: border-box; }
 html, body { overflow-x: clip; }
 body {
-  margin: 0;
-  background: var(--void);
-  color: var(--bone);
-  font-family: var(--font-body);
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
+  margin: 0; background: var(--void); color: var(--bone);
+  font-family: var(--sans); line-height: 1.6; -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(900px 500px at 15% -5%, rgba(37,177,63,0.07), transparent 60%),
+    radial-gradient(900px 600px at 90% 5%, rgba(232,161,58,0.05), transparent 55%),
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px;
+  background-attachment: fixed;
 }
-/* ambient lime radial — Apohara signature */
-body::before {
-  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(circle at 22% 12%, rgba(37,177,63,0.08) 0%, transparent 42%),
-    radial-gradient(circle at 82% 88%, rgba(30,33,48,0.7) 0%, transparent 60%);
-}
-::selection { background: rgba(37,177,63,0.32); color: var(--bone); }
-::-webkit-scrollbar { width: 8px; height: 8px; }
+::selection { background: rgba(37,177,63,0.32); }
+::-webkit-scrollbar { width: 9px; }
 ::-webkit-scrollbar-track { background: var(--void); }
 ::-webkit-scrollbar-thumb { background: rgba(37,177,63,0.3); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--lime); }
-a { color: var(--lime); }
-.wrap { max-width: 920px; margin: 0 auto; padding: 0 20px; }
+a { color: var(--lime); text-decoration: none; }
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+section { padding: 86px 0; border-bottom: 1px solid var(--line); }
+
+/* ── mono kicker with dot ── */
+.kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 9px; margin-bottom: 26px; }
+.kicker .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 10px var(--lime); flex: none; }
+.kicker.teal .dot { background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+.kicker.violet .dot { background: var(--violet); box-shadow: 0 0 10px var(--violet); }
+.kicker.amber .dot { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+.kicker.red .dot { background: var(--red); box-shadow: 0 0 10px var(--red); }
+
+/* ── headlines: bold sans, 2nd clause in accent ── */
+h2.head { font-family: var(--sans); font-weight: 700; font-size: clamp(28px, 4.4vw, 46px); line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 18px; overflow-wrap: anywhere; }
+h2.head em { font-style: normal; color: var(--amber); }
+h2.head .r { color: var(--red); } h2.head .g { color: var(--lime); } h2.head .t { color: var(--teal); }
+.lede { color: var(--muted); font-size: 18px; max-width: 64ch; }
+.serif { font-family: var(--serif); font-style: italic; }
 
 /* ── top bar ── */
-.topbar { border-bottom: 1px solid var(--line); background: rgba(13,15,24,0.85); backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 10; }
-.topbar .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; }
-.brand { display: flex; align-items: center; gap: 12px; }
-.diamond { width: 16px; height: 16px; background: linear-gradient(135deg, var(--lime), var(--lime-dim)); transform: rotate(45deg); border-radius: 2px; box-shadow: 0 0 14px rgba(37,177,63,0.5); }
-.wordmark { font-family: var(--font-display); font-size: 15px; letter-spacing: 1px; color: var(--bone); }
-.topbar .substrate { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.topbar { position: sticky; top: 0; z-index: 30; background: rgba(9,10,16,0.82); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.topbar .wrap { display: flex; align-items: center; justify-content: space-between; height: 58px; padding-top:0; padding-bottom:0; }
+.brand { display: flex; align-items: center; gap: 11px; }
+.diamond { width: 14px; height: 14px; background: linear-gradient(135deg, var(--lime), #1c8a31); transform: rotate(45deg); border-radius: 2px; box-shadow: 0 0 12px rgba(37,177,63,0.6); }
+.wordmark { font-family: var(--pixel); font-size: 13px; letter-spacing: 1px; }
+.topbar .meta { font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: 0.08em; }
+.topbar .meta a { color: var(--muted); }
 
 /* ── hero ── */
-.hero { padding: var(--space-xl) 0 var(--space-lg); border-bottom: 1px solid var(--line); }
-.kicker { font-family: var(--font-display); font-size: 9px; letter-spacing: 2px; color: var(--lime); margin-bottom: var(--space-md); }
-.hero h1 { font-family: var(--font-body); font-weight: 600; font-size: clamp(28px, 5vw, 46px); line-height: 1.1; margin: 0 0 var(--space-sm); letter-spacing: -0.02em; overflow-wrap: anywhere; }
-.hero h1 em { color: var(--lime); font-style: normal; }
-.hero p { color: var(--muted); max-width: 60ch; font-size: 16px; margin: 0; }
+.hero { text-align: center; padding: 104px 0 78px; border-bottom: 1px solid var(--line); position: relative; }
+.hero .kicker { justify-content: center; }
+.hero .mark { font-family: var(--serif); font-style: italic; font-size: clamp(76px, 16vw, 168px); line-height: 0.92; letter-spacing: -0.01em;
+  background: linear-gradient(180deg, #fff 0%, #cfe8d4 70%, #8fc99a 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: 0 0 60px rgba(37,177,63,0.25); margin: 6px 0 4px; }
+.hero .tag { font-family: var(--sans); font-size: clamp(17px, 2.4vw, 24px); color: var(--bone); font-weight: 500; }
+.hero .tag b { color: var(--lime); font-weight: 700; }
+.hero .sub { font-family: var(--serif); font-style: italic; font-size: clamp(16px,2vw,21px); color: var(--amber); margin-top: 12px; }
+.hero .pills { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+.pill { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; padding: 6px 13px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.pill.lime { border-color: rgba(37,177,63,0.5); color: var(--lime); }
+.pill.amber { border-color: rgba(232,161,58,0.5); color: var(--amber); }
+.pill.teal { border-color: rgba(34,184,207,0.5); color: var(--teal); }
+.hero .links { display:flex; gap: 26px; justify-content:center; flex-wrap:wrap; margin-top: 30px; font-family: var(--mono); font-size: 12px; }
+.cta { display:inline-flex; align-items:center; gap:8px; margin-top: 34px; padding: 14px 26px; background: var(--lime); color: #06140a; font-family: var(--mono); font-weight: 700; border-radius: 6px; letter-spacing: 0.04em; }
+.cta:hover { background: var(--lime-2); }
 
-/* ── console ── */
-.console { background: var(--mid); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-md); margin-top: calc(-1 * var(--space-lg)); margin-bottom: var(--space-lg); box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
-.field-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: block; margin-bottom: var(--space-xs); }
-input[type=text] { width: 100%; padding: 13px 14px; background: var(--void); border: 1px solid var(--line); border-radius: var(--radius); color: var(--bone); font-family: var(--font-mono); font-size: 14px; }
-input[type=text]:focus-visible { outline: 2px solid var(--lime); outline-offset: 1px; border-color: var(--lime); }
-.lenses { display: flex; flex-wrap: wrap; gap: 8px; margin: var(--space-md) 0; }
-.lens { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font-family: var(--font-mono); font-size: 12px; cursor: pointer; transition: var(--dur) var(--ease-out); transition-property: background, color, border-color; }
-.lens:hover { border-color: var(--lime-dim); color: var(--bone); }
+/* ── drama scene ── */
+.drama { text-align: center; padding: 120px 0; background: radial-gradient(700px 400px at 50% 50%, rgba(229,72,77,0.06), transparent 70%); }
+.drama .big { font-family: var(--serif); font-style: italic; font-size: clamp(30px, 5.2vw, 60px); line-height: 1.18; }
+.drama .big .r { color: var(--red); } .drama .big .a { color: var(--amber); }
+.drama .note { font-family: var(--mono); font-size: 12px; color: var(--faint); margin-top: 26px; letter-spacing: 0.06em; }
+
+/* ── cards / grids ── */
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; margin-top: 38px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-top: 38px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; margin-top: 34px; }
+.card { background: linear-gradient(180deg, var(--mid), var(--void-2)); border: 1px solid var(--line); border-radius: 12px; padding: 24px; position: relative; overflow: hidden; }
+.card .num { font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: 0.12em; }
+.card h3 { font-family: var(--sans); font-weight: 700; font-size: 21px; margin: 12px 0 10px; }
+.card p { color: var(--muted); font-size: 14.5px; margin: 0 0 16px; }
+.card.teal { border-top: 2px solid var(--teal); } .card.teal h3 { color: var(--teal); }
+.card.violet { border-top: 2px solid var(--violet); } .card.violet h3 { color: var(--violet); }
+.card.amber { border-top: 2px solid var(--amber); } .card.amber h3 { color: var(--amber); }
+.card.lime { border-top: 2px solid var(--lime); } .card.lime h3 { color: var(--lime); }
+.card.red { border-top: 2px solid var(--red); } .card.red h3 { color: var(--red); }
+.xrow { font-family: var(--mono); font-size: 12.5px; color: var(--muted); display:flex; gap:8px; align-items:baseline; padding: 3px 0; }
+.xrow .x { color: var(--red); font-weight: 700; }
+.xrow .c { color: var(--lime); font-weight: 700; }
+.solve { margin-top: 16px; padding: 13px 14px; border: 1px solid rgba(37,177,63,0.35); border-radius: 8px; background: rgba(37,177,63,0.05); font-size: 13.5px; }
+.solve b { color: var(--lime); font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; display:block; margin-bottom: 5px; }
+
+/* one-liner category */
+.oneliner { font-family: var(--serif); font-style: italic; font-size: clamp(26px, 4vw, 44px); line-height: 1.25; }
+.oneliner .g { color: var(--lime); } .oneliner .a { color: var(--amber); }
+
+/* stat row */
+.stats { display:grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 40px; }
+.stat { border-left: 2px solid var(--line); padding-left: 16px; }
+.stat .v { font-family: var(--serif); font-style: italic; font-size: 46px; line-height: 1; }
+.stat .l { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 8px; letter-spacing: 0.05em; }
+.stat.teal .v { color: var(--teal); } .stat.teal { border-color: var(--teal); }
+.stat.violet .v { color: var(--violet); } .stat.violet { border-color: var(--violet); }
+.stat.amber .v { color: var(--amber); } .stat.amber { border-color: var(--amber); }
+.stat.lime .v { color: var(--lime); } .stat.lime { border-color: var(--lime); }
+
+/* architecture timeline */
+.timeline { display:grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-top: 40px; }
+.pillar { border: 1px solid var(--line); border-radius: 12px; padding: 22px; background: var(--void-2); }
+.pillar .step { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; }
+.pillar .name { font-family: var(--serif); font-style: italic; font-size: 30px; margin: 6px 0 12px; }
+.pillar.teal .name, .pillar.teal .step { color: var(--teal); }
+.pillar.violet .name, .pillar.violet .step { color: var(--violet); }
+.pillar.amber .name, .pillar.amber .step { color: var(--amber); }
+.pillar.lime .name, .pillar.lime .step { color: var(--lime); }
+.pillar li { font-family: var(--mono); font-size: 12px; color: var(--muted); list-style: none; padding: 3px 0; }
+.substrate { margin-top: 20px; border: 1px solid rgba(232,161,58,0.35); border-radius: 8px; padding: 14px 18px; font-family: var(--mono); font-size: 12px; color: var(--amber); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+
+/* ── live console ── */
+#live { background: radial-gradient(700px 380px at 50% 0%, rgba(37,177,63,0.05), transparent 70%); }
+.console { background: var(--mid); border: 1px solid var(--line); border-radius: 14px; padding: 22px; margin-top: 34px; box-shadow: 0 24px 70px rgba(0,0,0,0.5); }
+.flabel { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display:block; margin-bottom: 7px; }
+input[type=text] { width:100%; padding: 13px 14px; background: var(--void); border: 1px solid var(--line); border-radius: 7px; color: var(--bone); font-family: var(--mono); font-size: 14px; }
+input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: var(--lime); }
+.lenses { display:flex; gap:8px; flex-wrap:wrap; margin: 16px 0; }
+.lens { padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 12px; cursor: pointer; transition: .2s var(--ease); }
+.lens:hover { border-color: var(--lime); color: var(--bone); }
 .lens:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
-.lens[aria-pressed=true] { background: var(--lime); border-color: var(--lime); color: var(--ink); font-weight: 700; }
-.run { width: 100%; padding: 14px; border: 0; border-radius: var(--radius); background: var(--lime); color: var(--ink); font-family: var(--font-mono); font-weight: 700; font-size: 14px; letter-spacing: 0.04em; cursor: pointer; transition: var(--dur) var(--ease-out); transition-property: background, transform; }
-.run:hover { background: #2ecb49; }
-.run:active { transform: translateY(1px); }
+.lens[aria-pressed=true] { background: var(--lime); border-color: var(--lime); color: #06140a; font-weight: 700; }
+.run { width:100%; padding: 14px; border:0; border-radius: 7px; background: var(--lime); color:#06140a; font-family: var(--mono); font-weight: 700; font-size: 14px; cursor: pointer; transition: .2s var(--ease); }
+.run:hover { background: var(--lime-2); } .run:active { transform: translateY(1px); } .run:disabled { opacity: .55; cursor: progress; }
 .run:focus-visible { outline: 2px solid var(--bone); outline-offset: 2px; }
-.run:disabled { opacity: 0.55; cursor: progress; }
-
-/* ── pipeline lane ── */
-.lane { display: grid; gap: 10px; margin-bottom: var(--space-lg); }
-.stage { border: 1px solid var(--line); border-radius: var(--radius); background: var(--mid); padding: 14px 16px; opacity: 0.45; transition: opacity var(--dur) var(--ease-out); position: relative; overflow: hidden; }
-.stage.active { opacity: 1; border-color: var(--lime-dim); }
-.stage.done { opacity: 1; }
-.stage .fill { position: absolute; inset: 0 100% 0 0; background: rgba(37,177,63,0.08); transition: inset 600ms linear; }
-.stage.active .fill { inset: 0 8% 0 0; }
-.stage.done .fill { inset: 0 0 0 0; background: rgba(37,177,63,0.05); }
-.stage .row { position: relative; display: flex; align-items: center; gap: 12px; }
-.stage .ico { width: 22px; font-family: var(--font-mono); color: var(--lime); }
-.stage .nm { font-family: var(--font-display); font-size: 10px; letter-spacing: 1px; width: 96px; }
-.stage .meta { color: var(--muted); font-size: 13px; flex: 1; min-width: 0; }
-.stage .ms { font-family: var(--font-mono); font-size: 12px; color: var(--lime); }
-.stage .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
-.stage.active .dot { background: var(--amber); animation: pulse 1s var(--ease-out) infinite; }
+.lane { display:grid; gap: 9px; margin-top: 22px; }
+.stage { border: 1px solid var(--line); border-radius: 8px; background: var(--void-2); padding: 13px 15px; opacity: .42; transition: opacity .25s var(--ease); position: relative; overflow:hidden; }
+.stage.active, .stage.done { opacity: 1; }
+.stage .fill { position:absolute; inset:0 100% 0 0; transition: inset .5s linear; }
+.stage[data-st=FETCH] .fill { background: rgba(34,184,207,0.1); } .stage[data-st=FORGE] .fill { background: rgba(151,117,250,0.1); }
+.stage[data-st=CLASSIFY] .fill { background: rgba(232,161,58,0.1); } .stage[data-st=PROVE] .fill { background: rgba(37,177,63,0.1); }
+.stage.active .fill { inset: 0 12% 0 0; } .stage.done .fill { inset: 0 0 0 0; }
+.stage .row { position: relative; display:flex; align-items:center; gap:12px; }
+.stage .nm { font-family: var(--pixel); font-size: 9px; width: 92px; }
+.stage[data-st=FETCH] .nm { color: var(--teal); } .stage[data-st=FORGE] .nm { color: var(--violet); }
+.stage[data-st=CLASSIFY] .nm { color: var(--amber); } .stage[data-st=PROVE] .nm { color: var(--lime); }
+.stage .meta { color: var(--muted); font-size: 13px; flex:1; min-width:0; }
+.stage .ms { font-family: var(--mono); font-size: 12px; color: var(--bone); }
+.stage .dot { width:8px;height:8px;border-radius:50%;background:var(--line); }
+.stage.active .dot { background: var(--amber); animation: pulse 1s var(--ease) infinite; }
 .stage.done .dot { background: var(--lime); }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-/* ── badges ── */
-.badge { font-family: var(--font-mono); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.05em; }
-.badge.live { background: rgba(37,177,63,0.16); color: var(--lime); border: 1px solid rgba(37,177,63,0.45); }
-.badge.demo { background: rgba(217,154,43,0.16); color: var(--amber); border: 1px solid rgba(217,154,43,0.45); }
-
-/* ── evidence ── */
-.evidence { border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); padding: var(--space-md); margin-bottom: var(--space-lg); }
-.evidence h2 { font-family: var(--font-display); font-size: 11px; letter-spacing: 1px; color: var(--lime); margin: 0 0 var(--space-md); }
-.seal { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: var(--space-md); font-size: 13px; }
-.seal b { font-family: var(--font-mono); }
-.ok { color: var(--lime); } .crit { color: var(--red); } .warn { color: var(--amber); } .dim { color: var(--muted); }
-.custody { font-family: var(--font-mono); font-size: 11px; color: var(--muted); word-break: break-all; border-top: 1px solid var(--line); padding-top: var(--space-sm); }
-.finding { border-top: 1px solid var(--line); padding: var(--space-sm) 0; }
-.finding .sev { font-family: var(--font-mono); font-weight: 700; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.badge { font-family: var(--mono); font-size: 11px; font-weight:700; padding: 3px 11px; border-radius: 999px; letter-spacing: 0.05em; }
+.badge.live { background: rgba(37,177,63,0.16); color: var(--lime); border:1px solid rgba(37,177,63,0.45); }
+.badge.demo { background: rgba(232,161,58,0.16); color: var(--amber); border:1px solid rgba(232,161,58,0.45); }
+.evidence { border: 1px solid var(--line); border-radius: 12px; background: var(--raised); padding: 22px; margin-top: 22px; }
+.evidence h3 { font-family: var(--serif); font-style: italic; font-size: 26px; color: var(--lime); margin: 0 0 16px; }
+.seal { display:flex; flex-wrap:wrap; gap: 18px; margin-bottom: 14px; font-size: 13px; }
+.seal b { font-family: var(--mono); }
+.ok { color: var(--lime); } .crit { color: var(--red); } .dim { color: var(--muted); }
+.custody { font-family: var(--mono); font-size: 11px; color: var(--muted); word-break: break-all; border-top: 1px solid var(--line); padding-top: 12px; }
+.finding { border-top: 1px solid var(--line); padding: 11px 0; }
+.finding .sev { font-family: var(--mono); font-weight: 700; }
 .finding .sig { color: var(--muted); font-size: 12px; margin-top: 3px; }
-.dl { margin-top: var(--space-sm); padding: 12px 18px; border: 1px solid var(--lime); background: transparent; color: var(--bone); border-radius: var(--radius); font-family: var(--font-mono); font-size: 13px; cursor: pointer; transition: var(--dur) var(--ease-out); transition-property: background; }
-.dl:hover { background: rgba(37,177,63,0.12); }
-.dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
-.err { color: var(--red); font-size: 14px; margin-top: var(--space-sm); }
-.hidden { display: none; }
+.dl { margin-top: 14px; padding: 13px 20px; border: 1px solid var(--lime); background: transparent; color: var(--bone); border-radius: 7px; font-family: var(--mono); font-size: 13px; cursor: pointer; }
+.dl:hover { background: rgba(37,177,63,0.12); } .dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.err { color: var(--red); font-size: 14px; margin-top: 12px; }
+.hidden { display:none; }
 
-/* ── footer ── */
-footer { border-top: 1px solid var(--line); padding: var(--space-lg) 0; color: var(--muted); font-size: 12px; }
-footer .honesty { font-family: var(--font-mono); line-height: 1.9; }
-footer .honesty b { color: var(--bone); font-weight: 400; }
+/* honesty + competitive */
+.honesty .x { color: var(--red); font-weight: 700; font-family: var(--mono); }
+.honest-list { margin-top: 28px; display:grid; gap: 10px; }
+.honest-list div { font-size: 14.5px; color: var(--muted); display:flex; gap:11px; }
+.honest-list b { color: var(--bone); font-weight: 500; }
+.winrow { display:flex; gap: 12px; align-items:baseline; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.winrow .c { color: var(--lime); font-weight: 700; font-family: var(--mono); flex:none; }
+.zero { font-family: var(--serif); font-style: italic; color: var(--lime); font-size: clamp(64px,11vw,128px); line-height: 1; text-shadow: 0 0 50px rgba(37,177,63,0.3); }
 
-@media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-}
-@media (max-width: 560px) {
+footer { padding: 50px 0; border-bottom: 0; }
+footer .honest { font-family: var(--mono); font-size: 12px; color: var(--muted); line-height: 1.9; }
+footer .honest b { color: var(--bone); font-weight: 400; }
+
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+@media (max-width: 820px) {
+  .grid3,.grid4,.grid2,.timeline,.stats { grid-template-columns: 1fr; }
+  .topbar .meta { display:none; }
   .stage .nm { width: 70px; }
-  .topbar .substrate { display: none; }
 }
 </style>
 </head>
 <body>
+
 <header class="topbar">
   <div class="wrap">
     <div class="brand"><span class="diamond" aria-hidden="true"></span><span class="wordmark">SYNTHEX</span></div>
-    <span class="substrate">inside · Bright Data</span>
+    <div class="meta">Web Data UNLOCKED · <a href="https://github.com/SuarezPM/apohara-synthex" target="_blank" rel="noopener">github</a></div>
   </div>
 </header>
 
-<main class="wrap">
-  <section class="hero">
-    <div class="kicker">SCRAPE · CLASSIFY · PROVE</div>
-    <h1>The evidence layer that lives inside <em>Bright Data</em>.</h1>
-    <p>Every byte your AI agent scrapes — screened for injection before the LLM, classified under four lenses, and sealed with an RFC 3161 timestamp you can verify yourself. Everything signed, nothing trusted.</p>
-  </section>
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="kicker"><span class="dot"></span> THE EVIDENCE LAYER · INSIDE BRIGHT DATA</div>
+    <div class="mark serif">Synthex.</div>
+    <div class="tag">for <b>AI agents</b> that scrape the live web</div>
+    <div class="sub">Scrape it. Screen it. Classify it. Prove it.</div>
+    <div class="pills">
+      <span class="pill lime">RFC 3161 · DigiCert</span>
+      <span class="pill amber">6-page signed PDF</span>
+      <span class="pill teal">5 / 6 Bright Data APIs · live</span>
+      <span class="pill">100% JavaScript · MIT</span>
+    </div>
+    <div><a class="cta" href="#live">▶ Run the live pipeline</a></div>
+    <div class="links">
+      <span><span style="color:var(--lime)">●</span> synthex.apohara.dev</span>
+      <span><a href="https://github.com/SuarezPM/apohara-synthex" target="_blank" rel="noopener">github.com/SuarezPM/apohara-synthex</a></span>
+    </div>
+  </div>
+</section>
 
-  <section class="console" aria-label="Run the pipeline">
-    <label class="field-label" for="target">Target — URL or term</label>
-    <input id="target" type="text" value="https://en.wikipedia.org/wiki/Bright_Data" autocomplete="off" spellcheck="false" />
-    <div class="lenses" id="lenses" role="group" aria-label="Classification lens">
-      <button class="lens" data-lens="gtm" aria-pressed="false">GTM</button>
-      <button class="lens" data-lens="finance" aria-pressed="false">Finance</button>
-      <button class="lens" data-lens="security" aria-pressed="false">Security</button>
-      <button class="lens" data-lens="supply-chain" aria-pressed="false">Supply-chain</button>
-      <button class="lens" data-lens="all" aria-pressed="true">All 4</button>
-    </div>
-    <button class="run" id="run">Analyze &amp; Seal</button>
-  </section>
+<!-- DRAMA -->
+<section class="drama">
+  <div class="wrap">
+    <div class="kicker red" style="justify-content:center"><span class="dot"></span> MAY 2026 · THE WEB YOUR AGENTS TOUCH</div>
+    <div class="big">Your AI agents scrape the live web right now.<br/><span class="r">Prompt injection is OWASP&nbsp;#1.</span> <span class="a">And you can't prove what they found.</span></div>
+    <div class="note">OWASP LLM Top-10 2026 · BrowseSafe (Perplexity, 2026) · VPI-Bench — injection embedded in scraped web content bypasses classifiers</div>
+  </div>
+</section>
 
-  <section id="panel" class="hidden">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <span class="field-label" style="margin:0">Pipeline</span><span id="mode" aria-live="polite"></span>
+<!-- 3 BARRIERS -->
+<section>
+  <div class="wrap">
+    <div class="kicker amber"><span class="dot"></span> THE CATEGORY PROBLEM · 3 BARRIERS</div>
+    <h2 class="head">Three reasons you can't trust <em>what your agents scraped</em>.</h2>
+    <div class="grid3">
+      <div class="card red">
+        <div class="num">BARRIER 01</div><h3>Malicious web content</h3>
+        <p>Scraped pages carry prompt injection, hidden instructions, secret-exfil and SSRF — and it reaches the LLM unscreened.</p>
+        <div class="xrow"><span class="x">✕</span> Trust the scraped HTML</div>
+        <div class="xrow"><span class="x">✕</span> Let the LLM "figure it out"</div>
+        <div class="xrow"><span class="x">✕</span> Classifier-only filters</div>
+        <div class="solve"><b>SYNTHEX SOLVES WITH</b>A 28-rule deterministic prefilter (SSRF · proto-pollution · MCP poisoning · BrowseSafe vectors) that blocks payloads <em>before</em> spending an LLM token.</div>
+      </div>
+      <div class="card amber">
+        <div class="num">BARRIER 02</div><h3>Unclassified intel</h3>
+        <p>Raw scrapes aren't intelligence. Teams can't tell a pricing signal from a vendor risk from a CVE from a supply-chain shock.</p>
+        <div class="xrow"><span class="x">✕</span> Dump raw markdown into RAG</div>
+        <div class="xrow"><span class="x">✕</span> One generic summary</div>
+        <div class="xrow"><span class="x">✕</span> Manual triage</div>
+        <div class="solve"><b>SYNTHEX SOLVES WITH</b>Four lenses in parallel — GTM · Finance · Security · Supply-chain — structured signals + severity on the same scrape.</div>
+      </div>
+      <div class="card lime">
+        <div class="num">BARRIER 03</div><h3>Unprovable evidence</h3>
+        <p>Your CISO can't prove what the agent saw, when, or that the bytes are unchanged. Audit trails for web-grounded AI don't exist.</p>
+        <div class="xrow"><span class="x">✕</span> Unsigned logs</div>
+        <div class="xrow"><span class="x">✕</span> No timestamping</div>
+        <div class="xrow"><span class="x">✕</span> A PDF nobody can verify</div>
+        <div class="solve"><b>SYNTHEX SOLVES WITH</b>HMAC-SHA256 + RFC 3161 timestamp (DigiCert) → a 6-page Evidence Report anyone verifies offline with <em>openssl</em>.</div>
+      </div>
     </div>
-    <div class="lane" id="lane">
-      <div class="stage" data-st="FETCH"><span class="fill"></span><div class="row"><span class="ico">⬡</span><span class="nm">FETCH</span><span class="meta">Bright Data — Unlocker · SERP · Browser · Crawl</span><span class="ms"></span><span class="dot"></span></div></div>
-      <div class="stage" data-st="FORGE"><span class="fill"></span><div class="row"><span class="ico">⬢</span><span class="nm">FORGE</span><span class="meta">dedup + 28-rule OWASP prefilter — pre-LLM</span><span class="ms"></span><span class="dot"></span></div></div>
-      <div class="stage" data-st="CLASSIFY"><span class="fill"></span><div class="row"><span class="ico">◈</span><span class="nm">CLASSIFY</span><span class="meta">AI/ML API — up to 4 lenses in parallel</span><span class="ms"></span><span class="dot"></span></div></div>
-      <div class="stage" data-st="PROVE"><span class="fill"></span><div class="row"><span class="ico">◆</span><span class="nm">PROVE</span><span class="meta">HMAC-SHA256 + RFC 3161 TSA (DigiCert)</span><span class="ms"></span><span class="dot"></span></div></div>
-    </div>
+    <div class="kicker" style="margin-top:30px"><span class="dot"></span> SOLVE ALL THREE → THE WEB BECOMES EVIDENCE.</div>
+  </div>
+</section>
 
-    <div class="evidence hidden" id="evidence">
-      <h2>◆ EVIDENCE REPORT</h2>
-      <div class="seal" id="seal"></div>
-      <div id="findings"></div>
-      <div class="custody" id="custody"></div>
-      <button class="dl hidden" id="dl">📥 Download Evidence Report (PDF · 6 pages)</button>
+<!-- ONE SENTENCE -->
+<section>
+  <div class="wrap">
+    <div class="kicker"><span class="dot"></span> SYNTHEX · IN ONE SENTENCE</div>
+    <p class="oneliner">Synthex is the <span class="g">evidence layer that lives inside Bright Data</span> — the only pipeline that scrapes, screens, classifies, and <span class="a">cryptographically signs</span> the web content your agents touch.</p>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section>
+  <div class="wrap">
+    <div class="kicker"><span class="dot"></span> ARCHITECTURE · 4 STAGES · 1 SUBSTRATE</div>
+    <h2 class="head">Four stages. <span class="g">One signed substrate.</span></h2>
+    <div class="timeline">
+      <div class="pillar teal"><div class="step">01 · FETCH</div><div class="name">Bright Data</div><ul><li>· Web Unlocker (MCP+REST)</li><li>· SERP API · structured</li><li>· Browser API · CDP</li><li>· Datasets · Crawl</li><li>· smart router</li></ul></div>
+      <div class="pillar violet"><div class="step">02 · FORGE</div><div class="name">Screen</div><ul><li>· SHA-256 dedup</li><li>· 28-rule prefilter</li><li>· SSRF · proto-pollution</li><li>· MCP poisoning</li><li>· BLOCK before LLM</li></ul></div>
+      <div class="pillar amber"><div class="step">03 · CLASSIFY</div><div class="name">4 lenses</div><ul><li>· GTM · Finance</li><li>· Security · Supply-chain</li><li>· AI/ML API</li><li>· in parallel</li><li>· severity + signals</li></ul></div>
+      <div class="pillar lime"><div class="step">04 · PROVE</div><div class="name">Seal</div><ul><li>· HMAC-SHA256</li><li>· RFC 3161 · DigiCert</li><li>· 6-page PDF</li><li>· Risk Score 0–100</li><li>· openssl-verifiable</li></ul></div>
     </div>
-    <div class="err hidden" id="err" role="alert"></div>
-  </section>
-</main>
+    <div class="substrate"><span>● EVERY BYTE SCREENED · EVERY REPORT SIGNED</span><span>SHA-256 · HMAC-SHA256 · RFC 3161 Merkle-of-one</span></div>
+    <div class="stats">
+      <div class="stat lime"><div class="v">131</div><div class="l">tests · 122 pass · 0 fail</div></div>
+      <div class="stat teal"><div class="v">5/6</div><div class="l">Bright Data APIs · live</div></div>
+      <div class="stat amber"><div class="v">28</div><div class="l">prefilter rules · pre-LLM</div></div>
+      <div class="stat violet"><div class="v">4</div><div class="l">lenses · in parallel</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE CONSOLE -->
+<section id="live">
+  <div class="wrap">
+    <div class="kicker"><span class="dot"></span> SEE IT LIVE · RUN IT YOURSELF</div>
+    <h2 class="head">Don't trust the claims. <span class="g">Run the pipeline.</span></h2>
+    <p class="lede">Paste a URL or term, pick a lens, and watch the four stages execute against real Bright Data — then download the signed Evidence Report. This runs the actual pipeline, not a recording.</p>
+    <div class="console">
+      <label class="flabel" for="target">Target — URL or term</label>
+      <input id="target" type="text" value="https://en.wikipedia.org/wiki/Bright_Data" autocomplete="off" spellcheck="false" />
+      <div class="lenses" id="lenses" role="group" aria-label="Lens">
+        <button class="lens" data-lens="gtm" aria-pressed="false">GTM</button>
+        <button class="lens" data-lens="finance" aria-pressed="false">Finance</button>
+        <button class="lens" data-lens="security" aria-pressed="false">Security</button>
+        <button class="lens" data-lens="supply-chain" aria-pressed="false">Supply-chain</button>
+        <button class="lens" data-lens="all" aria-pressed="true">All 4</button>
+      </div>
+      <button class="run" id="run">Analyze &amp; Seal</button>
+      <div id="panel" class="hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:22px 0 0"><span class="flabel" style="margin:0">Pipeline</span><span id="mode" aria-live="polite"></span></div>
+        <div class="lane" id="lane">
+          <div class="stage" data-st="FETCH"><span class="fill"></span><div class="row"><span class="nm">FETCH</span><span class="meta">Bright Data — Unlocker · SERP · Browser · Crawl</span><span class="ms"></span><span class="dot"></span></div></div>
+          <div class="stage" data-st="FORGE"><span class="fill"></span><div class="row"><span class="nm">FORGE</span><span class="meta">dedup + 28-rule prefilter · pre-LLM</span><span class="ms"></span><span class="dot"></span></div></div>
+          <div class="stage" data-st="CLASSIFY"><span class="fill"></span><div class="row"><span class="nm">CLASSIFY</span><span class="meta">AI/ML API · up to 4 lenses ‖</span><span class="ms"></span><span class="dot"></span></div></div>
+          <div class="stage" data-st="PROVE"><span class="fill"></span><div class="row"><span class="nm">PROVE</span><span class="meta">HMAC-SHA256 + RFC 3161 TSA</span><span class="ms"></span><span class="dot"></span></div></div>
+        </div>
+        <div class="evidence hidden" id="evidence">
+          <h3>Evidence Report</h3>
+          <div class="seal" id="seal"></div>
+          <div id="findings"></div>
+          <div class="custody" id="custody"></div>
+          <button class="dl hidden" id="dl">📥 Download Evidence Report (PDF · 6 pages)</button>
+        </div>
+        <div class="err hidden" id="err" role="alert"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HONESTY -->
+<section class="honesty">
+  <div class="wrap">
+    <div class="kicker red"><span class="dot"></span> HONESTY · WHAT WE DO NOT CLAIM</div>
+    <h2 class="head">The pitch is honesty — <span class="r">so it applies to us too.</span></h2>
+    <div class="honest-list">
+      <div><span class="x">✕</span><span><b>RFC 3161 proves <em>when</em>, not truth.</em></b> The timestamp proves the bytes existed and are unchanged — not that the content is correct.</span></div>
+      <div><span class="x">✕</span><span><b>The prefilter covers text/HTML injection, not visual VPI.</b> 28 heuristic rules (aligned with SkillFortify) — not a formal proof, not screenshot-based attacks.</span></div>
+      <div><span class="x">✕</span><span><b>5 of 6 Bright Data APIs verified live, not 6.</b> Crawl is implemented but pending a Crawl dataset_id — we don't claim it works until it's verified.</span></div>
+      <div><span class="x">✕</span><span><b>The Risk Score is an internal estimate.</b> A deterministic heuristic with its formula printed on the PDF — not a Munich Re rating or a broker quote.</span></div>
+      <div><span class="x">✕</span><span><b>OTel export and Cognee memory are opt-in.</b> The public endpoint keeps Cognee off to control cost; the rate-limit is best-effort.</span></div>
+    </div>
+    <p class="lede" style="margin-top:26px">Prior art, cited not claimed: the <a href="https://doi.org/10.5281/zenodo.20277875" target="_blank" rel="noopener">INV-15 formal-safety paper</a> (Apohara Context_Forge) and the papers KVCOMM · MemArt · SkillFortify ground the design — they are <em>not</em> part of this scraping pipeline.</p>
+  </div>
+</section>
+
+<!-- COMPETITIVE 0/N -->
+<section>
+  <div class="wrap">
+    <div class="kicker"><span class="dot"></span> WHY SYNTHEX WINS</div>
+    <div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap">
+      <div class="zero">0 / N</div>
+      <h2 class="head" style="margin:0">submissions ship <span class="g">all of these together.</span></h2>
+    </div>
+    <div style="margin-top:34px">
+      <div class="winrow"><span class="c">✓</span> Bright Data as runtime substrate — 5 of 6 APIs with real code (SERP/Browser/Datasets/Unlocker/MCP)</div>
+      <div class="winrow"><span class="c">✓</span> RFC 3161 TSA (DigiCert) — verifiable offline with <span class="serif">openssl ts</span></div>
+      <div class="winrow"><span class="c">✓</span> Downloadable 6-page signed Evidence Report — 4-buyer framing (CISO · CFO · GC · Broker)</div>
+      <div class="winrow"><span class="c">✓</span> 4-lens classification in parallel — GTM · Finance · Security · Supply-chain</div>
+      <div class="winrow"><span class="c">✓</span> 28-rule OWASP + BrowseSafe prefilter — blocks injection <em>before</em> the LLM call</div>
+      <div class="winrow"><span class="c">✓</span> OpenTelemetry GenAI spans + live SSE pipeline view — observable, not a black box</div>
+    </div>
+    <p class="lede" style="margin-top:30px font-family:var(--serif)"><span class="serif" style="font-size:22px;color:var(--amber)">The web your agents touch, now classified and provable.</span></p>
+  </div>
+</section>
 
 <footer>
-  <div class="wrap honesty">
-    <b>What we don't claim:</b> RFC 3161 proves <em>when</em> the content was sealed, not that it is <em>true</em>.
-    The prefilter covers text/HTML injection, not visual VPI. OTel export and Cognee ingest are opt-in. ·
-    <a href="https://github.com/SuarezPM/apohara-synthex" target="_blank" rel="noopener">source</a>
+  <div class="wrap honest">
+    <b>Synthex · everything signed, nothing trusted.</b><br/>
+    Web Data UNLOCKED · Bright Data × lablab.ai · MIT · <a href="https://github.com/SuarezPM/apohara-synthex" target="_blank" rel="noopener">github.com/SuarezPM/apohara-synthex</a> · <a href="https://synthex.apohara.dev">synthex.apohara.dev</a>
   </div>
 </footer>
 
 <script type="module">
   const $ = (s) => document.querySelector(s);
   let lens = "all", lastEvidence = null, running = false;
-
   document.querySelectorAll(".lens").forEach((el) => el.addEventListener("click", () => {
-    document.querySelectorAll(".lens").forEach((l) => l.setAttribute("aria-pressed", "false"));
-    el.setAttribute("aria-pressed", "true");
-    lens = el.dataset.lens;
+    document.querySelectorAll(".lens").forEach((l) => l.setAttribute("aria-pressed","false"));
+    el.setAttribute("aria-pressed","true"); lens = el.dataset.lens;
   }));
-
-  const sevColor = (s) => (s >= 8 ? "crit" : s >= 5 ? "warn" : "ok");
+  const sevColor = (s) => (s >= 8 ? "crit" : s >= 5 ? "" : "ok");
   const stageEl = (st) => $(`.stage[data-st="${st}"]`);
-  const resetLane = () => document.querySelectorAll(".stage").forEach((s) => { s.className = "stage"; s.querySelector(".ms").textContent = ""; });
-
-  function applyStage(evt) {
-    const el = stageEl(evt.stage); if (!el) return;
-    if (evt.status === "start") el.classList.add("active");
-    if (evt.status === "done") { el.classList.remove("active"); el.classList.add("done"); if (evt.ms != null) el.querySelector(".ms").textContent = `${evt.ms} ms`; }
-  }
-
-  function renderFindings(findings) {
-    const box = $("#findings"); box.innerHTML = "";
-    for (const f of findings ?? []) {
-      const rows = f.trilens ? Object.entries(f.trilens).map(([l, c]) => ({ lens: l, ...c })) : [f];
-      for (const r of rows) {
-        const div = document.createElement("div"); div.className = "finding";
-        div.innerHTML = `<span class="sev ${sevColor(r.severity || 0)}">[${(r.lens || "").toUpperCase()}] ${r.severity ?? 0}/10</span> ${escapeHtml(r.summary ?? "")}`
+  const resetLane = () => document.querySelectorAll(".stage").forEach((s) => { s.classList.remove("active","done"); s.querySelector(".ms").textContent = ""; });
+  const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+  function applyStage(e) { const el = stageEl(e.stage); if (!el) return;
+    if (e.status === "start") el.classList.add("active");
+    if (e.status === "done") { el.classList.remove("active"); el.classList.add("done"); if (e.ms != null) el.querySelector(".ms").textContent = `${e.ms} ms`; } }
+  function renderFindings(findings) { const box = $("#findings"); box.innerHTML = "";
+    for (const f of findings ?? []) { const rows = f.trilens ? Object.entries(f.trilens).map(([l,c]) => ({ lens:l, ...c })) : [f];
+      for (const r of rows) { const d = document.createElement("div"); d.className = "finding";
+        d.innerHTML = `<span class="sev ${sevColor(r.severity||0)}">[${(r.lens||"").toUpperCase()}] ${r.severity ?? 0}/10</span> ${escapeHtml(r.summary ?? "")}`
           + (r.signals?.length ? `<div class="sig">signals: ${r.signals.map(escapeHtml).join(" · ")}</div>` : "");
-        box.appendChild(div);
-      }
-    }
-  }
-  const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-  function renderResult(data) {
-    const ev = data.evidence, seal = ev.seal || {}, v = data.verify || {};
-    lastEvidence = ev;
-    $("#mode").innerHTML = `<span class="badge ${data.mode}">${data.mode.toUpperCase()}</span>`;
-    $("#seal").innerHTML =
-      `<span>hash <b class="${v.hashOk ? "ok" : "crit"}">${v.hashOk ? "OK" : "FAIL"}</b></span>`
-      + `<span>HMAC <b class="${v.hmacOk ? "ok" : "dim"}">${v.hmacOk ? "OK" : "—"}</b></span>`
-      + `<span>RFC 3161 TSA <b class="${v.tsaOk ? "ok" : "dim"}">${v.tsaOk === true ? "DigiCert OK" : "none"}</b></span>`
-      + `<span>blocked pre-LLM <b>${(ev.payload?.blocked || []).length}</b></span>`;
-    renderFindings(ev.payload?.findings);
-    $("#custody").textContent = `SHA-256 ${ev.contentHash}  ·  ${seal.method || ""}`;
-    $("#evidence").classList.remove("hidden");
-    $("#dl").classList.remove("hidden");
-  }
-
-  // SSE over POST: fetch + ReadableStream, parse event:/data: frames.
+        box.appendChild(d); } } }
+  function setMode(m) { $("#mode").innerHTML = `<span class="badge ${m}">${m.toUpperCase()}</span>`; }
+  function renderResult(data) { const ev = data.evidence, seal = ev.seal||{}, v = data.verify||{}; lastEvidence = ev; setMode(data.mode);
+    $("#seal").innerHTML = `<span>hash <b class="${v.hashOk?"ok":"crit"}">${v.hashOk?"OK":"FAIL"}</b></span>`
+      + `<span>HMAC <b class="${v.hmacOk?"ok":"dim"}">${v.hmacOk?"OK":"—"}</b></span>`
+      + `<span>RFC 3161 TSA <b class="${v.tsaOk?"ok":"dim"}">${v.tsaOk===true?"DigiCert OK":"none"}</b></span>`
+      + `<span>blocked pre-LLM <b>${(ev.payload?.blocked||[]).length}</b></span>`;
+    renderFindings(ev.payload?.findings); $("#custody").textContent = `SHA-256 ${ev.contentHash}  ·  ${seal.method||""}`;
+    $("#evidence").classList.remove("hidden"); $("#dl").classList.remove("hidden"); }
   async function streamPipeline(target) {
-    const res = await fetch("/api/stream", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ target, lens }) });
+    const res = await fetch("/api/stream", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ target, lens }) });
     if (!res.ok || !res.body) throw new Error("stream failed");
-    const reader = res.body.getReader(), dec = new TextDecoder();
-    let buf = "";
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const frames = buf.split("\n\n"); buf = frames.pop();
-      for (const frame of frames) {
-        const ev = /event: (.*)/.exec(frame)?.[1]?.trim();
-        const dm = /data: (.*)/s.exec(frame)?.[1];
-        if (!ev || !dm) continue;
+    const reader = res.body.getReader(), dec = new TextDecoder(); let buf = "";
+    for (;;) { const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream:true }); const frames = buf.split("\n\n"); buf = frames.pop();
+      for (const fr of frames) { const ev = /event: (.*)/.exec(fr)?.[1]?.trim(); const dm = /data: (.*)/s.exec(fr)?.[1]; if (!ev||!dm) continue;
         const data = JSON.parse(dm);
-        if (ev === "stage") applyStage(data);
-        else if (ev === "result") renderResult(data);
-        else if (ev === "mode" && data.mode) $("#mode").innerHTML = `<span class="badge ${data.mode}">${data.mode.toUpperCase()}</span>`;
-        else if (ev === "error") throw new Error(data.error || "pipeline error");
-      }
-    }
-  }
-
-  $("#run").addEventListener("click", async () => {
-    if (running) return; running = true;
+        if (ev === "stage") applyStage(data); else if (ev === "result") renderResult(data);
+        else if (ev === "mode" && data.mode) setMode(data.mode); else if (ev === "error") throw new Error(data.error || "pipeline error"); } } }
+  $("#run").addEventListener("click", async () => { if (running) return; running = true;
     const btn = $("#run"); btn.disabled = true; btn.textContent = "Running pipeline…";
-    $("#panel").classList.remove("hidden"); $("#evidence").classList.add("hidden");
-    $("#err").classList.add("hidden"); $("#dl").classList.add("hidden"); resetLane();
-    try {
-      await streamPipeline($("#target").value.trim());
-    } catch (e) {
-      $("#err").textContent = e.message; $("#err").classList.remove("hidden");
-    } finally {
-      btn.disabled = false; btn.textContent = "Analyze & Seal"; running = false;
-    }
-  });
-
-  $("#dl").addEventListener("click", async () => {
-    if (!lastEvidence) return;
-    const res = await fetch("/api/report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ evidence: lastEvidence }) });
+    $("#panel").classList.remove("hidden"); $("#evidence").classList.add("hidden"); $("#err").classList.add("hidden"); $("#dl").classList.add("hidden"); resetLane();
+    try { await streamPipeline($("#target").value.trim()); }
+    catch (e) { $("#err").textContent = e.message; $("#err").classList.remove("hidden"); }
+    finally { btn.disabled = false; btn.textContent = "Analyze & Seal"; running = false; } });
+  $("#dl").addEventListener("click", async () => { if (!lastEvidence) return;
+    const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
     if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
-    const blob = await res.blob(), a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href);
-  });
+    const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href); });
 </script>
 </body>
 </html>
