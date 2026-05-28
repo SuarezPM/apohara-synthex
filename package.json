@@ -12,6 +12,7 @@
     "test": "node --test",
     "demo": "node demo/demo.js",
     "cli": "node bin/synthex.mjs",
+    "sample": "node scripts/gen-sample-report.mjs",
     "start": "node server.js"
   },
   "keywords": [
