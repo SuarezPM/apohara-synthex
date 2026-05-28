@@ -2,13 +2,15 @@
 // invocar explícitamente. AI/ML API expone los tres modelos en /chat/completions con
 // la misma forma OpenAI-compatible, así que aiml-client.js solo necesita resolverlos.
 //
-// - free: FREE tier en AI/ML API. Sub-3B param, calidad calibrada en T0.6.
+// - free: NVIDIA Nemotron Nano 9B v2 — verificado live en AI/ML API 2026-05-28
+//         (el "nvidia/nemotron-3-nano-omni" del audit externo NO existe en la API
+//         actual: HTTP 404 "Model not found"). Calidad calibrada en T0.6.
 // - oss:  default user-facing v0.5+ (DeepSeek non-thinking, open weights).
-// - paid: DeepSeek v3.2 thinking, mayor calidad para reportes finales.
+// - paid: DeepSeek thinking v3.2, mayor calidad para reportes finales.
 export const MODEL_TIERS = Object.freeze({
-  free: "nvidia/nemotron-3-nano-omni",
+  free: "nvidia/nemotron-nano-9b-v2",
   oss: "deepseek/deepseek-non-thinking-v3.2-exp",
-  paid: "deepseek/deepseek-v3.2-exp",
+  paid: "deepseek/deepseek-thinking-v3.2-exp",
 });
 
 export const DEFAULT_TIER = "oss";

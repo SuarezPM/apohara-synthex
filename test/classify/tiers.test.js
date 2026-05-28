@@ -9,9 +9,9 @@ test("MODEL_TIERS contiene exactamente free/oss/paid", () => {
 });
 
 test("pickModel resuelve cada tier al modelo mapeado", () => {
-  assert.equal(pickModel({ tier: "free" }), "nvidia/nemotron-3-nano-omni");
+  assert.equal(pickModel({ tier: "free" }), "nvidia/nemotron-nano-9b-v2");
   assert.equal(pickModel({ tier: "oss" }), "deepseek/deepseek-non-thinking-v3.2-exp");
-  assert.equal(pickModel({ tier: "paid" }), "deepseek/deepseek-v3.2-exp");
+  assert.equal(pickModel({ tier: "paid" }), "deepseek/deepseek-thinking-v3.2-exp");
 });
 
 test("pickModel sin args usa DEFAULT_TIER (oss)", () => {
