@@ -5,9 +5,13 @@
   "type": "module",
   "bin": {
     "apohara-synthex": "./server.js",
-    "synthex": "bin/synthex.mjs"
+    "synthex": "bin/synthex.mjs",
+    "decode-evidence": "bin/decode-evidence.js"
   },
   "main": "./server.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "node --test",
     "demo": "node demo/demo.js",
