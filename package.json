@@ -13,6 +13,7 @@
     "demo": "node demo/demo.js",
     "cli": "node bin/synthex.mjs",
     "sample": "node scripts/gen-sample-report.mjs",
+    "bench:djl": "node test/djl-latency.bench.js",
     "start": "node server.js"
   },
   "keywords": [
