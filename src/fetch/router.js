@@ -4,7 +4,7 @@
 // Routing por opts.mode explícito; si no, heurística:
 //   · término (no-URL)          → SERP API (búsqueda en Google, JSON estructurado → texto)
 //   · URL + mode "browser"      → Scraping Browser (CDP) — sitios JS-heavy / SPAs
-//   · URL + mode "crawl"        → Crawl API (trigger→progress→snapshot); sin dataset → error honesto
+//   · URL + mode "crawl"        → crawl multi-página sobre Web Unlocker (seed → links internos → N)
 //   · URL + mode "dataset"      → Datasets API (scraper estructurado)
 //   · URL (default)             → Web Unlocker REST (httpFetcher)
 import { serpSearch } from "./serp-client.js";
@@ -46,26 +46,9 @@ export function smartFetcher(opts = {}) {
       return [{ url, content }];
     }
 
-    // 3. URL + crawl → Crawl API (async: trigger → progress → snapshot).
+    // 3. URL + crawl → crawl multi-página sobre Web Unlocker (seed → links internos → N páginas).
     if (mode === "crawl") {
-      const client = new BrightDataCrawlClient(opts); // sin dataset de crawl → lanza error honesto
-      const snapshotId = await client.trigger(target, opts);
-      // Poll acotado: el caller decide el tope (opts.maxPolls / opts.pollMs); honesto si no termina.
-      const maxPolls = opts.maxPolls ?? 30;
-      const pollMs = opts.pollMs ?? 2000;
-      for (let i = 0; i < maxPolls; i++) {
-        const { status } = await client.progress(snapshotId, opts);
-        if (status === "ready") break;
-        if (status === "failed") throw new Error(`Crawl falló (snapshot ${snapshotId}).`);
-        if (i === maxPolls - 1) throw new Error(`Crawl no terminó tras ${maxPolls} polls (snapshot ${snapshotId}).`);
-        await new Promise((r) => setTimeout(r, pollMs));
-      }
-      const rows = await client.snapshot(snapshotId, opts);
-      const list = Array.isArray(rows) ? rows : [rows];
-      return list.map((row) => ({
-        url: row?.url ?? target,
-        content: typeof row?.markdown === "string" ? row.markdown : JSON.stringify(row),
-      }));
+      return new BrightDataCrawlClient(opts).crawl(target, opts); // [{url, content}] del mismo host
     }
 
     // 4. URL + dataset → Datasets API (scraper estructurado).

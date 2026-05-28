@@ -24,14 +24,12 @@ async function checkSerp() {
 }
 
 async function checkCrawl() {
-  const c = new BrightDataCrawlClient();
-  if (!c.datasetId) {
-    fail("CRAWL", "sin BRIGHT_DATA_CRAWL_DATASET_ID (dataset gd_... de Crawl). No verificable LIVE — no inventado.");
-    return;
-  }
+  // Crawl multi-página REAL sobre Web Unlocker (seed → links internos → N páginas). Funciona con
+  // el token que ya tenemos; maxPages=2 para no gastar de más en el check.
   try {
-    const snapshotId = await c.trigger("https://example.com", { outputFields: "markdown" });
-    ok("CRAWL", `trigger aceptado, snapshot_id=${snapshotId} (no se poolea por costo)`);
+    const docs = await new BrightDataCrawlClient().crawl("https://en.wikipedia.org/wiki/Bright_Data", { maxPages: 2 });
+    if (docs.length && docs[0].content) ok("CRAWL", `multi-page vía Web Unlocker: ${docs.length} página(s) · seed ${docs[0].content.length} chars`);
+    else fail("CRAWL", "crawl devolvió vacío");
   } catch (e) {
     fail("CRAWL", e.message);
   }
