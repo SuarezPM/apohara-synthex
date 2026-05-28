@@ -9,3 +9,5 @@ node_modules/
 coverage/
 .omc/
 .vercel
+# benchmark outputs — no determinísticos, regenerar con `npm run bench:djl`
+logs/

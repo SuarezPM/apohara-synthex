@@ -3,9 +3,16 @@
 // fetcher y classifier son inyectables para testear sin red (y para el demo determinista).
 import { BrightDataClient } from "./fetch/bright-data-client.js";
 import { dedupe, prefilter } from "./forge/index.js";
+import { evaluate as djlScreen, POLICY_BUNDLE_VERSION as DJL_POLICY_BUNDLE_VERSION } from "./forge/djl.js";
+import { POLICY_BUNDLE_VERSION as PREFILTER_POLICY_BUNDLE_VERSION } from "./forge/prefilter.js";
 import { classify as defaultClassify } from "./classify/aiml-client.js";
 import { buildEvidence } from "./prove/evidence-report.js";
+import { sha256 } from "./prove/hmac.js";
 import { withSpan, recordTokens, recordBlocked, recordSealed, startTelemetry } from "./telemetry/otel.js";
+
+// Flag de rollback: EVIDENCE_SCHEMA_V2=0 fuerza payload v1 legacy (sin schema_version,
+// sin decisions[], sin policy_bundle_version). Default = v2. Sunset post-hackathon (FU-7).
+const _SCHEMA_V2 = process.env.EVIDENCE_SCHEMA_V2 !== "0";
 
 const LENS_SET = ["gtm", "finance", "security", "supply-chain"];
 
@@ -81,17 +88,35 @@ export async function runPipeline(target, opts = {}) {
     return out;
   });
 
-  // 2. FORGE: deduplicar + pre-filtrar (bloquear contenido malicioso antes de gastar LLM)
+  // 2. FORGE: dedup + DJL (78 reglas harm/PII/jailbreak) + prefilter (28 reglas web-injection)
+  // Orden: dedupe baja N → DJL filtra prompt-level → prefilter actúa sobre lo que DJL no bloqueó.
+  // `blocked` es UNIÓN de ambas capas (no doble conteo); `reason` siempre set, `layer` distingue origen.
   const { blocked, safe, dedup } = await timed("FORGE", async ({ record }) => {
     // Default exact (SHA-256, lossless, sync). Semántico = opt-in: import() DINÁMICO para que el
     // grafo de deps de api/** nunca alcance @xenova/transformers (bundle serverless limpio).
     const { unique, stats } = dedupMode === "semantic"
       ? await (await import("./forge/dedup-semantic.js")).dedupeSemantic(docs)
       : dedupe(docs);
-    const screened = unique.map((d) => ({ ...d, screen: prefilter(d.content) }));
-    const blocked = screened.filter((d) => d.screen.action === "BLOCK");
+
+    // DJL screen — 78 reglas regex deterministas portadas de Aegis. Bloquea harm/jailbreak/PII
+    // antes de prefilter (que solo cubre content-injection web).
+    const djled = unique.map((d) => ({ ...d, djl: djlScreen(d.content) }));
+    const djlBlocked = djled
+      .filter((d) => d.djl.decision === "BLOCK")
+      .map((d) => ({ ...d, reason: d.djl.matched_rules[0], layer: "djl" }));
+    const passDjl = djled.filter((d) => d.djl.decision !== "BLOCK");
+
+    // PREFILTER — 28 reglas web-injection sobre lo que DJL dejó pasar (ALLOW + REVIEW).
+    const screened = passDjl.map((d) => ({ ...d, screen: prefilter(d.content) }));
+    const prefBlocked = screened
+      .filter((d) => d.screen.action === "BLOCK")
+      .map((d) => ({ ...d, reason: d.screen.category, layer: "prefilter" }));
     const safe = screened.filter((d) => d.screen.action !== "BLOCK");
+
+    // Unión sin doble conteo: DJL y prefilter atacan vectores distintos sobre conjuntos disjuntos.
+    const blocked = [...djlBlocked, ...prefBlocked];
     record("dedup", stats.duplicateBlocks);
+    record("djl_blocked", djlBlocked.length);
     record("blocked", blocked.length);
     recordBlocked(blocked.length);
     return { blocked, safe, dedup: stats };
@@ -123,16 +148,47 @@ export async function runPipeline(target, opts = {}) {
     return out;
   });
 
-  // 4. PROVE: sellar el reporte
-  const payload = {
-    target,
-    lens,
-    fetchedAt: new Date().toISOString(),
-    sources: docs.map((d) => d.url),
-    dedup,
-    blocked: blocked.map((d) => ({ url: d.url, reason: d.screen.category })),
-    findings,
-  };
+  // 4. PROVE: sellar el reporte.
+  // Payload v2 (default): incluye schema_version + decisions[] (audit trail por stage) +
+  // policy_bundle_version (sha pin de los corpus DJL+prefilter en uso). El sellado HMAC usa
+  // canonicalize() (RFC 8785-like) → reproducible aunque el orden de claves cambie.
+  // Payload v1 (legacy, opt-out vía EVIDENCE_SCHEMA_V2=0): shape exacto de Synthex v3.
+  const fetchedAt = new Date().toISOString();
+  const blockedForPayload = blocked.map((d) => ({ url: d.url, reason: d.reason, layer: d.layer }));
+  const payload = _SCHEMA_V2
+    ? {
+        schema_version: 2,
+        target,
+        lens,
+        fetchedAt,
+        sources: docs.map((d) => d.url),
+        dedup,
+        blocked: blockedForPayload,
+        findings,
+        policy_bundle_version: {
+          djl: DJL_POLICY_BUNDLE_VERSION,
+          prefilter: PREFILTER_POLICY_BUNDLE_VERSION,
+        },
+        decisions: blocked.map((d) => ({
+          stage: d.layer === "djl" ? "DJL" : "PREFILTER",
+          url: d.url,
+          contentHash: sha256(String(d.content ?? "")).toString("hex"),
+          rule_matched: [d.reason],
+          outcome: "BLOCK",
+          layer: d.layer,
+          policy_bundle_version: d.layer === "djl" ? DJL_POLICY_BUNDLE_VERSION : PREFILTER_POLICY_BUNDLE_VERSION,
+          at: fetchedAt,
+        })),
+      }
+    : {
+        target,
+        lens,
+        fetchedAt,
+        sources: docs.map((d) => d.url),
+        dedup,
+        blocked: blockedForPayload,
+        findings,
+      };
   const evidence = await timed("PROVE", async ({ record }) => {
     const ev = await buildEvidence(payload, { hmacKey, requestTsa });
     record("method", ev.seal.method);

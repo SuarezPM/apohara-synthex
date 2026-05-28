@@ -1,7 +1,22 @@
 // PROVE — Evidence Report sellado. Sello base HMAC-SHA256 (siempre);
 // capa opcional RFC 3161 TSA (DigiCert) si hay red. Fallback honesto a HMAC-only.
+//
+// Schema versions:
+//   v1 (legacy, Synthex ≤v3) — `JSON.stringify(payload)` para HMAC. Insertion-order-dependent.
+//   v2 (Synthex v4+)         — `canonicalize(payload)` para HMAC. Order-independent (JCS-like).
+//
+// El verifier auto-detecta `payload.schema_version` y aplica el path correcto (N3) — un
+// verificador v4 sigue verificando Evidence Reports v1 ya publicados.
+// El sealer emite v2 por default; flag `EVIDENCE_SCHEMA_V2=0` fuerza v1 legacy (rollback demo).
 import { sha256, hmacSign, hmacVerify } from "./hmac.js";
 import { requestTimestamp, verifyTimestamp } from "./tsa.js";
+import { canonicalize } from "./canonicalize.js";
+
+function _serializeForHmac(payload) {
+  // Auto-detect: v>=2 → canonicalize; v=1/ausente → JSON.stringify legacy.
+  const v = payload && typeof payload === "object" ? payload.schema_version : undefined;
+  return (v !== undefined && v >= 2) ? canonicalize(payload) : JSON.stringify(payload);
+}
 
 /**
  * Construye un Evidence Report a partir de un payload serializable.
@@ -9,7 +24,7 @@ import { requestTimestamp, verifyTimestamp } from "./tsa.js";
  * @param {{hmacKey?:string, requestTsa?:boolean}} opts
  */
 export async function buildEvidence(payload, { hmacKey, requestTsa = true } = {}) {
-  const canonical = JSON.stringify(payload);
+  const canonical = _serializeForHmac(payload);
   const hash = sha256(canonical); // Buffer 32B
   const hmac = hmacKey ? hmacSign(canonical, hmacKey) : null;
 
@@ -49,7 +64,9 @@ export async function buildEvidence(payload, { hmacKey, requestTsa = true } = {}
  * @returns {{hashOk:boolean, hmacOk:(boolean|null), tsaOk:(boolean|null)}}
  */
 export function verifyEvidence(evidence, { hmacKey } = {}) {
-  const canonical = JSON.stringify(evidence.payload);
+  // N3: el verifier auto-detecta schema_version del payload — back-compat v1 siempre.
+  // El flag EVIDENCE_SCHEMA_V2 (env) sólo controla el sealer (qué emitir), nunca al verifier.
+  const canonical = _serializeForHmac(evidence.payload);
   const hash = sha256(canonical);
   const hashOk = hash.toString("hex") === evidence.contentHash;
 
