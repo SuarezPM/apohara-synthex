@@ -1,18 +1,15 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
-// DJL parity fixtures — ground truth para validar paridad regex Python↔JS.
-//
-// Vendored from apohara-aegis/tests/test_djl_rules.py @ f24d957f7edc8e9054226c0d70a6adc617fa48f8
-// License: Apache-2.0 — copia del LICENSE upstream en LICENSES/aegis-Apache-2.0.txt.
+// DJL coverage fixtures — ground truth para validar el comportamiento de cada regla.
 //
 // Cada entrada `{ positive, negative }`:
 //   - positive: ejemplo canónico que la regla DEBE matchear.
 //   - negative: ejemplo "close but benign" — fraseo legítimo que la regla NO debe matchear.
 //
-// Sin esto, "paridad 95%" se ancla a algo no auditable. Con esto, cualquiera puede
-// re-correr y verificar el comportamiento JS contra el comportamiento Python original.
+// 78 reglas × 2 ejemplos = 156 assertions auditables en test/djl.test.js.
 
-// String DJL-PI-009 positive: base64 96-char blob construido como Aegis lo hace.
+// String DJL-PI-009 positive: base64 96-char blob (no llega a 80 mínimo por sí solo
+// + contexto de carry).
 const _b64_96 = "A1B2C3D4".repeat(12);
 
 export const RULE_FIXTURES = {

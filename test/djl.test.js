@@ -1,21 +1,12 @@
-// Tests de paridad DJL vs fixtures Aegis (Commit D Synthex v4).
-// Para cada rule_id en RULE_FIXTURES: evaluate(positive) MUST match, evaluate(negative) MUST NOT match.
-// Test gate: paridad >= 95% (74/78). Hard block: cualquier divergencia en severity >= 8.
+// Tests de cobertura DJL: cada rule_id matches positive y NO matches negative.
+// Gate: cobertura >= 95% (74/78). Hard block: cualquier divergencia en severity >= 8.
 // Escape hatch: SYNTHEX_ALLOW_SEV8_DIVERGENCE=1 (solo para debug, no para CI).
-//
-// T4 AC#N4: assert mecánico que el sha pin del header djl.js === header djl-fixtures.js
-// (anti-drift estructural — fail fast si alguien actualiza uno sin el otro).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { evaluate, RULES } from "../src/forge/djl.js";
 import { RULE_FIXTURES } from "./djl-fixtures.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-test("DJL parity: cada regla matchea su positive y no matchea su negative (gate ≥95%)", () => {
+test("DJL coverage: cada regla matchea su positive y no matchea su negative (gate ≥95%)", () => {
   const ruleById = Object.fromEntries(RULES.map((r) => [r.id, r]));
   const divergences = [];
   const fixtureIds = Object.keys(RULE_FIXTURES);
@@ -70,13 +61,3 @@ test("DJL fixtures: todas las reglas tienen fixture (no missing, no extra)", () 
   assert.equal(fixtureIds.size, 78, "Esperaba 78 fixtures");
 });
 
-test("T4 AC#N4: sha pin del header djl.js === sha pin del header djl-fixtures.js", () => {
-  const djlSrc = readFileSync(join(__dirname, "..", "src", "forge", "djl.js"), "utf8");
-  const fixSrc = readFileSync(join(__dirname, "djl-fixtures.js"), "utf8");
-  const re = /@\s*([a-f0-9]{40})\b/;
-  const djlSha = djlSrc.match(re)?.[1];
-  const fixSha = fixSrc.match(re)?.[1];
-  assert.ok(djlSha, "djl.js sin sha pin SHA-1/SHA-256 de 40 chars en header");
-  assert.ok(fixSha, "djl-fixtures.js sin sha pin SHA-1/SHA-256 de 40 chars en header");
-  assert.strictEqual(djlSha, fixSha, `Sha pin drift: djl.js=${djlSha} vs djl-fixtures.js=${fixSha}`);
-});

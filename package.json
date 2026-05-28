@@ -1,7 +1,7 @@
 {
   "name": "@apohara/synthex",
   "version": "0.4.0",
-  "description": "The JavaScript layer that turns brightdata-mcp into an intelligence & evidence platform: classify what your agents scrape and seal it verifiably (HMAC-SHA256 + RFC 3161 TSA). v4: two-layer pre-LLM defense (28 web-injection + 78 prompt-level rules ported from Apohara Aegis Apache-2.0).",
+  "description": "The JavaScript layer that turns brightdata-mcp into an intelligence & evidence platform: classify what your agents scrape and seal it verifiably (HMAC-SHA256 + RFC 3161 TSA). v4: two-layer pre-LLM defense (28 web-injection + 78 prompt-level deterministic rules) + decisions[] audit trail + canonicalize HMAC.",
   "type": "module",
   "bin": {
     "apohara-synthex": "./server.js",
@@ -15,7 +15,6 @@
     "demo/",
     "scripts/gen-sample-report.mjs",
     "scripts/measure-coverage.mjs",
-    "LICENSES/",
     "server.js",
     "SLIDES.md"
   ],
@@ -31,7 +30,7 @@
     "url": "https://github.com/SuarezPM/apohara-synthex/issues"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "test": "node --test",

@@ -261,7 +261,7 @@ footer .honest b { color: var(--bone); font-weight: 400; }
         <div class="xrow"><span class="x">✕</span> Trust the scraped HTML</div>
         <div class="xrow"><span class="x">✕</span> Let the LLM "figure it out"</div>
         <div class="xrow"><span class="x">✕</span> Classifier-only filters</div>
-        <div class="solve"><b>SYNTHEX SOLVES WITH</b>A two-layer deterministic pre-LLM defense — <b>28 web-injection (own)</b> + <b>78 prompt-level rules portadas de Aegis</b> (Apache-2.0, sha pin <code>f24d957</code>) — blocks payloads <em>before</em> spending an LLM token.</div>
+        <div class="solve"><b>SYNTHEX SOLVES WITH</b>A two-layer deterministic pre-LLM defense — <b>28 web-injection rules</b> + <b>78 prompt-level rules</b> (jailbreak, harm/PII bilingual EN+ES, SQLi/XSS, exfiltration, sector policy) — blocks payloads <em>before</em> spending an LLM token.</div>
       </div>
       <div class="card a">
         <div class="num">BARRIER 02</div><h3>Unclassified intel</h3>
@@ -298,7 +298,7 @@ footer .honest b { color: var(--bone); font-weight: 400; }
     <h2 class="head s-lime">Four stages. <em>One signed substrate.</em></h2>
     <div class="timeline">
       <div class="pillar s-teal"><div class="step">01 · FETCH</div><div class="name">Bright Data</div><ul><li>· Web Unlocker (MCP+REST)</li><li>· SERP API · structured</li><li>· Browser API · CDP</li><li>· Datasets · Crawl</li><li>· smart router</li></ul></div>
-      <div class="pillar s-violet"><div class="step">02 · FORGE</div><div class="name">2-layer screen</div><ul><li>· SHA-256 dedup</li><li>· 78 DJL rules (Aegis)</li><li>· 28 web-injection rules</li><li>· prompt + HTML defense</li><li>· BLOCK before LLM</li></ul></div>
+      <div class="pillar s-violet"><div class="step">02 · FORGE</div><div class="name">2-layer screen</div><ul><li>· SHA-256 dedup</li><li>· 78 prompt-level rules</li><li>· 28 web-injection rules</li><li>· jailbreak + harm + PII</li><li>· BLOCK before LLM</li></ul></div>
       <div class="pillar s-amber"><div class="step">03 · CLASSIFY</div><div class="name">4 lenses</div><ul><li>· GTM · Finance</li><li>· Security · Supply-chain</li><li>· AI/ML API</li><li>· in parallel</li><li>· severity + signals</li></ul></div>
       <div class="pillar s-lime"><div class="step">04 · PROVE</div><div class="name">Seal</div><ul><li>· HMAC-SHA256</li><li>· RFC 3161 · DigiCert</li><li>· 6-page PDF</li><li>· Risk Score 0–100</li><li>· openssl-verifiable</li></ul></div>
     </div>
@@ -330,8 +330,8 @@ footer .honest b { color: var(--bone); font-weight: 400; }
         <pre>{ id:<span class="s">"DJL-PI-001"</span>, re:<span class="n">/ignore previous instructions/i</span>, sev:<span class="n">9</span> },
 { id:<span class="s">"DJL-HARM-011"</span>, re:<span class="n">/(?:kill myself|suicidarme)/i</span>, sev:<span class="n">10</span> },
 { id:<span class="s">"SSRF-1"</span>, re:<span class="n">/169\.254\.169\.254/</span>, severity:<span class="n">9</span> },
-<span class="c">// 78 DJL (Aegis) + 28 web · ≥ 8 → BLOCK pre-LLM</span></pre>
-        <div class="ft"><span class="m">106 rules · 2 layers · 78/78 fixture parity</span><span class="l">Aegis-ported · SkillFortify-aligned</span></div></div>
+<span class="c">// 78 DJL + 28 web · ≥ 8 → BLOCK pre-LLM</span></pre>
+        <div class="ft"><span class="m">106 rules · 2 layers · 78/78 fixture coverage</span><span class="l">SkillFortify-aligned</span></div></div>
 
       <div class="codecard s-amber"><div class="hd"><span class="name">CLASSIFY</span><span class="tag">src/pipeline.js</span></div>
         <pre><span class="c">// lens="all" → 4 lenses in parallel on one scrape</span>
@@ -419,7 +419,7 @@ $ openssl ts -reply -in synthex.tsr -text
     <h2 class="head s-red">The pitch is honesty — <em>so it applies to us too</em>.</h2>
     <div class="honest-list">
       <div><span class="x">✕</span><span><b>RFC 3161 proves <em>when</em>, not truth.</b> The timestamp proves the bytes existed and are unchanged — not that the content is correct.</span></div>
-      <div><span class="x">✕</span><span><b>Both pre-LLM layers cover text/HTML + prompt-level, not visual VPI.</b> 28 web-injection rules (own) + 78 prompt-level rules ported from Aegis Apache-2.0 (sha pin <code>f24d957</code>, 78/78 fixture parity) — aligned with SkillFortify, not a formal proof, not screenshot-based attacks.</span></div>
+      <div><span class="x">✕</span><span><b>Both pre-LLM layers cover text/HTML + prompt-level, not visual VPI.</b> 28 web-injection rules + 78 prompt-level rules (jailbreak, harm/PII, sector policy) with 78/78 fixture coverage — aligned with SkillFortify, not a formal proof, not screenshot-based attacks.</span></div>
       <div><span class="x">✕</span><span><b>Crawl is a multi-page crawl over Web Unlocker — not Bright Data's native Crawl product.</b> All 6 surfaces are verified live; we name the crawl honestly for what it is.</span></div>
       <div><span class="x">✕</span><span><b>The Risk Score is an internal estimate.</b> A deterministic heuristic with its formula printed on the PDF — not a Munich Re rating or a broker quote.</span></div>
       <div><span class="x">✕</span><span><b>OTel export and Cognee memory are opt-in.</b> The public endpoint keeps Cognee off to control cost; the rate-limit is best-effort.</span></div>
@@ -441,7 +441,7 @@ $ openssl ts -reply -in synthex.tsr -text
       <div class="winrow"><span class="c">✓</span> RFC 3161 TSA (DigiCert) — verifiable offline with <span class="mono">openssl ts</span></div>
       <div class="winrow"><span class="c">✓</span> Downloadable 6-page signed Evidence Report — 4-buyer framing (CISO · CFO · GC · Broker)</div>
       <div class="winrow"><span class="c">✓</span> 4-lens classification in parallel — GTM · Finance · Security · Supply-chain</div>
-      <div class="winrow"><span class="c">✓</span> Two-layer pre-LLM defense (28 web-injection + 78 prompt-level portado de Aegis) — blocks injection <em>before</em> the LLM call</div>
+      <div class="winrow"><span class="c">✓</span> Two-layer pre-LLM defense (28 web-injection + 78 prompt-level = 106 rules) — blocks injection <em>before</em> the LLM call</div>
       <div class="winrow"><span class="c">✓</span> OpenTelemetry GenAI spans + live SSE pipeline view — observable, not a black box</div>
     </div>
     <p style="margin-top:32px;font-family:var(--sans);font-style:italic;font-size:22px;color:var(--amber)">The web your agents touch, now classified and provable.</p>

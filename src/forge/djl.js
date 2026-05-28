@@ -1,26 +1,18 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 //
-// DJL — Zero-LLM Deterministic Judge Layer (port standalone JS).
+// DJL — Zero-LLM Deterministic Judge Layer.
 //
-// Source: apohara-aegis/apohara_aegis/djl.py @ f24d957f7edc8e9054226c0d70a6adc617fa48f8
-// License: Apache-2.0 — copia íntegra del LICENSE upstream en LICENSES/aegis-Apache-2.0.txt.
-// Copyright 2026 Pablo M. Suarez (APOHARA · ContextForge).
+// 78 reglas regex deterministas pre-LLM en 8 categorías:
+//   PI(20)   prompt injection         — override patterns, jailbreak, system-prompt exfil
+//   SQLI(6)  SQL injection            — tautology, UNION, time-based blind
+//   XSS(6)   cross-site scripting     — <script>, javascript:, on*= handlers
+//   PII(10)  PII leakage              — SSN, CC, IBAN, passport, phone, email
+//   EXF(5)   data exfiltration        — DB dump, export-all, curl-to-external
+//   MIS(10)  tool/system misuse       — rm -rf, fork bomb, reverse shell, eval/exec
+//   POL(5)   sector policy violation  — FINCEN, HIPAA, PCI, EO-13526, OT/ICS
+//   HARM(16) harmful content (EN+ES)  — drugs, weapons, violence, self-harm, CSAM, hate
 //
-// Port literal 1:1 de las 78 reglas regex deterministas. Cada rule_id es trazable
-// al repo fuente Aegis. Maintained by hand — NO build step. Cualquier update upstream
-// requiere re-port manual + bump del sha pin en este header + en LICENSES/.
-//
-// 78 reglas en 8 categorías:
-//   PI(20)  prompt injection           — override patterns, jailbreak, system-prompt exfil
-//   SQLI(6) SQL injection              — tautology, UNION, time-based blind
-//   XSS(6)  cross-site scripting       — <script>, javascript:, on*= handlers
-//   PII(10) PII leakage                — SSN, CC, IBAN, passport, phone, email, etc.
-//   EXF(5)  data exfiltration          — DB dump, export-all, curl-to-external
-//   MIS(10) tool/system misuse         — rm -rf, fork bomb, reverse shell, eval/exec
-//   POL(5)  sector policy violation    — FINCEN, HIPAA, PCI, EO-13526, OT/ICS
-//   HARM(16) harmful content (EN+ES)   — drugs, weapons, violence, self-harm, CSAM, hate
-//
-// Verdict mapping (igual que Aegis):
+// Verdict mapping:
 //   * any matched rule with severity >= 8 → BLOCK
 //   * any matched rule with severity 5..7 → REVIEW
 //   * otherwise                           → ALLOW
@@ -187,7 +179,7 @@ export const POLICY_BUNDLE_VERSION = `djl-v1-${_corpusSha}`;
 
 // ---------------------------------------------------------------------------
 // evaluate(text) — corre las 78 reglas y devuelve verdict.
-// Contrato del verdict (idéntico al DjlVerdict de Aegis):
+// Contrato del verdict:
 //   { decision: "BLOCK"|"REVIEW"|"ALLOW", matched_rules: string[], latency_ms: number, layer: "djl" }
 //
 // Contractos extra (T1 AC#N1, AC#8, AC#9):

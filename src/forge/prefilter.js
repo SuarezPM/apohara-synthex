@@ -1,6 +1,6 @@
-// FORGE/prefilter — pre-filtro determinista (sin LLM), estilo OWASP.
-// Subconjunto portado de las reglas de apohara-aegis (Deterministic Judge Layer) a regex JS.
-// Corre ANTES de AI/ML API para abaratar/acelerar: bloquea lo obvio sin gastar una llamada.
+// FORGE/prefilter — pre-filtro determinista web-injection (sin LLM), estilo OWASP.
+// 28 reglas regex JS sobre HTML/texto scrapeado. Corre ANTES de la llamada al LLM
+// (AI/ML API) para abaratar/acelerar: bloquea lo obvio sin gastar tokens.
 //
 // v2 (auditoría Mayo 2026): +8 reglas que cubren vectores documentados en BrowseSafe
 // (Perplexity, 2026) y VPI-Bench (2026). HONESTIDAD: este filtro cubre injection

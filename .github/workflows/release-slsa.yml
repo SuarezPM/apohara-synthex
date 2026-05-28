@@ -28,10 +28,10 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 24 (current LTS, Krypton)
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Install deps (clean)
         run: npm ci
@@ -104,10 +104,10 @@ jobs:
       - name: Checkout source (npm publish needs package.json + content)
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 24 (current LTS, Krypton)
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install deps (clean)
