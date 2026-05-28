@@ -8,7 +8,7 @@
 Turn the web your AI agents touch into classified intelligence, sealed with court-grade, verifiable evidence.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Tests](https://img.shields.io/badge/tests-162%20%C2%B7%20152%20pass%20%C2%B7%2010%20skip-brightgreen)
+![Tests](https://img.shields.io/badge/tests-262%20%C2%B7%20252%20pass%20%C2%B7%2010%20skip-brightgreen)
 ![Defense Layers](https://img.shields.io/badge/pre--LLM_defense-28%20web--injection%20%2B%2078%20prompt--level-orange)
 ![Token Saver](https://img.shields.io/badge/tokens--saved-deterministic%20pre--LLM%20block%20%2B%20dedup-9775fa)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
@@ -156,6 +156,37 @@ Every tier below is a **proposed** go-to-market model. Synthex has **no paying c
 | Agent-observability | traces, tokens, latency | a cryptographically sealed, court-grade report |
 | Scraping APIs | raw bytes | classification + screening + RFC 3161 evidence |
 | **Synthex** | the web content itself | — *the signed Evidence Report is the moat* |
+
+---
+
+## ◆ v0.6.0 — Watch & Prove
+
+The chain-of-custody release. Every re-scrape of the same target now
+encadena `previous_tsa_serial → current_tsa_serial`, with a normalized
+content diff and a 7th PDF page when delta is present.
+
+- **`src/delta/`** — Delta Engine: `normalize → hash → diff → sealDeltaChain`.
+  35 unit + 1 integration tests.
+- **`HMAC_EXCLUDED_KEYS`** (`src/prove/evidence-report.js`) — cross-run
+  determinism: `kg_status`, `kg_latency_ms`, `surface_status` are normative
+  metadata, excluded from the HMAC bytestring so the chain never reports
+  a phantom change.
+- **`src/forge/pii-filter.js`** — 25-rule PII bundle (10 DJL-PII reused +
+  15 secrets-leak: AWS / GitHub / Stripe / JWT / etc.) gating Cognee ingest.
+- **Model tier selector** (`src/classify/tiers.js`) — `free` / `oss` / `paid`.
+  FREE labeled `free-low-quality` per `docs/v060-calibration.md` (50 % of
+  fixtures had Δseverity > 1.5 vs DeepSeek baseline).
+- **`/playground.html`** — try it yourself, paste a URL, pick a tier + lens,
+  download the signed PDF.
+- **`/dashboard.html`** — live stress KPIs, polls `.omc/state/v060-telemetry.jsonl`.
+- **Live stress run** (2026-05-28): 500 URLs · 99.6 % success ·
+  $0.75 cost · 9.1 min wall clock — see `docs/v060-stress-report.md`.
+- **DigiCert TSA RTT baseline**: p95 385 ms — see `logs/digicert-rtt-baseline.json`.
+- **`docs/PRIOR_ART.md`** — reproducible directed-search queries proving
+  the "no open-source combination of [scrape + diff + HMAC + RFC 3161 + KG]
+  found at 2026-05-28" claim.
+- **`.kiro/specs/delta-engine.md`** — Kiro-native MCP spec for the Kiro
+  Challenge integration.
 
 ---
 

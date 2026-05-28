@@ -189,6 +189,9 @@ footer .honest b { color: var(--bone); font-weight: 400; }
   .grid3,.grid4,.timeline,.stats { grid-template-columns: 1fr; }
   section,.scene { padding: 68px 0; } .topbar .meta { display:none; } .stage .nm { width: 70px; }
 }
+.cta-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.cta-secondary{background:transparent;border:1px solid currentColor;color:inherit;}
+.cta-secondary:hover{background:rgba(255,255,255,.06);}
 </style>
 </head>
 <body>
@@ -213,7 +216,11 @@ footer .honest b { color: var(--bone); font-weight: 400; }
       <span class="pill teal">6 / 6 Bright Data surfaces · live</span>
       <span class="pill">100% JavaScript · MIT</span>
     </div>
-    <div><a class="cta" href="#live">▶ Run the live pipeline</a></div>
+    <div class="cta-row">
+      <a class="cta" href="#live">▶ Run the live pipeline</a>
+      <a class="cta cta-secondary" href="/playground.html">Try the playground</a>
+      <a class="cta cta-secondary" href="/dashboard.html">Live dashboard</a>
+    </div>
     <div class="links">
       <span><span style="color:var(--lime)">●</span> synthex.apohara.dev</span>
       <span><a href="https://github.com/SuarezPM/apohara-synthex" target="_blank" rel="noopener">github.com/SuarezPM/apohara-synthex</a></span>
@@ -304,10 +311,10 @@ footer .honest b { color: var(--bone); font-weight: 400; }
     </div>
     <div class="substrate"><span>● EVERY BYTE SCREENED · EVERY REPORT SIGNED</span><span>SHA-256 · HMAC-SHA256 · RFC 3161</span></div>
     <div class="stats">
-      <div class="stat s-lime"><div class="v">162</div><div class="l">tests · 152 pass · 0 fail</div></div>
+      <div class="stat s-lime"><div class="v">262</div><div class="l">tests · 252 pass · 0 fail</div></div>
       <div class="stat s-teal"><div class="v">6/6</div><div class="l">Bright Data surfaces · live</div></div>
-      <div class="stat s-amber"><div class="v">106</div><div class="l">rules · 2 layers · pre-LLM</div></div>
-      <div class="stat s-violet"><div class="v">~</div><div class="l">tokens saved · sealed in payload</div></div>
+      <div class="stat s-amber"><div class="v">131</div><div class="l">rules · 3 layers · pre-LLM</div></div>
+      <div class="stat s-violet"><div class="v">500</div><div class="l">URLs · 99.6% · $0.75 · live stress</div></div>
     </div>
   </div>
 </section>
