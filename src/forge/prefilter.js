@@ -71,3 +71,14 @@ export function classify(text) {
 }
 
 export { RULES };
+
+// POLICY_BUNDLE_VERSION — sha256 truncado del corpus canónico (mismo patrón que djl.js).
+// Formato: `prefilter-v<major>-<sha256-12>`. Bump del `vN` solo si cambia contrato severity
+// o se elimina una rule_id. El hash captura cambios en regex/category automáticamente.
+import { createHash as _createHash } from "node:crypto";
+const _prefilterCorpus = JSON.stringify(
+  RULES
+    .map((r) => [r.id, r.re.source, r.severity, r.category])
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)),
+);
+export const POLICY_BUNDLE_VERSION = `prefilter-v3-${_createHash("sha256").update(_prefilterCorpus).digest("hex").slice(0, 12)}`;
