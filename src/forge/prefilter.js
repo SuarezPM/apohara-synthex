@@ -12,6 +12,13 @@
 // indirect PI en datos estructurados). HONESTIDAD: estas son regex HEURÍSTICAS,
 // "aligned with" el benchmark SkillFortify (arXiv 2603.00195) — NO "formally verified".
 // No hay garantía formal de cobertura; cubren los vectores documentados, no su clausura.
+//
+// v3.1 (auditoría Deep-Research, Mayo 2026): hardening de regex SIN reglas nuevas (conteo 28
+// intacto). Cerrados 2 huecos reales hallados en el audit: PROTO-1 ahora atrapa proto-pollution
+// JSON-anidada ("constructor":{"prototype"}) — antes solo "constructor.prototype" con punto;
+// MCP-2 ahora atrapa <tool_response> — antes solo tool_result/function_results/tool_use.
+// Candidatos ARIA/alt-text DESCARTADOS: el texto de instrucción ya lo atrapan PI-*/MCP-1
+// (una regla sobre aria-label/alt= dispararía falsos positivos en todo sitio accesible).
 const RULES = [
   { id: "PI-1", re: /ignore (all |the )?(previous|prior|above) (instructions|prompts)/i, category: "prompt-injection", severity: 9 },
   { id: "PI-2", re: /disregard (your |the )?(system )?(prompt|instructions)/i, category: "prompt-injection", severity: 9 },
@@ -38,9 +45,9 @@ const RULES = [
   { id: "SSRF-1", re: /\b(?:https?:\/\/)?(?:169\.254\.169\.254|metadata\.google\.internal|100\.100\.100\.200)\b/i, category: "ssrf", severity: 9 }, // cloud metadata endpoint (AWS/GCP/Alibaba)
   { id: "SSRF-2", re: /\b(?:file|gopher|dict):\/\//i, category: "ssrf", severity: 8 }, // esquemas SSRF/exfil clásicos
   { id: "SSRF-3", re: /\bhttps?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|(?:10|127)\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(?:[:/]|\b)/i, category: "ssrf", severity: 8 }, // host interno embebido en URL
-  { id: "PROTO-1", re: /(?:"__proto__"|\b__proto__\s*[:=[]|constructor\s*\.\s*prototype|\bprototype\s*\[)/, category: "proto-pollution", severity: 8 }, // prototype pollution / JSON hijacking
+  { id: "PROTO-1", re: /(?:"__proto__"|\b__proto__\s*[:=[]|constructor\s*\.\s*prototype|"constructor"\s*:\s*\{\s*"prototype"|\bprototype\s*\[)/, category: "proto-pollution", severity: 8 }, // prototype pollution / JSON hijacking (incl. JSON-LD nested "constructor":{"prototype"})
   { id: "MCP-1", re: /\bwhen (?:you (?:see|receive|read)|reading) this[\s,]+(?:call|invoke|use|run|execute|trigger)\b/i, category: "tool-poisoning", severity: 8 }, // ClawHavoc: instrucción oculta en descripción de tool
-  { id: "MCP-2", re: /<(?:tool[_-]?result|function[_-]?results?|tool_use)>[\s\S]{0,200}\b(?:ignore|disregard|override|new instruction|system:)/i, category: "tool-poisoning", severity: 8 }, // tool-result injection (envuelto en tags de resultado)
+  { id: "MCP-2", re: /<(?:tool[_-]?result|tool[_-]?response|function[_-]?results?|tool_use)>[\s\S]{0,200}\b(?:ignore|disregard|override|new instruction|system:)/i, category: "tool-poisoning", severity: 8 }, // tool-result/response injection (envuelto en tags de resultado)
   { id: "IPI-1", re: /(?:^|[\s"',[{>])(?:assistant|system|developer)\s*:\s*\S/im, category: "indirect-injection", severity: 6 }, // role override embebido en campo JSON/CSV (indicador)
   { id: "IPI-2", re: /\b(?:role"?\s*:\s*"?(?:system|assistant|developer)|<\|(?:im_start|system|assistant)\|>)/i, category: "indirect-injection", severity: 7 }, // chat-template/role-key smuggling en datos estructurados
 ];
