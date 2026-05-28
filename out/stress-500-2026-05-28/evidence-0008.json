@@ -1,0 +1,64 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://www.figma.com/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:18:16.971Z",
+    "sources": [
+      "https://www.figma.com/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [
+      {
+        "url": "https://www.figma.com/pricing",
+        "reason": "DJL-PI-004",
+        "layer": "djl"
+      }
+    ],
+    "findings": [],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 42156,
+      "total_bytes": 42156,
+      "estimated_tokens": 10539,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": [
+      {
+        "stage": "DJL",
+        "url": "https://www.figma.com/pricing",
+        "contentHash": "281ed2d21a85b5de6a86d98d69426de6190274bf8621c001ab5da2606d33cf07",
+        "rule_matched": [
+          "DJL-PI-004"
+        ],
+        "outcome": "BLOCK",
+        "layer": "djl",
+        "policy_bundle_version": "djl-v1-872852684fbb",
+        "at": "2026-05-28T19:18:16.971Z"
+      }
+    ]
+  },
+  "contentHash": "f09e527214fcd24cab1e7fd02fb8e1a5d67d59ddf9d832ac3b5429099c2eed0c",
+  "seal": {
+    "hmacSha256": "b549f6050d2a4c2fa6752f890adc21915a52b0fd1031464323aa360b869172e1",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:18:16.971Z",
+  "timings": {
+    "FETCH": 4304.5,
+    "FORGE": 4.7,
+    "CLASSIFY": 0,
+    "PROVE": 0.7
+  }
+}

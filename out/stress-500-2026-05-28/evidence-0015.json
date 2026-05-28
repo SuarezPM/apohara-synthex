@@ -1,0 +1,58 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://brightdata.com/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:18:27.315Z",
+    "sources": [
+      "https://brightdata.com/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://brightdata.com/pricing",
+        "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lens": "security",
+        "severity": 8,
+        "summary": "Se detectó una fuga de credenciales de empleados en un repositorio público de GitHub, exponiendo datos sensibles y violando políticas de cumplimiento.",
+        "signals": [
+          "exposed_credentials",
+          "data_leak",
+          "compliance_violation"
+        ]
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "5060802efdf5dedd109c39b95a0e0eeba75277db134ad626ab53d28c40cabee3",
+  "seal": {
+    "hmacSha256": "49fbc43677a0413dc65529a9e91ddbf9b442ce34d2fa22d073894cac3b01e3aa",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:18:27.315Z",
+  "timings": {
+    "FETCH": 1474.9,
+    "FORGE": 0.1,
+    "CLASSIFY": 8868.1,
+    "PROVE": 0.2
+  }
+}

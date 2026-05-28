@@ -1,0 +1,58 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://supabase.com/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:18:24.124Z",
+    "sources": [
+      "https://supabase.com/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://supabase.com/pricing",
+        "contentHash": "f27094d97643e8dcf9bcc45d0f4923edb8b31f0ddc028e5941329e8d68f80b48",
+        "lens": "security",
+        "severity": 1,
+        "summary": "Pricing page details standard service tiers and compliance offerings, with no active threats or exposures indicated.",
+        "signals": [
+          "HIPAA available as paid add-on",
+          "SOC2 & ISO 27001 compliance listed for Team plan",
+          "Enterprise plan includes custom security questionnaires"
+        ]
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "47e1da87e1ffce92645855093d58e739507fc4f337c283ece8b1df972edf6912",
+  "seal": {
+    "hmacSha256": "d2cf27e92b13ca1204472fc5286752254a8cdd52a62c2f7c69832a72e045885b",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:18:24.124Z",
+  "timings": {
+    "FETCH": 1512.1,
+    "FORGE": 3.3,
+    "CLASSIFY": 9947.3,
+    "PROVE": 0.1
+  }
+}

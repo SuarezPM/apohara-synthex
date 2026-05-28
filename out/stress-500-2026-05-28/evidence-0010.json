@@ -1,0 +1,59 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://www.linear.app/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:18:20.006Z",
+    "sources": [
+      "https://www.linear.app/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://www.linear.app/pricing",
+        "contentHash": "4efb42af63f6aa7db8afe06bb3962717ac4bbb9147acf626acdab3a24747e70e",
+        "lens": "security",
+        "severity": 2,
+        "summary": "Pricing page details standard enterprise security features like SAML, SCIM, and HIPAA compliance, with no immediate exposure of sensitive data.",
+        "signals": [
+          "Mentions HIPAA compliance as an enterprise feature",
+          "Lists SAML and SCIM under Enterprise plan",
+          "Includes domain claiming and IP restrictions as security controls",
+          "References audit log and third-party app management"
+        ]
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "28c22de3e3f14e9e2a412cf251ca07dc590c2f238c3ec45a2c017cca22545a9f",
+  "seal": {
+    "hmacSha256": "d9a550b0f780280ddadcd8ef7d9d7f7f437c12d81d0ad09229a1157769234b11",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:18:20.006Z",
+  "timings": {
+    "FETCH": 2478,
+    "FORGE": 0.8,
+    "CLASSIFY": 4865.8,
+    "PROVE": 0.1
+  }
+}
