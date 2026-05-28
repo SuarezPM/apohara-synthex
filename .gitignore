@@ -11,3 +11,17 @@ coverage/
 .vercel
 # benchmark outputs — no determinísticos, regenerar con `npm run bench:djl`
 logs/
+# stress test individual evidence files — regenerables vía scripts/stress-test-judges.mjs,
+# se trackean 10 sample files + report.json por carpeta como referencia, los demás quedan locales.
+out/stress-*/evidence-*.json
+!out/stress-*/evidence-0008.json
+!out/stress-*/evidence-0009.json
+!out/stress-*/evidence-0010.json
+!out/stress-*/evidence-0011.json
+!out/stress-*/evidence-0012.json
+!out/stress-*/evidence-0013.json
+!out/stress-*/evidence-0014.json
+!out/stress-*/evidence-0015.json
+!out/stress-*/evidence-0016.json
+!out/stress-*/evidence-0017.json
+out/nemotron-vs-deepseek-calibration.json
