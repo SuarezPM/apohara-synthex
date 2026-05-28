@@ -24,8 +24,20 @@ export class ContextCache {
   clear() { this.seen.clear(); }
 }
 
-/** Deduplica un array de {url, content}. Devuelve {unique, duplicates, stats}. */
-export function dedupe(items) {
+/**
+ * Deduplica un array de {url, content}. Devuelve {unique, duplicates, stats}.
+ * @param {Array<{url?:string, content:any}>} items
+ * @param {{mode?:"exact"|"semantic"}} opts  "exact" (default) = SHA-256 lossless, SÍNCRONO,
+ *   byte-idéntico de siempre. "semantic" no se hace aquí (requiere modelo + async): la vía
+ *   es `dedupeSemantic()` de dedup-semantic.js (opt-in, CLI-only, jamás serverless).
+ */
+export function dedupe(items, { mode = "exact" } = {}) {
+  if (mode !== "exact") {
+    throw new Error(
+      `dedupe(): mode "${mode}" no se soporta en la vía síncrona/lossless. ` +
+        "El dedup semántico (lossy, opt-in) es async → importá dedupeSemantic() de ./dedup-semantic.js.",
+    );
+  }
   const cache = new ContextCache();
   const unique = [];
   const duplicates = [];
