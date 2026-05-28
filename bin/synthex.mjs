@@ -49,7 +49,6 @@ function printVerification(ev, hmacKey) {
     v.tsaOk === true ? "OK (RFC 3161 · DigiCert)" : v.tsaOk === null ? "sin TSA (fallback HMAC-only)" : "FALLO",
   );
   console.error(`  método de sello: ${ev.seal.method}\n`);
-  return v;
 }
 
 export async function main(argv) {
