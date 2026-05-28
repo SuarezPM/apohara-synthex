@@ -122,6 +122,39 @@ Opt-in live checks (gated by env flags so the suite never fakes a pass): `AIML_L
 
 ---
 
+## ◆ Market & business
+
+Synthex doesn't claim a single tidy TAM — it sits at the **intersection** of three real markets, each sized by a named firm with very different scopes. We address a **wedge** of that intersection: a verifiable evidence + screening layer for the web content autonomous agents ingest, for teams accountable under EU AI Act / DORA. It is *not* the whole AI-agents market.
+
+| Adjacent market | Size & horizon | Source |
+|---|---|---|
+| AI agents | **$52.6B by 2030** → $231.9B by 2034 (CAGR 46.3%) | [MarketsandMarkets](https://www.marketsandmarkets.com/PressReleases/ai-agents.asp) · [Dimension Market Research](https://dimensionmarketresearch.com/report/ai-agents-market/) |
+| AI-driven web scraping | **$46.1B by 2035** (CAGR 19.9%) | [Market Research Future](https://www.marketresearchfuture.com/reports/ai-driven-web-scraping-market-24744) |
+| AI in observability | **$10.7B by 2033** (CAGR 22.5%) | [Market.us](https://market.us/report/ai-in-observability-market/) |
+
+> Forecasts across firms differ widely because they define scope differently — we cite the firm and horizon for each rather than collapse them into one headline number. Synthex's serviceable slice is a subset of all three.
+
+### Pricing — *proposed* (not yet live revenue)
+
+Every tier below is a **proposed** go-to-market model. Synthex has **no paying customers and no revenue today**; these are pricing hypotheses, not reported figures.
+
+| Tier | Proposed price | For |
+|---|---|---|
+| **OSS** | Free (MIT) | the full pipeline, self-hosted — what's in this repo |
+| **Pro** | ~$99/mo *(proposed)* | hosted endpoint, higher rate limits, retained Evidence Reports |
+| **Enterprise** | $2,500+/mo *(proposed)* | SSO, audit retention, on-prem TSA, EU AI Act / DORA evidence workflows |
+
+### Why us — the signed Evidence Report
+
+| Category | What they watch | What they can't ship |
+|---|---|---|
+| SIEM / log tools | the agent's *infrastructure* | proof of the web *content* the agent saw |
+| Agent-observability | traces, tokens, latency | a cryptographically sealed, court-grade report |
+| Scraping APIs | raw bytes | classification + screening + RFC 3161 evidence |
+| **Synthex** | the web content itself | — *the signed Evidence Report is the moat* |
+
+---
+
 ## ◆ Honesty
 
 The pitch *is* honesty — so it applies to us too.
