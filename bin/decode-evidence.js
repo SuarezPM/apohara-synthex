@@ -21,10 +21,6 @@ Env:
   SYNTHEX_HMAC_KEY   clave HMAC para verificar (default: "synthex-demo")
 `;
 
-function fmtMs(n) {
-  return typeof n === "number" ? `${n.toFixed(1)}ms` : "—";
-}
-
 function printDecisionsTable(decisions) {
   if (!Array.isArray(decisions) || decisions.length === 0) {
     console.log("\n── Decisions ──\n  (vacío — ningún doc bloqueado por DJL ni prefilter)\n");

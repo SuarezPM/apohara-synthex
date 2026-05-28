@@ -18,10 +18,7 @@
 //   - Symbol como clave o valor (TypeError implícito porque no es enumerable)
 //   - Function como valor (omitido por JSON.stringify default — aquí también)
 
-const _seen = new WeakSet();
-
 export function canonicalize(value) {
-  _seen.clear?.(); // no es necesario para WeakSet, pero documentamos la intención
   return _stringify(value, new WeakSet());
 }
 
