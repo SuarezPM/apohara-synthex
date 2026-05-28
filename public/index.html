@@ -189,9 +189,6 @@ footer .honest b { color: var(--bone); font-weight: 400; }
   .grid3,.grid4,.timeline,.stats { grid-template-columns: 1fr; }
   section,.scene { padding: 68px 0; } .topbar .meta { display:none; } .stage .nm { width: 70px; }
 }
-.cta-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
-.cta-secondary{background:transparent;border:1px solid currentColor;color:inherit;}
-.cta-secondary:hover{background:rgba(255,255,255,.06);}
 </style>
 </head>
 <body>
@@ -216,11 +213,7 @@ footer .honest b { color: var(--bone); font-weight: 400; }
       <span class="pill teal">6 / 6 Bright Data surfaces · live</span>
       <span class="pill">100% JavaScript · MIT</span>
     </div>
-    <div class="cta-row">
-      <a class="cta" href="#live">▶ Run the live pipeline</a>
-      <a class="cta cta-secondary" href="/playground.html">Try the playground</a>
-      <a class="cta cta-secondary" href="/dashboard.html">Live dashboard</a>
-    </div>
+    <div><a class="cta" href="#live">▶ Run the live pipeline</a></div>
     <div class="links">
       <span><span style="color:var(--lime)">●</span> synthex.apohara.dev</span>
       <span><a href="https://github.com/SuarezPM/apohara-synthex" target="_blank" rel="noopener">github.com/SuarezPM/apohara-synthex</a></span>
@@ -372,7 +365,7 @@ $ openssl ts -reply -in synthex.tsr -text
     <div class="kicker center"><span class="dot"></span> SEE IT LIVE · RUN IT YOURSELF</div>
     <h2 class="head s-lime" style="text-align:center">Don't trust the claims. <em>Run the pipeline.</em></h2>
     <p class="lede" style="text-align:center;margin:0 auto">Paste a URL or term, pick a lens, watch the four stages execute against real Bright Data — then download the signed Evidence Report. This runs the actual pipeline, not a recording.</p>
-    <p class="lede" style="text-align:center;margin:10px auto 0;font-size:13px">Rather not run it? <a href="https://github.com/SuarezPM/apohara-synthex/blob/main/samples/synthex-evidence-report.pdf" target="_blank" rel="noopener" style="text-decoration:underline">📄 See a real 6-page Evidence Report (sample PDF)</a> — sealed with HMAC-SHA256 + RFC&nbsp;3161.</p>
+    <p class="lede" style="text-align:center;margin:10px auto 0;font-size:13px">Rather not run it? <a href="https://github.com/SuarezPM/apohara-synthex/blob/main/samples/synthex-evidence-report.pdf" target="_blank" rel="noopener" style="text-decoration:underline">📄 See a real 6-7 page Evidence Report (7th page when delta_chain present) (sample PDF)</a> — sealed with HMAC-SHA256 + RFC&nbsp;3161.</p>
     <div class="console">
       <label class="flabel" for="target">Target — URL or term</label>
       <input id="target" type="text" value="https://en.wikipedia.org/wiki/Bright_Data" autocomplete="off" spellcheck="false" />
@@ -383,21 +376,27 @@ $ openssl ts -reply -in synthex.tsr -text
         <button class="lens" data-lens="supply-chain" aria-pressed="false">Supply-chain</button>
         <button class="lens" data-lens="all" aria-pressed="true">All 4</button>
       </div>
+      <label class="flabel" for="tier" style="margin-top:18px;display:block">Model tier <span style="color:var(--muted);font-weight:400">— v0.6 cost/quality tradeoff</span></label>
+      <div class="lenses" id="tiers" role="group" aria-label="Model tier">
+        <button class="lens" data-tier="oss" aria-pressed="true">OSS · DeepSeek (default)</button>
+        <button class="lens" data-tier="paid" aria-pressed="false">PAID · DeepSeek thinking</button>
+        <button class="lens" data-tier="free" aria-pressed="false" title="Labeled free-low-quality per docs/v060-calibration.md">FREE · Nemotron 9B ⚠</button>
+      </div>
       <button class="run" id="run">Analyze &amp; Seal</button>
       <div id="panel" class="hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin:24px 0 0"><span class="flabel" style="margin:0">Pipeline</span><span id="mode" aria-live="polite"></span></div>
         <div class="lane" id="lane">
           <div class="stage" data-st="FETCH"><span class="fill"></span><div class="row"><span class="nm">FETCH</span><span class="meta">Bright Data — Unlocker · SERP · Browser · Crawl</span><span class="ms"></span><span class="dot"></span></div></div>
-          <div class="stage" data-st="FORGE"><span class="fill"></span><div class="row"><span class="nm">FORGE</span><span class="meta">dedup + 78 DJL + 28 prefilter · pre-LLM</span><span class="ms"></span><span class="dot"></span></div></div>
+          <div class="stage" data-st="FORGE"><span class="fill"></span><div class="row"><span class="nm">FORGE</span><span class="meta">dedup + 78 DJL + 28 prefilter + 25 PII · 3 layers</span><span class="ms"></span><span class="dot"></span></div></div>
           <div class="stage" data-st="CLASSIFY"><span class="fill"></span><div class="row"><span class="nm">CLASSIFY</span><span class="meta">AI/ML API · up to 4 lenses ‖</span><span class="ms"></span><span class="dot"></span></div></div>
-          <div class="stage" data-st="PROVE"><span class="fill"></span><div class="row"><span class="nm">PROVE</span><span class="meta">HMAC-SHA256 + RFC 3161 TSA</span><span class="ms"></span><span class="dot"></span></div></div>
+          <div class="stage" data-st="PROVE"><span class="fill"></span><div class="row"><span class="nm">PROVE</span><span class="meta">HMAC-SHA256 + RFC 3161 TSA + delta_chain (v0.6)</span><span class="ms"></span><span class="dot"></span></div></div>
         </div>
         <div class="evidence hidden" id="evidence">
           <h3>EVIDENCE REPORT</h3>
           <div class="seal" id="seal"></div>
           <div id="findings"></div>
           <div class="custody" id="custody"></div>
-          <button class="dl hidden" id="dl">📥 Download Evidence Report (PDF · 6 pages)</button>
+          <button class="dl hidden" id="dl">📥 Download Evidence Report (PDF · 6-7 pages, 7 when delta)</button>
         </div>
         <div class="err hidden" id="err" role="alert"></div>
       </div>
@@ -466,9 +465,13 @@ $ openssl ts -reply -in synthex.tsr -text
 <script type="module">
   const $ = (s) => document.querySelector(s);
   let lens = "all", lastEvidence = null, running = false;
-  document.querySelectorAll(".lens").forEach((el) => el.addEventListener("click", () => {
-    document.querySelectorAll(".lens").forEach((l) => l.setAttribute("aria-pressed","false"));
+  document.querySelectorAll("#lenses .lens").forEach((el) => el.addEventListener("click", () => {
+    document.querySelectorAll("#lenses .lens").forEach((l) => l.setAttribute("aria-pressed","false"));
     el.setAttribute("aria-pressed","true"); lens = el.dataset.lens;
+  }));
+  document.querySelectorAll("#tiers .lens").forEach((el) => el.addEventListener("click", () => {
+    document.querySelectorAll("#tiers .lens").forEach((l) => l.setAttribute("aria-pressed","false"));
+    el.setAttribute("aria-pressed","true");
   }));
   const sevColor = (s) => (s >= 8 ? "crit" : s >= 5 ? "" : "ok");
   const stageEl = (st) => $(`.stage[data-st="${st}"]`);
@@ -492,7 +495,9 @@ $ openssl ts -reply -in synthex.tsr -text
     renderFindings(ev.payload?.findings); $("#custody").textContent = `SHA-256 ${ev.contentHash}  ·  ${seal.method||""}`;
     $("#evidence").classList.remove("hidden"); $("#dl").classList.remove("hidden"); }
   async function streamPipeline(target) {
-    const res = await fetch("/api/stream", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ target, lens }) });
+    const tierEl = document.querySelector('#tiers .lens[aria-pressed=true]');
+    const tier = tierEl ? tierEl.dataset.tier : undefined;
+    const res = await fetch("/api/stream", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ target, lens, ...(tier ? { tier } : {}) }) });
     if (!res.ok || !res.body) throw new Error("stream failed");
     const reader = res.body.getReader(), dec = new TextDecoder(); let buf = "";
     for (;;) { const { value, done } = await reader.read(); if (done) break;

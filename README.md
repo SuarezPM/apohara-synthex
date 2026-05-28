@@ -176,9 +176,11 @@ content diff and a 7th PDF page when delta is present.
 - **Model tier selector** (`src/classify/tiers.js`) — `free` / `oss` / `paid`.
   FREE labeled `free-low-quality` per `docs/v060-calibration.md` (50 % of
   fixtures had Δseverity > 1.5 vs DeepSeek baseline).
-- **`/playground.html`** — try it yourself, paste a URL, pick a tier + lens,
-  download the signed PDF.
-- **`/dashboard.html`** — live stress KPIs, polls `.omc/state/v060-telemetry.jsonl`.
+- **Try it inline** in the `#live` section of [synthex.apohara.dev](https://synthex.apohara.dev) —
+  paste a URL, pick a lens + model tier (OSS / PAID / FREE), watch the 4
+  stages execute in real time against Bright Data, download the 6-7 page
+  signed PDF. No separate playground page needed — everything lives in
+  one REEF-style scroll.
 - **Live stress run** (2026-05-28): 500 URLs · 99.6 % success ·
   $0.75 cost · 9.1 min wall clock — see `docs/v060-stress-report.md`.
 - **DigiCert TSA RTT baseline**: p95 385 ms — see `logs/digicert-rtt-baseline.json`.
