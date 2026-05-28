@@ -261,7 +261,7 @@ footer .honest b { color: var(--bone); font-weight: 400; }
         <div class="xrow"><span class="x">✕</span> Trust the scraped HTML</div>
         <div class="xrow"><span class="x">✕</span> Let the LLM "figure it out"</div>
         <div class="xrow"><span class="x">✕</span> Classifier-only filters</div>
-        <div class="solve"><b>SYNTHEX SOLVES WITH</b>A 28-rule deterministic prefilter (SSRF · proto-pollution · MCP poisoning · BrowseSafe) that blocks payloads <em>before</em> spending an LLM token.</div>
+        <div class="solve"><b>SYNTHEX SOLVES WITH</b>A two-layer deterministic pre-LLM defense — <b>28 web-injection (own)</b> + <b>78 prompt-level rules portadas de Aegis</b> (Apache-2.0, sha pin <code>f24d957</code>) — blocks payloads <em>before</em> spending an LLM token.</div>
       </div>
       <div class="card a">
         <div class="num">BARRIER 02</div><h3>Unclassified intel</h3>
@@ -298,15 +298,15 @@ footer .honest b { color: var(--bone); font-weight: 400; }
     <h2 class="head s-lime">Four stages. <em>One signed substrate.</em></h2>
     <div class="timeline">
       <div class="pillar s-teal"><div class="step">01 · FETCH</div><div class="name">Bright Data</div><ul><li>· Web Unlocker (MCP+REST)</li><li>· SERP API · structured</li><li>· Browser API · CDP</li><li>· Datasets · Crawl</li><li>· smart router</li></ul></div>
-      <div class="pillar s-violet"><div class="step">02 · FORGE</div><div class="name">Screen</div><ul><li>· SHA-256 dedup</li><li>· 28-rule prefilter</li><li>· SSRF · proto-pollution</li><li>· MCP poisoning</li><li>· BLOCK before LLM</li></ul></div>
+      <div class="pillar s-violet"><div class="step">02 · FORGE</div><div class="name">2-layer screen</div><ul><li>· SHA-256 dedup</li><li>· 78 DJL rules (Aegis)</li><li>· 28 web-injection rules</li><li>· prompt + HTML defense</li><li>· BLOCK before LLM</li></ul></div>
       <div class="pillar s-amber"><div class="step">03 · CLASSIFY</div><div class="name">4 lenses</div><ul><li>· GTM · Finance</li><li>· Security · Supply-chain</li><li>· AI/ML API</li><li>· in parallel</li><li>· severity + signals</li></ul></div>
       <div class="pillar s-lime"><div class="step">04 · PROVE</div><div class="name">Seal</div><ul><li>· HMAC-SHA256</li><li>· RFC 3161 · DigiCert</li><li>· 6-page PDF</li><li>· Risk Score 0–100</li><li>· openssl-verifiable</li></ul></div>
     </div>
     <div class="substrate"><span>● EVERY BYTE SCREENED · EVERY REPORT SIGNED</span><span>SHA-256 · HMAC-SHA256 · RFC 3161</span></div>
     <div class="stats">
-      <div class="stat s-lime"><div class="v">143</div><div class="l">tests · 133 pass · 0 fail</div></div>
+      <div class="stat s-lime"><div class="v">162</div><div class="l">tests · 152 pass · 0 fail</div></div>
       <div class="stat s-teal"><div class="v">6/6</div><div class="l">Bright Data surfaces · live</div></div>
-      <div class="stat s-amber"><div class="v">28</div><div class="l">prefilter rules · pre-LLM</div></div>
+      <div class="stat s-amber"><div class="v">106</div><div class="l">rules · 2 layers · pre-LLM</div></div>
       <div class="stat s-violet"><div class="v">4</div><div class="l">lenses · in parallel</div></div>
     </div>
   </div>
@@ -326,12 +326,12 @@ footer .honest b { color: var(--bone); font-weight: 400; }
 <span class="k">return</span> httpFetcher(opts)(target);   <span class="c">// Web Unlocker REST</span></pre>
         <div class="ft"><span class="m">SERP live · 200 · structured JSON</span><span class="l">6 / 6 SURFACES</span></div></div>
 
-      <div class="codecard s-violet"><div class="hd"><span class="name">FORGE</span><span class="tag">src/forge/prefilter.js</span></div>
-        <pre>{ id:<span class="s">"SSRF-1"</span>, re:<span class="n">/169\.254\.169\.254/</span>, severity:<span class="n">9</span> },
-{ id:<span class="s">"PROTO-1"</span>, re:<span class="n">/__proto__/</span>,        severity:<span class="n">8</span> },
-{ id:<span class="s">"MCP-1"</span>,  re:<span class="n">/when you see this,? call/i</span>, sev:<span class="n">8</span> },
-<span class="c">// severity ≥ 8 → BLOCK before the LLM call</span></pre>
-        <div class="ft"><span class="m">28 rules · payload blocked pre-LLM</span><span class="l">SkillFortify-aligned</span></div></div>
+      <div class="codecard s-violet"><div class="hd"><span class="name">FORGE</span><span class="tag">src/forge/{djl,prefilter}.js</span></div>
+        <pre>{ id:<span class="s">"DJL-PI-001"</span>, re:<span class="n">/ignore previous instructions/i</span>, sev:<span class="n">9</span> },
+{ id:<span class="s">"DJL-HARM-011"</span>, re:<span class="n">/(?:kill myself|suicidarme)/i</span>, sev:<span class="n">10</span> },
+{ id:<span class="s">"SSRF-1"</span>, re:<span class="n">/169\.254\.169\.254/</span>, severity:<span class="n">9</span> },
+<span class="c">// 78 DJL (Aegis) + 28 web · ≥ 8 → BLOCK pre-LLM</span></pre>
+        <div class="ft"><span class="m">106 rules · 2 layers · 78/78 fixture parity</span><span class="l">Aegis-ported · SkillFortify-aligned</span></div></div>
 
       <div class="codecard s-amber"><div class="hd"><span class="name">CLASSIFY</span><span class="tag">src/pipeline.js</span></div>
         <pre><span class="c">// lens="all" → 4 lenses in parallel on one scrape</span>
@@ -355,7 +355,7 @@ $ openssl ts -reply -in synthex.tsr -text
   <div class="wrap">
     <div class="kicker center"><span class="dot"></span> THE EDGE · BEFORE THE LLM</div>
     <div class="big">Injection in a scraped page reaches the LLM in <span class="r">milliseconds</span>.<br/>Synthex blocks it <span class="g">before the first token</span>.</div>
-    <div class="note">28 deterministic rules · 0 LLM tokens spent on a blocked payload</div>
+    <div class="note">106 deterministic rules in 2 layers (28 web + 78 prompt) · 0 LLM tokens spent on a blocked payload</div>
   </div>
 </section>
 
@@ -381,7 +381,7 @@ $ openssl ts -reply -in synthex.tsr -text
         <div style="display:flex;justify-content:space-between;align-items:center;margin:24px 0 0"><span class="flabel" style="margin:0">Pipeline</span><span id="mode" aria-live="polite"></span></div>
         <div class="lane" id="lane">
           <div class="stage" data-st="FETCH"><span class="fill"></span><div class="row"><span class="nm">FETCH</span><span class="meta">Bright Data — Unlocker · SERP · Browser · Crawl</span><span class="ms"></span><span class="dot"></span></div></div>
-          <div class="stage" data-st="FORGE"><span class="fill"></span><div class="row"><span class="nm">FORGE</span><span class="meta">dedup + 28-rule prefilter · pre-LLM</span><span class="ms"></span><span class="dot"></span></div></div>
+          <div class="stage" data-st="FORGE"><span class="fill"></span><div class="row"><span class="nm">FORGE</span><span class="meta">dedup + 78 DJL + 28 prefilter · pre-LLM</span><span class="ms"></span><span class="dot"></span></div></div>
           <div class="stage" data-st="CLASSIFY"><span class="fill"></span><div class="row"><span class="nm">CLASSIFY</span><span class="meta">AI/ML API · up to 4 lenses ‖</span><span class="ms"></span><span class="dot"></span></div></div>
           <div class="stage" data-st="PROVE"><span class="fill"></span><div class="row"><span class="nm">PROVE</span><span class="meta">HMAC-SHA256 + RFC 3161 TSA</span><span class="ms"></span><span class="dot"></span></div></div>
         </div>
@@ -404,7 +404,7 @@ $ openssl ts -reply -in synthex.tsr -text
     <div class="kicker s-violet"><span class="dot"></span> WHO BUYS THIS · 4 BUYERS, 4 ARTIFACTS</div>
     <h2 class="head s-violet">One pipeline. <em>Four people can act on it today.</em></h2>
     <div class="grid4">
-      <div class="buyer s-teal"><div class="who">AI Ops / Sec Eng</div><div class="pain">"What did my agent just scrape — and was it safe?"</div><div class="art"><b>ARTIFACT</b>FORGE blocked-content log · 28-rule prefilter · per-stage latencies (OTel)</div></div>
+      <div class="buyer s-teal"><div class="who">AI Ops / Sec Eng</div><div class="pain">"What did my agent just scrape — and was it safe?"</div><div class="art"><b>ARTIFACT</b>FORGE blocked-content log · 2-layer (28+78) defense · sealed <code>decisions[]</code> audit trail · per-stage latencies (OTel)</div></div>
       <div class="buyer s-violet"><div class="who">CISO</div><div class="pain">"Prove what the agent saw, and that the bytes are unchanged."</div><div class="art"><b>ARTIFACT</b>RFC 3161-sealed Evidence Report · SHA-256 + HMAC · openssl-verifiable</div></div>
       <div class="buyer s-amber"><div class="who">General Counsel</div><div class="pain">"EU AI Act Art. 12 logging for AI data sources."</div><div class="art"><b>ARTIFACT</b>6-page signed PDF · audit trace page · timestamped provenance</div></div>
       <div class="buyer s-red"><div class="who">Risk / Underwriter</div><div class="pain">"Can I price the risk of this agent fleet?"</div><div class="art"><b>ARTIFACT</b>Risk Score 0–100 · formula on the PDF · <em>internal estimate, not a quote</em></div></div>
@@ -419,7 +419,7 @@ $ openssl ts -reply -in synthex.tsr -text
     <h2 class="head s-red">The pitch is honesty — <em>so it applies to us too</em>.</h2>
     <div class="honest-list">
       <div><span class="x">✕</span><span><b>RFC 3161 proves <em>when</em>, not truth.</b> The timestamp proves the bytes existed and are unchanged — not that the content is correct.</span></div>
-      <div><span class="x">✕</span><span><b>The prefilter covers text/HTML injection, not visual VPI.</b> 28 heuristic rules (aligned with SkillFortify) — not a formal proof, not screenshot-based attacks.</span></div>
+      <div><span class="x">✕</span><span><b>Both pre-LLM layers cover text/HTML + prompt-level, not visual VPI.</b> 28 web-injection rules (own) + 78 prompt-level rules ported from Aegis Apache-2.0 (sha pin <code>f24d957</code>, 78/78 fixture parity) — aligned with SkillFortify, not a formal proof, not screenshot-based attacks.</span></div>
       <div><span class="x">✕</span><span><b>Crawl is a multi-page crawl over Web Unlocker — not Bright Data's native Crawl product.</b> All 6 surfaces are verified live; we name the crawl honestly for what it is.</span></div>
       <div><span class="x">✕</span><span><b>The Risk Score is an internal estimate.</b> A deterministic heuristic with its formula printed on the PDF — not a Munich Re rating or a broker quote.</span></div>
       <div><span class="x">✕</span><span><b>OTel export and Cognee memory are opt-in.</b> The public endpoint keeps Cognee off to control cost; the rate-limit is best-effort.</span></div>
@@ -441,7 +441,7 @@ $ openssl ts -reply -in synthex.tsr -text
       <div class="winrow"><span class="c">✓</span> RFC 3161 TSA (DigiCert) — verifiable offline with <span class="mono">openssl ts</span></div>
       <div class="winrow"><span class="c">✓</span> Downloadable 6-page signed Evidence Report — 4-buyer framing (CISO · CFO · GC · Broker)</div>
       <div class="winrow"><span class="c">✓</span> 4-lens classification in parallel — GTM · Finance · Security · Supply-chain</div>
-      <div class="winrow"><span class="c">✓</span> 28-rule OWASP + BrowseSafe prefilter — blocks injection <em>before</em> the LLM call</div>
+      <div class="winrow"><span class="c">✓</span> Two-layer pre-LLM defense (28 web-injection + 78 prompt-level portado de Aegis) — blocks injection <em>before</em> the LLM call</div>
       <div class="winrow"><span class="c">✓</span> OpenTelemetry GenAI spans + live SSE pipeline view — observable, not a black box</div>
     </div>
     <p style="margin-top:32px;font-family:var(--sans);font-style:italic;font-size:22px;color:var(--amber)">The web your agents touch, now classified and provable.</p>
