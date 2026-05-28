@@ -9,6 +9,7 @@ import { classify as defaultClassify } from "./classify/aiml-client.js";
 import { buildEvidence } from "./prove/evidence-report.js";
 import { sha256 } from "./prove/hmac.js";
 import { withSpan, recordTokens, recordBlocked, recordSealed, startTelemetry } from "./telemetry/otel.js";
+import { computeTokensSaved } from "./telemetry/tokens.js";
 
 // Flag de rollback: EVIDENCE_SCHEMA_V2=0 fuerza payload v1 legacy (sin schema_version,
 // sin decisions[], sin policy_bundle_version). Default = v2. Sunset post-hackathon (FU-7).
@@ -91,15 +92,16 @@ export async function runPipeline(target, opts = {}) {
   // 2. FORGE: dedup + DJL (78 reglas harm/PII/jailbreak) + prefilter (28 reglas web-injection)
   // Orden: dedupe baja N → DJL filtra prompt-level → prefilter actúa sobre lo que DJL no bloqueó.
   // `blocked` es UNIÓN de ambas capas (no doble conteo); `reason` siempre set, `layer` distingue origen.
-  const { blocked, safe, dedup } = await timed("FORGE", async ({ record }) => {
+  // tokensSaved: estimación honesta de tokens NO gastados en LLM gracias a las 3 capas pre-LLM.
+  const { blocked, safe, dedup, tokensSaved } = await timed("FORGE", async ({ record }) => {
     // Default exact (SHA-256, lossless, sync). Semántico = opt-in: import() DINÁMICO para que el
     // grafo de deps de api/** nunca alcance @xenova/transformers (bundle serverless limpio).
     const { unique, stats } = dedupMode === "semantic"
       ? await (await import("./forge/dedup-semantic.js")).dedupeSemantic(docs)
       : dedupe(docs);
 
-    // DJL screen — 78 reglas regex deterministas portadas de Aegis. Bloquea harm/jailbreak/PII
-    // antes de prefilter (que solo cubre content-injection web).
+    // DJL screen — 78 reglas regex deterministas pre-LLM. Bloquea harm/jailbreak/PII antes de
+    // prefilter (que solo cubre content-injection web).
     const djled = unique.map((d) => ({ ...d, djl: djlScreen(d.content) }));
     const djlBlocked = djled
       .filter((d) => d.djl.decision === "BLOCK")
@@ -115,11 +117,13 @@ export async function runPipeline(target, opts = {}) {
 
     // Unión sin doble conteo: DJL y prefilter atacan vectores distintos sobre conjuntos disjuntos.
     const blocked = [...djlBlocked, ...prefBlocked];
+    const tokensSaved = computeTokensSaved({ original: docs, unique, blocked });
     record("dedup", stats.duplicateBlocks);
     record("djl_blocked", djlBlocked.length);
     record("blocked", blocked.length);
+    record("tokens_saved_est", tokensSaved.estimated_tokens);
     recordBlocked(blocked.length);
-    return { blocked, safe, dedup: stats };
+    return { blocked, safe, dedup: stats, tokensSaved };
   });
 
   // 3. CLASSIFY (cada doc seguro). lens="all" → las 4 lentes (GTM+Finance+Security+SupplyChain)
@@ -165,6 +169,7 @@ export async function runPipeline(target, opts = {}) {
         dedup,
         blocked: blockedForPayload,
         findings,
+        tokens_saved: tokensSaved,
         policy_bundle_version: {
           djl: DJL_POLICY_BUNDLE_VERSION,
           prefilter: PREFILTER_POLICY_BUNDLE_VERSION,

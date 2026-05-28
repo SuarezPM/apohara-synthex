@@ -50,6 +50,10 @@ function printSummary(ev) {
   if (schemaVer >= 2) {
     const pbv = p.policy_bundle_version ?? {};
     console.log(`  policy_bundle  : djl=${pbv.djl ?? "—"}  prefilter=${pbv.prefilter ?? "—"}`);
+    const ts = p.tokens_saved;
+    if (ts) {
+      console.log(`  tokens saved   : ~${ts.estimated_tokens} (est · dedup=${ts.dedup_bytes}B · blocked=${ts.blocked_bytes}B · ${ts.chars_per_token} chars/token)`);
+    }
   }
   console.log(`  contentHash    : ${ev.contentHash}`);
   console.log(`  seal method    : ${ev.seal?.method ?? "—"}`);

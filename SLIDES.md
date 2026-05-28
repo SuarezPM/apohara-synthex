@@ -6,7 +6,7 @@
 ---
 
 **1 · Hero.** "Your AI agents are scraping the live web right now. Do you know what they found, what they classified, and what you can **prove**?"
-*Stats strip: 161 tests · 151 pass / 10 skip / 0 fail · RFC 3161 timestamp verifiable · **two-layer deterministic pre-LLM defense — 28 web-injection + 78 prompt-level (106 rules total, 78/78 fixture coverage)** · 4 lenses in parallel · live UI at synthex.apohara.dev.*
+*Stats strip: 162 tests · 152 pass / 10 skip / 0 fail · RFC 3161 timestamp verifiable · **two-layer deterministic pre-LLM defense — 28 web-injection + 78 prompt-level (106 rules total, 78/78 fixture coverage) → tokens saved per scrape, sealed in the payload** · 4 lenses in parallel · live UI at synthex.apohara.dev.*
 
 **2 · The drama (May 2026).** Agents are in production scraping the open web — with **no audit trail of what they classified**. EU AI Act (Art. 12 logging) + DORA make that a liability. SIEMs see the agent's infra, not the web content it touched. And the MCP tooling layer itself now ships CVEs — **CVE-2025-68143** (CVSS 8.8 HIGH, path traversal in the official `mcp-server-git`, NVD Dec 2025): the attack surface is real, and broader than any one filter.
 
