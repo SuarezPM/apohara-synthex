@@ -47,6 +47,7 @@ export async function runPipeline(target, opts = {}) {
     fetcher,
     classifier,
     emitter,
+    dedupMode = "exact", // "semantic" (opt-in, CLI-only) carga dedup-semantic.js con import() dinámico
   } = opts;
 
   await startTelemetry(); // arranca el exporter OTLP solo si hay endpoint (idempotente)
@@ -82,7 +83,11 @@ export async function runPipeline(target, opts = {}) {
 
   // 2. FORGE: deduplicar + pre-filtrar (bloquear contenido malicioso antes de gastar LLM)
   const { blocked, safe, dedup } = await timed("FORGE", async ({ record }) => {
-    const { unique, stats } = dedupe(docs);
+    // Default exact (SHA-256, lossless, sync). Semántico = opt-in: import() DINÁMICO para que el
+    // grafo de deps de api/** nunca alcance @xenova/transformers (bundle serverless limpio).
+    const { unique, stats } = dedupMode === "semantic"
+      ? await (await import("./forge/dedup-semantic.js")).dedupeSemantic(docs)
+      : dedupe(docs);
     const screened = unique.map((d) => ({ ...d, screen: prefilter(d.content) }));
     const blocked = screened.filter((d) => d.screen.action === "BLOCK");
     const safe = screened.filter((d) => d.screen.action !== "BLOCK");

@@ -1,4 +1,7 @@
 node_modules/
+# @xenova/transformers model cache (dedup semántico opt-in — el modelo NO se commitea)
+.cache/
+*.onnx
 .env
 .env.local
 *.log

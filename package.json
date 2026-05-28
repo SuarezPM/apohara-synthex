@@ -4,12 +4,15 @@
   "description": "The JavaScript layer that turns brightdata-mcp into an intelligence & evidence platform: classify what your agents scrape and seal it verifiably (HMAC-SHA256 + RFC 3161 TSA).",
   "type": "module",
   "bin": {
-    "apohara-synthex": "./server.js"
+    "apohara-synthex": "./server.js",
+    "synthex": "bin/synthex.mjs"
   },
   "main": "./server.js",
   "scripts": {
     "test": "node --test",
     "demo": "node demo/demo.js",
+    "cli": "node bin/synthex.mjs",
+    "sample": "node scripts/gen-sample-report.mjs",
     "start": "node server.js"
   },
   "keywords": [

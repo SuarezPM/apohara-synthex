@@ -1,0 +1,72 @@
+SYNTHEX V3 — PROGRESS LOG (branch feat/deep-research)
+Principio rector: HONESTIDAD VERIFICABLE. Sin merge a main hasta OK de Pablo.
+
+== Baseline (2026-05-28) ==
+- Branch creada: feat/deep-research desde main (aa95d6f).
+- Suite baseline: 133 tests / 124 pass / 0 fail / 9 skip (los 9 skip son live-gated por env).
+- RULES.length actual = 28 (PI-1..10=10, SQLI×3, XSS×3, EXF×4, SSRF×3, PROTO-1, MCP×2, IPI×2).
+- Headers de prefilter.js documentan: v2=+8 reglas, v3=+8 reglas → base=12. El comentario
+  "12 base + 8 v2 + 8 v3" en forge.test.js:56 es CONSISTENTE con eso. NO se fuerza a 14/6.
+
+== Plan items (PRD .omc/prd.json) ==
+US-001 item1 FORGE audit | US-002 item2 CVE | US-003 item4 sample PDF
+US-004 item5 dedup semántico | US-005 item8 CLI | US-006 item9 business README
+US-007 item3 deck (último). Diferidos: 6 SLSA, 7 npm.
+
+== US-001 (item 1 FORGE audit) — DONE commit a404312 ==
+- Audit empírico (/tmp/forge-audit.mjs): ARIA aria-label/alt-text injection YA atrapados por
+  PI-1/PI-2/PI-3/MCP-1 (el texto de instrucción es la señal, no el canal) → DESCARTADOS, sin
+  reglas nuevas (una regla sobre aria-label= daría FP en todo sitio accesible).
+- 2 huecos REALES → mejora de regex (conteo 28 intacto):
+  · PROTO-1: "constructor":{"prototype"} (JSON-LD anidada) era ALLOW; ahora BLOCK. Antes solo
+    "constructor.prototype" con punto.
+  · MCP-2: <tool_response> daba solo REVIEW (IPI-1 sev6); ahora BLOCK. Antes solo
+    tool_result/function_results/tool_use.
+- +2 tests con aserción de no-solapamiento. Suite 135/126/0/9.
+- HONESTIDAD: el comentario "12 base + 8 v2 + 8 v3" era CORRECTO (headers prefilter.js: v2=+8
+  incl. EXF-3/4, v3=+8). El plan pre-compactación asumió mal "14/6". NO se forzó. Dejado intacto.
+
+== US-002 (item 2 CVE) — DONE commit d00ae34 ==
+- CVE-2025-68143 verificado vs NVD: CVSS 3.1 8.8 HIGH (CVSS 4.0 6.5), path traversal CWE-22 en
+  mcp-server-git oficial, pub 2025-12-17. En DRAMA como contexto de ecosistema (NO mitigación).
+
+== US-004 (item 5 dedup semántico) — DONE commit 2c6ae05 ==
+- dedup-semantic.js (coseno all-MiniLM-L6-v2, lazy dynamic import). dedupe() exacto intacto.
+- pipeline: dedupMode vía import() dinámico → api/ nunca alcanza @xenova (test seguridad).
+- @xenova NO declarado en package.json: su subárbol (onnxruntime→protobufjs) trae CRÍTICO.
+  Quitarlo bajó audit de 5 vulns (1 crit+4 high) a 1 high (MCP SDK, preexistente). Opt-in install.
+- LIVE gated (SEMANTIC_LIVE=1) verificado REAL: agrupa paráfrasis, separa lo distinto.
+
+== US-005 (item 8 CLI) — DONE commit 367e2f2 ==
+- bin/synthex.mjs (parser argv). --demo verificado e2e (hash/HMAC/TSA OK sin secrets).
+- package.json: preserva apohara-synthex bin + agrega synthex + script cli. Parser test 4/4.
+
+== US-003 (item 4 sample PDF) — DONE commit 3671064 ==
+- scripts/gen-sample-report.mjs (npm run sample): verifica hashOk+hmacOk ANTES de escribir.
+- Sample %PDF-1.3 6 págs A4 14731 bytes. README link bajo hero+nav. UI nota → GitHub.
+
+== US-006 (item 9 business README) — DONE commit 329581a ==
+- DESVIACIÓN HONESTA: "$55B Dimension Market Research" del plan es FALSO (DMR=$231.9B/2034).
+  Reemplazado por intersección de 3 mercados reales citados (MarketsandMarkets/MRFuture/Market.us).
+  Synthex=wedge. Pricing "proposed" + "sin ingreso hoy". Tabla competitiva.
+
+== HONESTY SYNC — commit 7ec38cc ==
+- Conteo real 143/133/10 sincronizado (README badge+quickstart, UI stat). Era stale 133/124/9 y 131/122.
+- Dominio canónico → synthex.apohara.dev (verificado live 200; Vercel como plataforma).
+
+== US-007 (item 3 deck) — DONE commit f2756ef ==
+- SLIDES.md ya era 15 slides REEF; alineado: conteo, dominio, CVE (slide 2), 5 APIs→6 surfaces
+  (slide 4 era inconsistente con slide 5), mercado (slide 13), npm run sample (slide 11).
+- Fence verificado: Z3/Zenodo solo como prior-art de Context_Forge ("not in this pipeline").
+
+== DIFERIDOS (gated en Pablo) ==
+- Item 6 SLSA provenance, item 7 npm publish @apohara/synthex — requieren cuentas/aprobación.
+
+== Learnings ==
+- El audit valida la regla del plan: el conteo es un RESULTADO, no un target. Mejor mejorar
+  regex de reglas existentes que inflar el conteo con reglas que solapan.
+- HONESTIDAD VERIFICABLE atrapó DOS supuestos falsos del plan pre-compactación: (1) el comentario
+  "12 base+8 v2" era CORRECTO (no había que cambiarlo a 14/6); (2) el "$55B Dimension Market
+  Research" era FALSO. En ambos, verificar venció a ejecutar el plan al pie de la letra.
+- @xenova/transformers arrastra un CRÍTICO (protobufjs vía onnxruntime) → para un producto de
+  seguridad, NO declararlo como dep; opt-in install del usuario.
