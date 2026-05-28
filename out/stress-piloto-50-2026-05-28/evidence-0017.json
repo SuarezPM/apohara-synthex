@@ -1,0 +1,57 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://hetzner.com/cloud/",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:16:27.525Z",
+    "sources": [
+      "https://hetzner.com/cloud/"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://hetzner.com/cloud/",
+        "contentHash": "46f76e95ec8b852a22c17e9a3153cb583da0051a8afab9d8b7310f1138d093c6",
+        "lens": "security",
+        "severity": 1,
+        "summary": "Standard cookie consent and location selection prompts present on a cloud hosting provider's website.",
+        "signals": [
+          "Cookie consent banner",
+          "Location/VAT selection prompt"
+        ]
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "b0bf6ecbe84b482a2926a918af930b0f2e9d2aa5b0f4e61a1ea769191ed6e165",
+  "seal": {
+    "hmacSha256": "3eebbcf9b696a3d2c3b67549d82db81b321bc1cdee768cf6fb38e6ea58f7c1d5",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:16:27.525Z",
+  "timings": {
+    "FETCH": 2092.9,
+    "FORGE": 3.3,
+    "CLASSIFY": 5030.4,
+    "PROVE": 0.2
+  }
+}

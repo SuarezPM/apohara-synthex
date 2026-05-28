@@ -1,0 +1,64 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://www.openai.com/pricing/",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:16:17.277Z",
+    "sources": [
+      "https://www.openai.com/pricing/"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [
+      {
+        "url": "https://www.openai.com/pricing/",
+        "reason": "DJL-PI-004",
+        "layer": "djl"
+      }
+    ],
+    "findings": [],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 39560,
+      "total_bytes": 39560,
+      "estimated_tokens": 9890,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": [
+      {
+        "stage": "DJL",
+        "url": "https://www.openai.com/pricing/",
+        "contentHash": "5bd031c1f169e6d8801ffe2a7bfd8b6cd9e090f0943daad1e91ae7c9d447372f",
+        "rule_matched": [
+          "DJL-PI-004"
+        ],
+        "outcome": "BLOCK",
+        "layer": "djl",
+        "policy_bundle_version": "djl-v1-872852684fbb",
+        "at": "2026-05-28T19:16:17.277Z"
+      }
+    ]
+  },
+  "contentHash": "4eda29fccccf826776340b3cbfecf82d9708232862b4d2c22d0e249233723fee",
+  "seal": {
+    "hmacSha256": "75de8924f0027853df660458f9338c2e23f709f0b5b5600c12e44ee92f8edffc",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:16:17.277Z",
+  "timings": {
+    "FETCH": 3217.8,
+    "FORGE": 4.6,
+    "CLASSIFY": 0,
+    "PROVE": 0.1
+  }
+}

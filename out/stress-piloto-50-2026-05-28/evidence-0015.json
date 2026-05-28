@@ -1,0 +1,64 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://render.com/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:16:26.885Z",
+    "sources": [
+      "https://render.com/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [
+      {
+        "url": "https://render.com/pricing",
+        "reason": "ssrf",
+        "layer": "prefilter"
+      }
+    ],
+    "findings": [],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 4007,
+      "total_bytes": 4007,
+      "estimated_tokens": 1002,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": [
+      {
+        "stage": "PREFILTER",
+        "url": "https://render.com/pricing",
+        "contentHash": "400e1ddda5bb73415b01b7bd17997f0c98765d5b7ebfa4943228c3b8e7b7bb43",
+        "rule_matched": [
+          "ssrf"
+        ],
+        "outcome": "BLOCK",
+        "layer": "prefilter",
+        "policy_bundle_version": "prefilter-v3-1d820634a235",
+        "at": "2026-05-28T19:16:26.885Z"
+      }
+    ]
+  },
+  "contentHash": "d0e1f327560b2952c0783941998d75fab32d10a27e2cd93200d1c82e1b946b6c",
+  "seal": {
+    "hmacSha256": "0cada76661535d8ee34b72c9ae06b13a70b68ede2e2549f7d12f1b1ff420075f",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:16:26.886Z",
+  "timings": {
+    "FETCH": 2291,
+    "FORGE": 0.7,
+    "CLASSIFY": 0,
+    "PROVE": 0.1
+  }
+}
