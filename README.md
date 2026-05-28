@@ -194,7 +194,7 @@ content diff and a 7th PDF page when delta is present.
 
 ## ◆ Honesty
 
-The pitch *is* honesty — so it applies to us too.
+The pitch *is* honesty — so it applies to us too. **Canonical caveats live in [`docs/HONESTY.md`](docs/HONESTY.md)** — RFC-3161 verification scope (v0.7.0 M1), rate-limit posture, PII-gate placement, durability choices, and Risk-Score semantics. This section is the short list; the doc is the long list.
 
 - **Proven live:** Bright Data — Web Unlocker (MCP **and** REST), SERP API, Browser API, Web Scraper / Datasets API, native MCP server (`server.js`) · AI/ML classification (single + 4-lens parallel) · DigiCert RFC 3161 timestamp · downloadable 6-page PDF · Vercel deploy (`/api/analyze` live, end-to-end) · Triggerware API · Cognee MCP tools.
 - **Crawl is multi-page over Web Unlocker, not the native Crawl product.** All 6 Bright Data surfaces are verified live; we name the crawl honestly — the native Crawl API stays opt-in via a Crawl `dataset_id`.

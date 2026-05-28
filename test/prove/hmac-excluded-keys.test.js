@@ -73,7 +73,7 @@ test("verifier acepta evidence con kg_status modificado post-sellado (chain robu
   }, { hmacKey: "k", requestTsa: false });
   // Mutar post-sellado.
   ev.payload.delta_chain.kg_status = "unreachable";
-  const v = verifyEvidence(ev, { hmacKey: "k" });
+  const v = await verifyEvidence(ev, { hmacKey: "k" });
   assert.equal(v.hashOk, true, "hash debe seguir OK tras cambiar kg_status");
   assert.equal(v.hmacOk, true, "HMAC debe seguir OK");
 });
@@ -85,7 +85,7 @@ test("verifier sobre report v0.5.0 legacy (sin kg_status) sigue funcionando (bac
     target: "x",
     findings: [{ severity: 7 }],
   }, { hmacKey: "k", requestTsa: false });
-  const v = verifyEvidence(ev, { hmacKey: "k" });
+  const v = await verifyEvidence(ev, { hmacKey: "k" });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
 });

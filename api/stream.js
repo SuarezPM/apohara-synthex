@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       evidence = await runDemo({ requestTsa: true, emitter: (evt) => send("stage", evt) });
     }
 
-    const verify = verifyEvidence(evidence, { hmacKey: verifyKey });
+    const verify = await verifyEvidence(evidence, { hmacKey: verifyKey });
     send("result", { mode, evidence, verify });
     res.end();
   } catch (e) {

@@ -16,7 +16,7 @@ export const tools = [
     }),
     execute: async ({ evidence, hmacKey }) => {
       const ev = typeof evidence === "string" ? JSON.parse(evidence) : evidence;
-      const result = verifyEvidence(ev, { hmacKey: hmacKey ?? process.env.SYNTHEX_HMAC_KEY ?? "synthex-dev" });
+      const result = await verifyEvidence(ev, { hmacKey: hmacKey ?? process.env.SYNTHEX_HMAC_KEY ?? "synthex-dev" });
       return JSON.stringify(result, null, 2);
     },
   },

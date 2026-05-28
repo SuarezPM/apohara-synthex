@@ -72,12 +72,19 @@ function printSummary(ev) {
   console.log(`  sealedAt       : ${ev.sealedAt ?? "—"}`);
 }
 
-function printVerify(ev, hmacKey) {
-  const v = verifyEvidence(ev, { hmacKey });
+async function printVerify(ev, hmacKey) {
+  const v = await verifyEvidence(ev, { hmacKey });
   console.log("\n── Verification ──");
   console.log(`  hash : ${v.hashOk ? "OK" : "FAIL"}`);
   console.log(`  HMAC : ${v.hmacOk === true ? "OK" : v.hmacOk === false ? "FAIL" : "skipped (no key)"}`);
   console.log(`  TSA  : ${v.tsaOk === true ? "OK (RFC 3161 · DigiCert)" : v.tsaOk === null ? "skipped (no TSA in payload)" : "FAIL"}`);
+  // M1 (v0.7.0): cryptographic CMS signature verification against pinned DigiCert anchors.
+  const sigLabel = v.signatureValid === true
+    ? "OK (chain verifies against pinned DigiCert anchors)"
+    : v.signatureValid === false
+      ? `FAIL (${v.signatureValidReason})`
+      : "skipped (no TSA in payload)";
+  console.log(`  sig  : ${sigLabel}`);
   return v;
 }
 
@@ -95,7 +102,7 @@ export async function main(argv) {
   printSummary(ev);
   if (ev.payload?.schema_version >= 2) printDecisionsTable(ev.payload.decisions ?? []);
   if (ev.payload?.delta_chain) printDeltaChain(ev.payload.delta_chain);
-  const v = printVerify(ev, hmacKey);
+  const v = await printVerify(ev, hmacKey);
   return v.hashOk && v.hmacOk !== false ? 0 : 1;
 }
 
