@@ -15,6 +15,11 @@ on:
     tags:
       - 'v*.*.*'
 
+# Opt-in para que actions/* (checkout/setup-node/upload-artifact) corran sobre
+# Node 24 ya — sin esto los warnings de deprecation 2026-06-02 siguen apareciendo.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions: read-all
 
 jobs:
