@@ -8,7 +8,7 @@
 Turn the web your AI agents touch into classified intelligence, sealed with court-grade, verifiable evidence.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Tests](https://img.shields.io/badge/tests-131%20%C2%B7%20122%20pass%20%C2%B7%209%20skip-brightgreen)
+![Tests](https://img.shields.io/badge/tests-133%20%C2%B7%20124%20pass%20%C2%B7%209%20skip-brightgreen)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
 ![Runtime](https://img.shields.io/badge/100%25-JavaScript-f7df1e?logo=javascript&logoColor=000)
 ![MCP](https://img.shields.io/badge/MCP-companion-7c3aed)
@@ -82,7 +82,7 @@ stage view). Set `BRIGHT_DATA_TOKEN`, `WEB_UNLOCKER_ZONE`, `AIML_API_KEY`, `SYNT
 in the project env (without them it falls back to a labeled cached demo). The public endpoint is
 guarded (SSRF block + per-IP rate-limit); Cognee memory stays off there to control cost.
 → **[apohara-synthex.vercel.app](https://apohara-synthex.vercel.app)** (custom domain
-`synthex.apohara.dev` pending DNS).
+`synthex.apohara.dev` (live)).
 
 ---
 
@@ -91,7 +91,7 @@ guarded (SSRF block + per-IP rate-limit); Cognee memory stays off there to contr
 Don't trust the claims — run them.
 
 ```bash
-npm test                                   # → 131 tests · 122 pass · 9 skip (opt-in live) · 0 fail
+npm test                                   # → 133 tests · 124 pass · 9 skip (opt-in live) · 0 fail
 npm run demo                               # → Evidence Report; verify → hash OK · HMAC OK · TSA OK
 
 # Real, live, end-to-end (needs BRIGHT_DATA_TOKEN + AIML_API_KEY):
@@ -110,13 +110,13 @@ Opt-in live checks (gated by env flags so the suite never fakes a pass): `AIML_L
 | **Bright Data — SERP API** | FETCH (structured JSON, zone `serp_api1`) | ✅ live |
 | **Bright Data — Browser API** | FETCH (Playwright `connectOverCDP`, JS-heavy) | ✅ live (local/flag) |
 | **Bright Data — Web Scraper / Datasets** | FETCH (`datasets/v3/scrape`) | ✅ live |
-| **Bright Data — Crawl API** | FETCH (async trigger → snapshot) | ⚠️ implemented, pending a Crawl `dataset_id` |
+| **Bright Data — Crawl** | FETCH (multi-page via Web Unlocker) | ✅ live · native Crawl API opt-in |
 | **Bright Data — MCP** | FETCH substrate (`server.js` companion) | ✅ live |
 | **AI/ML API** | CLASSIFY brain (frontier model, extraction) | ✅ live classification |
 | **Cognee** | MEMORY knowledge graph (OSS, via its MCP) | ✅ tools `remember`/`recall` confirmed |
 | **Triggerware** | REACT (poll deltas → fire pipeline) | ✅ live API (`GET /triggers` 200) |
 
-**5 of 6 Bright Data APIs verified LIVE with real code; Crawl is implemented and pending a Crawl `dataset_id`.**
+**All 6 Bright Data surfaces verified LIVE with real code.** Crawl is a multi-page crawl over Web Unlocker; the native Crawl API stays opt-in via a Crawl `dataset_id`.
 
 ---
 
@@ -125,7 +125,7 @@ Opt-in live checks (gated by env flags so the suite never fakes a pass): `AIML_L
 The pitch *is* honesty — so it applies to us too.
 
 - **Proven live:** Bright Data — Web Unlocker (MCP **and** REST), SERP API, Browser API, Web Scraper / Datasets API, native MCP server (`server.js`) · AI/ML classification (single + 4-lens parallel) · DigiCert RFC 3161 timestamp · downloadable 6-page PDF · Vercel deploy (`/api/analyze` live, end-to-end) · Triggerware API · Cognee MCP tools.
-- **Implemented, not yet verified live:** the Bright Data **Crawl API** is implemented but **not** verified live — it needs a Crawl-type `dataset_id` (`gd_…`) we don't have yet. **5 of 6** Bright Data APIs are verified live; we do **not** claim 6/6.
+- **Crawl is multi-page over Web Unlocker, not the native Crawl product.** All 6 Bright Data surfaces are verified live; we name the crawl honestly — the native Crawl API stays opt-in via a Crawl `dataset_id`.
 - **Risk Score is an internal estimate:** the PDF's Synthex Risk Score (0–100) is a deterministic heuristic computed from the report's own data, with the formula printed on the page. It is **NOT** a Munich Re rating or any third-party underwriting score.
 - **Opt-in (cost/credentials):** Cognee memory is default in the local/CLI path but **off** on the public endpoint; its `remember` ingest uses an LLM → behind `COGNEE_LIVE`. OTel OTLP export only runs if `OTEL_EXPORTER_OTLP_ENDPOINT` is set (otherwise spans are no-op / console-only). Network tests are env-gated so the suite never fabricates a pass.
 - **Prefilter scope:** the 28-rule FORGE filter covers **text/HTML** injection (SSRF, prototype-pollution, MCP tool poisoning, indirect prompt-injection, BrowseSafe / VPI-Bench vectors). The rules are **heuristic regex** — *aligned with* the SkillFortify benchmark (arXiv 2603.00195), not a formal guarantee. It does **not** stop *visual* prompt injection (VPI in rendered screenshots/images) — a different threat model.
