@@ -1,0 +1,92 @@
+name: Release with SLSA L3 provenance
+# Dispara con cualquier tag vN.N.N (e.g. v0.4.0). Construye el tarball npm,
+# calcula su sha256, y delega al generator oficial SLSA-3 de slsa-framework para
+# emitir provenance attestation firmada por sigstore + adjuntarla al release GitHub.
+#
+# Verificación tras release:
+#   gh release download vN.N.N
+#   slsa-verifier verify-artifact <tarball> \
+#     --provenance-path <tarball>.intoto.jsonl \
+#     --source-uri github.com/SuarezPM/apohara-synthex \
+#     --source-tag vN.N.N
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions: read-all
+
+jobs:
+  build:
+    name: Build npm tarball + compute hash
+    runs-on: ubuntu-latest
+    outputs:
+      tarball-name: ${{ steps.pack.outputs.tarball }}
+      hashes: ${{ steps.hash.outputs.hashes }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps (clean)
+        run: npm ci
+
+      - name: Run tests (gate before tarball)
+        run: npm test
+
+      - name: Pack
+        id: pack
+        run: |
+          npm pack
+          TARBALL=$(ls -1 *.tgz | head -n1)
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+
+      - name: Compute sha256 (base64-encoded for SLSA generator)
+        id: hash
+        run: |
+          set -euo pipefail
+          TARBALL="${{ steps.pack.outputs.tarball }}"
+          HASHES=$(sha256sum "$TARBALL" | base64 -w0)
+          echo "hashes=$HASHES" >> "$GITHUB_OUTPUT"
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball
+          path: ${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+
+  provenance:
+    name: Generate SLSA L3 provenance
+    needs: [build]
+    permissions:
+      actions: read       # detect the GitHub Actions environment
+      id-token: write     # mint OIDC token for sigstore signing
+      contents: write     # attach provenance to the GitHub Release
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: ${{ needs.build.outputs.hashes }}
+      upload-assets: true
+      provenance-name: ${{ needs.build.outputs.tarball-name }}.intoto.jsonl
+
+  attach-tarball:
+    name: Attach tarball to release
+    needs: [build, provenance]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-tarball
+
+      - name: Upload tarball to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${GITHUB_REF_NAME}" *.tgz --clobber
