@@ -6,8 +6,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildEvidence, verifyEvidence, HMAC_EXCLUDED_KEYS } from "../../src/prove/evidence-report.js";
 
-test("HMAC_EXCLUDED_KEYS contiene exactamente kg_status, kg_latency_ms, surface_status", () => {
-  assert.deepEqual([...HMAC_EXCLUDED_KEYS].sort(), ["kg_latency_ms", "kg_status", "surface_status"]);
+test("HMAC_EXCLUDED_KEYS cubre kg_*, surface_status (v0.6) + truncated/charsSeen/lowConfidenceTier (v0.7 T4/T11)", () => {
+  assert.deepEqual(
+    [...HMAC_EXCLUDED_KEYS].sort(),
+    ["charsSeen", "kg_latency_ms", "kg_status", "lowConfidenceTier", "surface_status", "truncated"],
+    "v0.7.0 expanded the exclude list with classifier emit-metadata (T4/M3) + free-tier flag (T11/AI-3)",
+  );
 });
 
 test("contentHash es idéntico cuando solo kg_status difiere", async () => {
@@ -88,4 +92,38 @@ test("verifier sobre report v0.5.0 legacy (sin kg_status) sigue funcionando (bac
   const v = await verifyEvidence(ev, { hmacKey: "k" });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
+});
+
+// v0.7.0 T4/M3 — emit-metadata invariant del classifier
+test("T4/M3: truncated + charsSeen + lowConfidenceTier NO mueven contentHash (HMAC_EXCLUDED_KEYS)", async () => {
+  // Misma evidencia sin emit-metadata vs con emit-metadata: contentHash idéntico.
+  const base = {
+    schema_version: 2,
+    target: "https://example.com",
+    findings: [{ severity: 5, summary: "x", signals: [] }],
+  };
+  const a = await buildEvidence(base, { hmacKey: "k", requestTsa: false });
+  const b = await buildEvidence(
+    { ...base, findings: [{ ...base.findings[0], truncated: true, charsSeen: 8000, lowConfidenceTier: "free-low-quality" }] },
+    { hmacKey: "k", requestTsa: false },
+  );
+  assert.equal(a.contentHash, b.contentHash, "truncated/charsSeen/lowConfidenceTier deben quedar fuera del HMAC");
+  assert.equal(a.seal.hmacSha256, b.seal.hmacSha256);
+});
+
+// v0.7.0 T7/M8 — shape guard contra evidence malformado
+test("T7/M8: verifyEvidence rechaza input malformado sin crashear", async () => {
+  for (const bad of [null, undefined, "string", 42, {}, { payload: {} }, { payload: {}, contentHash: 123 }]) {
+    const v = await verifyEvidence(bad, { hmacKey: "k" });
+    assert.equal(v.hashOk, false, `${typeof bad} input must be rejected`);
+    assert.equal(v.error, "malformed evidence");
+  }
+});
+
+test("T7/M8: forged-but-well-shaped evidence devuelve hashOk:false (NO bypass)", async () => {
+  const ev = await buildEvidence({ schema_version: 2, target: "x", findings: [] }, { hmacKey: "k", requestTsa: false });
+  ev.payload.findings.push({ injected: true }); // forge sin re-sellar
+  const v = await verifyEvidence(ev, { hmacKey: "k" });
+  assert.equal(v.hashOk, false, "tampering detectado");
+  assert.equal(v.hmacOk, false);
 });

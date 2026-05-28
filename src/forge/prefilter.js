@@ -22,6 +22,12 @@
 const RULES = [
   { id: "PI-1", re: /ignore (all |the )?(previous|prior|above) (instructions|prompts)/i, category: "prompt-injection", severity: 9 },
   { id: "PI-2", re: /disregard (your |the )?(system )?(prompt|instructions)/i, category: "prompt-injection", severity: 9 },
+  // v3.2 (v0.7.0 T12/H2) — Spanish/voseo prompt-injection. Rioplatense + neutro. Pareja del
+  // PI-1/PI-2 inglés para que un atacante hispanohablante no esquive con sólo cambiar idioma.
+  { id: "PI-ES-1", re: /\bignor[áa]\s+(las|todas las|esas|las anteriores)\s+(instrucciones|reglas|órdenes|directivas)/i, category: "prompt-injection", severity: 9 },
+  { id: "PI-ES-2", re: /\bolvid[áa]\s+(todo|las|todas las|esas)\s+(instrucciones|reglas|órdenes)/i, category: "prompt-injection", severity: 9 },
+  { id: "PI-ES-3", re: /\bsos\s+(ahora|un nuevo|otro)\s+(dan|jailbroken|agente|asistente sin)/i, category: "prompt-injection", severity: 8 },
+  { id: "PI-ES-4", re: /\bsin\s+(restricciones|filtros|límites|reglas|censura)\b/i, category: "prompt-injection", severity: 8 },
   { id: "PI-3", re: /you are now (a |an )?(dan|jailbroken|developer mode)/i, category: "prompt-injection", severity: 8 },
   { id: "PI-4", re: /\b(reveal|print|show|leak) (me )?(your |the )?(system prompt|instructions|api key|secret)/i, category: "prompt-injection", severity: 8 },
   // v2 — vectores BrowseSafe / VPI-Bench (2026)

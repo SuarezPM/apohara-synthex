@@ -22,6 +22,13 @@ export const HMAC_EXCLUDED_KEYS = Object.freeze([
   "kg_status",
   "kg_latency_ms",
   "surface_status",
+  // v0.7.0 T4/M3 — emit-metadata del classifier sobre la truncation del INPUT LLM (no de la
+  // raw text). Excluidas del HMAC pre-image para que el contentHash no dependa de si el
+  // classifier vio el doc entero o lo truncó. La raw text en el payload sigue intacta.
+  "truncated",
+  "charsSeen",
+  // v0.7.0 T11/AI-3 — flag visible "low confidence" para tier free; emit-metadata UI/PDF.
+  "lowConfidenceTier",
 ]);
 
 function _stripExcludedKeys(value) {
@@ -101,6 +108,11 @@ export async function buildEvidence(payload, { hmacKey, requestTsa = true } = {}
  * }>}
  */
 export async function verifyEvidence(evidence, { hmacKey, trustedCerts } = {}) {
+  // T7/M8 — shape guard contra input malformado. Sin esto, evidence.payload undefined
+  // o evidence.contentHash no-string puede crashear _serializeForHmac. Defensa cheap.
+  if (!evidence || typeof evidence !== "object" || !evidence.payload || typeof evidence.contentHash !== "string") {
+    return { hashOk: false, hmacOk: null, tsaOk: null, signatureValid: null, signatureValidReason: null, error: "malformed evidence" };
+  }
   // N3: el verifier auto-detecta schema_version del payload — back-compat v1 siempre.
   // El flag EVIDENCE_SCHEMA_V2 (env) sólo controla el sealer (qué emitir), nunca al verifier.
   const canonical = _serializeForHmac(evidence.payload);

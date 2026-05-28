@@ -172,7 +172,7 @@ async function verifyCmsSigned(signed, trustedCerts) {
  * @param {Uint8Array} hashBytes  32 bytes del SHA-256 del contenido.
  * @returns {Promise<Uint8Array>} TimeStampResp DER crudo (se guarda en el evidence).
  */
-export async function requestTimestamp(hashBytes, { tsaUrl = DEFAULT_TSA_URL, timeoutMs = 10000 } = {}) {
+export async function requestTimestamp(hashBytes, { tsaUrl = DEFAULT_TSA_URL, timeoutMs = 10000, retries = 2 } = {}) {
   const messageImprint = new pkijs.MessageImprint({
     hashAlgorithm: new pkijs.AlgorithmIdentifier({ algorithmId: SHA256_OID }),
     hashedMessage: new asn1js.OctetString({ valueHex: toArrayBuffer(hashBytes) }),
@@ -185,14 +185,33 @@ export async function requestTimestamp(hashBytes, { tsaUrl = DEFAULT_TSA_URL, ti
     nonce: new asn1js.Integer({ valueHex: nonce.buffer }),
   });
   const der = req.toSchema().toBER(false);
-  const resp = await fetch(tsaUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/timestamp-query" },
-    body: Buffer.from(der),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!resp.ok) throw new Error(`TSA HTTP ${resp.status}`);
-  return new Uint8Array(await resp.arrayBuffer());
+
+  // T6/M6 — retry-with-backoff sobre el fetch. Backoff exponencial bounded:
+  // intentos 1..(retries+1), sleep 500ms, 1000ms, ..., 500ms * 2^(i-1).
+  // Si todos fallan rethrow el último error → evidence-report.js cae a HMAC-only (fallback
+  // honesto preservado, gracias a su try/catch alrededor de requestTimestamp).
+  const maxAttempts = Math.max(1, retries + 1);
+  let lastErr = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const resp = await fetch(tsaUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/timestamp-query" },
+        body: Buffer.from(der),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!resp.ok) throw new Error(`TSA HTTP ${resp.status}`);
+      return new Uint8Array(await resp.arrayBuffer());
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxAttempts) {
+        const backoffMs = 500 * Math.pow(2, attempt - 1); // 500, 1000, 2000, ...
+        if (process.env.SYNTHEX_DEBUG) console.warn(`[tsa] retry ${attempt}/${maxAttempts - 1} after ${backoffMs}ms: ${err.message}`);
+        await new Promise((r) => setTimeout(r, backoffMs));
+      }
+    }
+  }
+  throw lastErr ?? new Error("TSA request failed after retries");
 }
 
 /**

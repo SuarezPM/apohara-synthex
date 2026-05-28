@@ -8,7 +8,7 @@
 Turn the web your AI agents touch into classified intelligence, sealed with court-grade, verifiable evidence.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Tests](https://img.shields.io/badge/tests-262%20%C2%B7%20252%20pass%20%C2%B7%2010%20skip-brightgreen)
+![Tests](https://img.shields.io/badge/tests-suite%20green-brightgreen)
 ![Defense Layers](https://img.shields.io/badge/pre--LLM_defense-28%20web--injection%20%2B%2078%20prompt--level-orange)
 ![Token Saver](https://img.shields.io/badge/tokens--saved-deterministic%20pre--LLM%20block%20%2B%20dedup-9775fa)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
@@ -95,7 +95,7 @@ also reachable at `apohara-synthex.vercel.app`).
 Don't trust the claims — run them.
 
 ```bash
-npm test                                   # → 162 tests · 152 pass · 10 skip (opt-in live) · 0 fail
+npm test                                   # → full suite green (zero failing, opt-in live tests skipped)
 npm run demo                               # → Evidence Report; verify → hash OK · HMAC OK · TSA OK
 npm run bench:djl                          # → logs/djl-latency.json (p95<5ms, p99 adv<50ms)
 node bin/decode-evidence.js <evidence.json>  # offline audit-trail inspector (verifies HMAC + TSA, prints decisions[])
