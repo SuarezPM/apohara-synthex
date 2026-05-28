@@ -36,6 +36,18 @@ function printDecisionsTable(decisions) {
   console.log();
 }
 
+function printDeltaChain(dc) {
+  // T1.5 — solo muestra la cadena (no cross-verify; eso es v0.6.1).
+  if (!dc || typeof dc !== "object") return;
+  console.log("\n── Delta Chain (v0.6.0 Watch & Prove) ──");
+  console.log(`  previous_tsa_serial : ${dc.previous_tsa_serial ?? "— (cold start)"}`);
+  console.log(`  current_tsa_serial  : ${dc.current_tsa_serial ?? "— (TSA unavailable)"}`);
+  const ds = dc.diff_summary ?? {};
+  console.log(`  diff_summary        : +${ds.added ?? 0} added · -${ds.removed ?? 0} removed · ~${ds.changed ?? 0} changed`);
+  console.log(`  kg_status           : ${dc.kg_status ?? "—"}${dc.kg_skip_reason ? ` (reason: ${dc.kg_skip_reason})` : ""}`);
+  console.log();
+}
+
 function printSummary(ev) {
   const p = ev.payload ?? {};
   const schemaVer = p.schema_version ?? 1;
@@ -82,6 +94,7 @@ export async function main(argv) {
 
   printSummary(ev);
   if (ev.payload?.schema_version >= 2) printDecisionsTable(ev.payload.decisions ?? []);
+  if (ev.payload?.delta_chain) printDeltaChain(ev.payload.delta_chain);
   const v = printVerify(ev, hmacKey);
   return v.hashOk && v.hmacOk !== false ? 0 : 1;
 }
