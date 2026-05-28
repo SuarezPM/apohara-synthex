@@ -1,6 +1,6 @@
 {
   "name": "@apohara/synthex",
-  "version": "0.5.0",
+  "version": "0.6.0-rc.0",
   "description": "The JavaScript layer that turns brightdata-mcp into an intelligence & evidence platform: classify what your agents scrape and seal it verifiably (HMAC-SHA256 + RFC 3161 TSA). v4: two-layer pre-LLM defense (28 web-injection + 78 prompt-level deterministic rules) + decisions[] audit trail + canonicalize HMAC.",
   "type": "module",
   "bin": {
