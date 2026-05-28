@@ -1,8 +1,12 @@
 // CLASSIFY — clasificación tri-lente (GTM / Finance / Security) vía AI/ML API.
 // AI/ML API es OpenAI-compatible (/chat/completions). Key: process.env.AIML_API_KEY.
 // El parseo está separado de la llamada de red para poder testear la lógica sin gastar API.
+import { pickModel, MODEL_TIERS, DEFAULT_TIER } from "./tiers.js";
+
 const DEFAULT_BASE = process.env.AIML_BASE_URL || "https://api.aimlapi.com/v1";
-const DEFAULT_MODEL = process.env.AIML_MODEL || "deepseek/deepseek-non-thinking-v3.2-exp";
+// AIML_MODEL env conserva back-compat: si está set, gana sobre tier.
+// Si no, se resuelve por tier (DEFAULT_TIER=oss → MODEL_TIERS.oss).
+const DEFAULT_MODEL = process.env.AIML_MODEL || MODEL_TIERS[DEFAULT_TIER];
 
 export const LENSES = {
   gtm: "GTM/competitive intelligence: pricing, hiring, product launches, market moves, competitor signals",
@@ -33,7 +37,12 @@ export async function classify(text, lens = "security", opts = {}) {
   // `null` explícito = "sin key" (lanza); `undefined` = usar el env.
   const apiKey = opts.apiKey !== undefined ? opts.apiKey : process.env.AIML_API_KEY;
   if (!apiKey) throw new Error("Falta AIML_API_KEY para clasificar (AI/ML API).");
-  const model = opts.model ?? DEFAULT_MODEL;
+  // opts.model gana; si no, pickModel(opts.tier) o DEFAULT_MODEL si tampoco hay tier.
+  const model = opts.model
+    ? opts.model
+    : opts.tier
+      ? pickModel({ tier: opts.tier })
+      : DEFAULT_MODEL;
   const baseUrl = opts.baseUrl ?? DEFAULT_BASE;
   const lensDesc = LENSES[lens] ?? lens;
 
