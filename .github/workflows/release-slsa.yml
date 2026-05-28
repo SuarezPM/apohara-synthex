@@ -90,3 +90,31 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${GITHUB_REF_NAME}" *.tgz --clobber
+
+  publish-npm:
+    name: Publish to npm registry with provenance
+    needs: [build, provenance, attach-tarball]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read       # checkout
+      id-token: write      # npm provenance (sigstore OIDC)
+    steps:
+      - name: Checkout source (npm publish needs package.json + content)
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install deps (clean)
+        run: npm ci
+
+      - name: Publish to npm (with --provenance attestation)
+        # --provenance emits an npm-native attestation in addition to SLSA L3.
+        # The npm registry stores it as `npm provenance` badge on the package page,
+        # independent of the SLSA attestation attached to the GitHub Release.
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
