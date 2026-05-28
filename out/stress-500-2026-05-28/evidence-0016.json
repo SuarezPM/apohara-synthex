@@ -1,0 +1,57 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://cloud.google.com/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:18:27.514Z",
+    "sources": [
+      "https://cloud.google.com/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://cloud.google.com/pricing",
+        "contentHash": "af1fd383511ca97b9ee7b210a9c3e0653a144054751a74e6be878b5fe43d873a",
+        "lens": "security",
+        "severity": 1,
+        "summary": "A generic 'not supported' endpoint message may expose minimal system information but poses a low security risk.",
+        "signals": [
+          "Potential information disclosure through error messages",
+          "Endpoint enumeration vulnerability"
+        ]
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "b27c29bcf1340290f5b522dab3acba1f1c43fcacb5fa13493c1aa23420a12359",
+  "seal": {
+    "hmacSha256": "2bc432583b6d443a681e7d275230e3f7c685d984a6a4bebc94d7cb4c75f57360",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:18:27.514Z",
+  "timings": {
+    "FETCH": 714.9,
+    "FORGE": 0.1,
+    "CLASSIFY": 5140.1,
+    "PROVE": 0.2
+  }
+}

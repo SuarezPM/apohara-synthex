@@ -1,0 +1,57 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://www.anthropic.com/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:16:20.940Z",
+    "sources": [
+      "https://www.anthropic.com/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://www.anthropic.com/pricing",
+        "contentHash": "355acbbe481a453f0b24457849a02df537004dcc4971f69aa320531a9e4a8b23",
+        "lens": "security",
+        "severity": 0,
+        "summary": "Public pricing page for a legitimate AI service provider, no immediate security threats detected.",
+        "signals": [
+          "Public website content",
+          "Standard corporate navigation and information architecture"
+        ]
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "56dbc7fd321772b66750cadda740a5bd46f0b8d7d571d20b0454d4ed1b2ca24f",
+  "seal": {
+    "hmacSha256": "9aa8e62c3f68747bd465aef70b8aafb5af9438e042099d3dc9a000f47f07df34",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:16:20.941Z",
+  "timings": {
+    "FETCH": 2264.4,
+    "FORGE": 4.8,
+    "CLASSIFY": 2744.5,
+    "PROVE": 0.2
+  }
+}

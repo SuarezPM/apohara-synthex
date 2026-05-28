@@ -1,0 +1,60 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://www.notion.com/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:18:21.658Z",
+    "sources": [
+      "https://www.notion.com/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://www.notion.com/pricing",
+        "contentHash": "1621402f93881785cce58bec5e5350a311cbabcfc509adda89b22f10b4a3be71",
+        "lens": "security",
+        "severity": 3,
+        "summary": "Pricing page details security features like SSO, audit logs, and DLP for Business/Enterprise plans, but highlights potential data exposure in lower tiers.",
+        "signals": [
+          "Publicly accessible pricing page reveals security feature segmentation",
+          "Free/Plus tiers lack advanced security controls (e.g., SSO, audit logs)",
+          "Enterprise plan emphasizes zero data retention with LLM providers",
+          "Business plan includes SAML SSO and domain verification",
+          "Enterprise offers DLP and SIEM integrations for compliance"
+        ]
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "b380cd6d0b7ea4d26630c4d3349223c1e9e83af2cd510a83b3891a5780d0051f",
+  "seal": {
+    "hmacSha256": "efd9a7c0a0db62a2d8d3383d44dec80b30e94ed280d84b8ffc135d43a8073c78",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:18:21.658Z",
+  "timings": {
+    "FETCH": 1248.4,
+    "FORGE": 12,
+    "CLASSIFY": 7736.6,
+    "PROVE": 0.1
+  }
+}

@@ -17,8 +17,17 @@ export class CogneeClient {
     this.transport = null;
   }
 
-  /** Arranca el cognee MCP local y conecta. NOTA: la primera conexión es lenta (uv + carga de modelos). */
+  /** Arranca el cognee MCP local y conecta. NOTA: la primera conexión es lenta (uv + carga de modelos).
+   *  PM-2 guard (T0.4): si COGNEE_REMOTE_URL está set, abort — el cliente es estrictamente local
+   *  para que el stress test nunca filtre contenido scrapeado a un endpoint remoto por accidente. */
   async connect() {
+    if (process.env.COGNEE_REMOTE_URL) {
+      throw new Error(
+        `COGNEE_REMOTE_URL is set ("${process.env.COGNEE_REMOTE_URL}"). ` +
+        `Synthex CogneeClient is strictly local (stdio MCP). ` +
+        `Unset the variable, or use a separate cloud client explicitly.`,
+      );
+    }
     this.transport = new StdioClientTransport({
       command: "uv",
       args: ["run", "--directory", this.cogneeDir, "cognee-mcp", "--transport", "stdio"],

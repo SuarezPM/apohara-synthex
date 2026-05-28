@@ -1,0 +1,57 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://www.cloudflare.com/plans/",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:16:24.593Z",
+    "sources": [
+      "https://www.cloudflare.com/plans/"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://www.cloudflare.com/plans/",
+        "contentHash": "17ea45f6113dacf029789abf39eb822b9f95f37d31fffe54fb9982f56a5606f3",
+        "lens": "security",
+        "severity": 0,
+        "summary": "Public pricing page with no immediate security threats or data exposure.",
+        "signals": [
+          "Public information disclosure",
+          "Standard service terms"
+        ]
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "ad56e13259213915c242497e121e9114a78ccaa9d478ef496df89165c2fa48a1",
+  "seal": {
+    "hmacSha256": "1144c3cc19758279148be8772d039210c0b93deafb735d616a942c72f0c8fe59",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:16:24.593Z",
+  "timings": {
+    "FETCH": 1540.2,
+    "FORGE": 3.9,
+    "CLASSIFY": 4477.1,
+    "PROVE": 0.2
+  }
+}

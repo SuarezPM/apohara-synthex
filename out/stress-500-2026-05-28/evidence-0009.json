@@ -1,0 +1,58 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://www.anthropic.com/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:18:19.682Z",
+    "sources": [
+      "https://www.anthropic.com/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://www.anthropic.com/pricing",
+        "contentHash": "355acbbe481a453f0b24457849a02df537004dcc4971f69aa320531a9e4a8b23",
+        "lens": "security",
+        "severity": 0,
+        "summary": "No immediate security threats detected; the content is a standard public pricing and product information page for Anthropic's Claude AI platform.",
+        "signals": [
+          "Public product and pricing information",
+          "No exposed credentials or sensitive data",
+          "Standard corporate website structure"
+        ]
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "b77f46d793a87b221b24215370d940c8f594b2bdcc415d4a35945e26f200b9bb",
+  "seal": {
+    "hmacSha256": "c9a9727f572569326bc1fe818a5d9842917356a35b6b99656c33d7c623a845b7",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:18:19.682Z",
+  "timings": {
+    "FETCH": 2292.4,
+    "FORGE": 4.9,
+    "CLASSIFY": 4723.2,
+    "PROVE": 0.2
+  }
+}

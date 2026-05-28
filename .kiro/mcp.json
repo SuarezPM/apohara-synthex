@@ -1,0 +1,16 @@
+{
+  "$schema": "https://kiro.dev/schemas/mcp.json",
+  "comment": "Make @apohara/synthex available as a Kiro-consumable MCP server. Run via the npm-published bin (after v0.6.0 publish) or via node ./server.js from a local checkout.",
+  "servers": {
+    "synthex": {
+      "command": "npx",
+      "args": ["-y", "@apohara/synthex@latest"],
+      "env": {
+        "BRIGHT_DATA_API_KEY": "${env:BRIGHT_DATA_API_KEY}",
+        "AIML_API_KEY": "${env:AIML_API_KEY}",
+        "SYNTHEX_HMAC_KEY": "${env:SYNTHEX_HMAC_KEY}"
+      },
+      "transport": "stdio"
+    }
+  }
+}

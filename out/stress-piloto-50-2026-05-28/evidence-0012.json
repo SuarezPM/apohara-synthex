@@ -1,0 +1,54 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://brightdata.com/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:16:21.831Z",
+    "sources": [
+      "https://brightdata.com/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://brightdata.com/pricing",
+        "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lens": "security",
+        "severity": 0,
+        "summary": "No se detectaron amenazas de seguridad en la consulta.",
+        "signals": []
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "f9806f05318c0687a4a3df5a014aa3402c12eb112989b5f174b90315306e1f8c",
+  "seal": {
+    "hmacSha256": "fbee6afabb93ab6bd193edeec18054dbc0d80f34d63c731b24f65ea1c724f80b",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:16:21.831Z",
+  "timings": {
+    "FETCH": 1303.4,
+    "FORGE": 5.6,
+    "CLASSIFY": 3244.3,
+    "PROVE": 0.1
+  }
+}

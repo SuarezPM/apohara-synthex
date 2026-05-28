@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Synthex — Live Stress Dashboard</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --bg-card: #131722;
+    --ink: #e2e8f0;
+    --muted: #6b7280;
+    --brand: #8b5cf6;
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --crit: #ef4444;
+    --line: #1f2937;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font: 14px/1.4 ui-monospace, "SF Mono", Menlo, monospace; background: var(--bg); color: var(--ink); padding: 16px; }
+  h1 { font-size: 18px; font-weight: 700; color: var(--brand); margin-bottom: 4px; }
+  .sub { color: var(--muted); margin-bottom: 20px; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+  .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 6px; }
+  .value { font-size: 28px; font-weight: 700; color: var(--ink); }
+  .value.ok { color: var(--ok); }
+  .value.warn { color: var(--warn); }
+  .value.crit { color: var(--crit); }
+  .meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; background: var(--bg-card); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); font-size: 12px; }
+  th { background: var(--line); color: var(--muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+  tr:last-child td { border-bottom: none; }
+  td.ok { color: var(--ok); }
+  td.fail { color: var(--crit); }
+  td.url { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 11px; color: var(--muted); }
+  .status-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .empty { color: var(--muted); padding: 24px; text-align: center; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>SYNTHEX — Live Stress Dashboard</h1>
+<p class="sub">Reads <code>.omc/state/v060-telemetry.jsonl</code> · refreshes every 3s</p>
+
+<div class="status-bar">
+  <span class="dot"></span>
+  <span id="status">connecting…</span>
+  <span>·</span>
+  <span id="last-update">—</span>
+</div>
+
+<div class="grid" id="kpis"></div>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>URL</th>
+      <th>Surface</th>
+      <th>Lat (ms)</th>
+      <th>$</th>
+      <th>Hash</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody id="tbody"></tbody>
+</table>
+
+<script>
+const TELEMETRY_PATH = ".omc/state/v060-telemetry.jsonl";
+const REFRESH_MS = 3000;
+
+function percentile(sortedAsc, p) {
+  if (sortedAsc.length === 0) return null;
+  const idx = Math.min(sortedAsc.length - 1, Math.ceil((p / 100) * sortedAsc.length) - 1);
+  return sortedAsc[Math.max(0, idx)];
+}
+
+function kpiCard(label, value, color, meta) {
+  return `<div class="card">
+    <div class="label">${label}</div>
+    <div class="value ${color || ""}">${value}</div>
+    ${meta ? `<div class="meta">${meta}</div>` : ""}
+  </div>`;
+}
+
+function render(records) {
+  if (records.length === 0) {
+    document.getElementById("kpis").innerHTML = `<div class="empty">waiting for stress run to start…</div>`;
+    document.getElementById("tbody").innerHTML = "";
+    return;
+  }
+  const ok = records.filter(r => r.success);
+  const fail = records.filter(r => !r.success);
+  const latencies = ok.map(r => r.latency_ms).sort((a, b) => a - b);
+  const p50 = percentile(latencies, 50);
+  const p95 = percentile(latencies, 95);
+  const lastSpend = records[records.length - 1].spent_so_far_usd || 0;
+  const tsaOk = ok.filter(r => r.tsa_serial).length;
+  const tsaPct = ok.length ? Math.round(100 * tsaOk / ok.length) : 0;
+  const blockedTotal = records.reduce((s, r) => s + (r.blocked_count || 0), 0);
+  const successRate = records.length ? Math.round(100 * ok.length / records.length) : 0;
+  const srColor = successRate >= 92 ? "ok" : successRate >= 80 ? "warn" : "crit";
+
+  document.getElementById("kpis").innerHTML = [
+    kpiCard("URLs processed", records.length, "", `${ok.length} ok · ${fail.length} fail`),
+    kpiCard("Success rate", successRate + "%", srColor, "SC-5 gate: >=92%"),
+    kpiCard("p50 latency", (p50 ?? "—") + "ms", "", "median of ok"),
+    kpiCard("p95 latency", (p95 ?? "—") + "ms", p95 > 8000 ? "warn" : "", "tail latency"),
+    kpiCard("BD cost (est)", "$" + lastSpend.toFixed(3), "", "per-surface estimate"),
+    kpiCard("TSA OK", tsaPct + "%", "", `${tsaOk}/${ok.length} sealed`),
+    kpiCard("Blocked pre-LLM", blockedTotal, "", "FORGE + DJL"),
+  ].join("");
+
+  const recent = records.slice(-20).reverse();
+  document.getElementById("tbody").innerHTML = recent.map((r, i) => `
+    <tr>
+      <td>${records.length - i}</td>
+      <td class="url" title="${(r.url || "").replace(/"/g, "&quot;")}">${r.url || "—"}</td>
+      <td>${r.surface || "—"}</td>
+      <td>${r.latency_ms ?? "—"}</td>
+      <td>$${(r.cost_estimate_usd ?? 0).toFixed(4)}</td>
+      <td>${r.content_hash ? r.content_hash.slice(0, 12) + "…" : "—"}</td>
+      <td class="${r.success ? "ok" : "fail"}">${r.success ? "✓ ok" : "✗ " + (r.error || "fail").slice(0, 30)}</td>
+    </tr>
+  `).join("");
+}
+
+async function poll() {
+  try {
+    const resp = await fetch(TELEMETRY_PATH + "?t=" + Date.now(), { cache: "no-store" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+    const records = text.split("\n").filter(Boolean).map(line => {
+      try { return JSON.parse(line); } catch { return null; }
+    }).filter(Boolean);
+    render(records);
+    document.getElementById("status").textContent = `live · ${records.length} records`;
+    document.getElementById("last-update").textContent = "updated " + new Date().toLocaleTimeString();
+  } catch (e) {
+    document.getElementById("status").textContent = `offline (${e.message})`;
+  }
+}
+
+poll();
+setInterval(poll, REFRESH_MS);
+</script>
+
+</body>
+</html>

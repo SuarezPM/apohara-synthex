@@ -1,0 +1,54 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://aws.amazon.com/ec2/pricing/on-demand/",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:16:27.277Z",
+    "sources": [
+      "https://aws.amazon.com/ec2/pricing/on-demand/"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://aws.amazon.com/ec2/pricing/on-demand/",
+        "contentHash": "4e1a7dca707de46bbca3e279786fac9c186e9a4293fac01ef7b619ae6c11cbd2",
+        "lens": "security",
+        "severity": 0,
+        "summary": "Página de precios estándar de AWS EC2 sin señales de amenazas o exposición de datos.",
+        "signals": []
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "312607c73d3d8a66943274715423e40f50924a03951087df7935776bea2a5e4a",
+  "seal": {
+    "hmacSha256": "92e37b51ae654ca330e8f1740dec7b174b417416704c6f70b1807952d44024c8",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:16:27.277Z",
+  "timings": {
+    "FETCH": 1433,
+    "FORGE": 2.5,
+    "CLASSIFY": 4901,
+    "PROVE": 0.1
+  }
+}

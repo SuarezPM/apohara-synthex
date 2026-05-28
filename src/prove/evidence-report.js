@@ -12,10 +12,36 @@ import { sha256, hmacSign, hmacVerify } from "./hmac.js";
 import { requestTimestamp, verifyTimestamp } from "./tsa.js";
 import { canonicalize } from "./canonicalize.js";
 
+// HMAC_EXCLUDED_KEYS (T1.6 del PRD v0.6.0) — claves que SON metadata de "qué pasó al
+// emitir/sellar" pero NO parte del contenido sellado. Excluirlas garantiza determinism
+// cross-run: dos lecturas del MISMO URL con distinto kg_status (run A: Cognee ok, run B:
+// Cognee timeout) producen el MISMO contentHash, evitando "cambios fantasma" en la cadena
+// delta_chain. Sealer y verifier usan el mismo path → back-compat 100% con reports v0.5
+// (no tenían estas keys; strip recursivo es no-op sobre ellos).
+export const HMAC_EXCLUDED_KEYS = Object.freeze([
+  "kg_status",
+  "kg_latency_ms",
+  "surface_status",
+]);
+
+function _stripExcludedKeys(value) {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(_stripExcludedKeys);
+  const out = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (HMAC_EXCLUDED_KEYS.includes(k)) continue;
+    out[k] = _stripExcludedKeys(v);
+  }
+  return out;
+}
+
 function _serializeForHmac(payload) {
+  // T1.6: strip HMAC_EXCLUDED_KEYS ANTES de detectar schema_version y canonicalizar.
+  // Sin mutar el payload original (deep-copy via _stripExcludedKeys).
+  const filtered = _stripExcludedKeys(payload);
   // Auto-detect: v>=2 → canonicalize; v=1/ausente → JSON.stringify legacy.
-  const v = payload && typeof payload === "object" ? payload.schema_version : undefined;
-  return (v !== undefined && v >= 2) ? canonicalize(payload) : JSON.stringify(payload);
+  const v = filtered && typeof filtered === "object" ? filtered.schema_version : undefined;
+  return (v !== undefined && v >= 2) ? canonicalize(filtered) : JSON.stringify(filtered);
 }
 
 /**

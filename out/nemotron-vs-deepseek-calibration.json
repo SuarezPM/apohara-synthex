@@ -1,0 +1,520 @@
+{
+  "bench": "nemotron-vs-deepseek-calibration",
+  "captured_at_iso": "2026-05-28T18:53:34.637Z",
+  "fixtures_total": 20,
+  "fixtures_completed": 20,
+  "fixtures_oss_errors": 0,
+  "fixtures_free_errors": 0,
+  "delta_threshold": 1.5,
+  "fail_rate_threshold": 0.3,
+  "exceeded_count": 10,
+  "fail_rate": 0.5,
+  "gate": "FREE_LOW_QUALITY",
+  "free_tier_label": "free-low-quality",
+  "models": {
+    "oss": "deepseek/deepseek-non-thinking-v3.2-exp",
+    "free": "nvidia/nemotron-nano-9b-v2"
+  },
+  "results": [
+    {
+      "id": "gtm-01-competitor-pricing-launch",
+      "lens": "gtm",
+      "expected_severity_band": [
+        6,
+        9
+      ],
+      "text_preview": "Stripe today announced a new Atlas pricing tier at $499/year, replacing the previous $500 one-time f...",
+      "oss": {
+        "ok": true,
+        "severity": 7,
+        "summary": "Stripe shifts Atlas to a recurring revenue model with a competitively priced, feature-rich bundle, while scaling the team significantly.",
+        "signals_count": 4,
+        "latency_ms": 5185.553387
+      },
+      "free": {
+        "ok": true,
+        "severity": 8,
+        "summary": "Stripe lanza un nuevo precio anual de $499 para Atlas, incluyendo formación de C-Corp, EIN y cumplimiento fiscal, superando a Mercury Bank. Contratación de 47 nuevos empleados, 12 en estrategia de precios.",
+        "signals_count": 4,
+        "latency_ms": 7790.38421
+      },
+      "severity_delta": 1,
+      "exceeds_threshold": false
+    },
+    {
+      "id": "gtm-02-hiring-signal-aggressive",
+      "lens": "gtm",
+      "expected_severity_band": [
+        7,
+        9
+      ],
+      "text_preview": "Cursor (Anysphere) posted 22 new senior eng openings in the past 7 days across infra, evals, and a n...",
+      "oss": {
+        "ok": true,
+        "severity": 8,
+        "summary": "Cursor is aggressively scaling its engineering team, particularly in agent reliability and infrastructure, with a major replatforming initiative away from VS Code.",
+        "signals_count": 4,
+        "latency_ms": 11445.949069
+      },
+      "free": {
+        "ok": true,
+        "severity": 7,
+        "summary": "Cursor (Anysphere) is aggressively hiring senior engineers with high compensation, signaling expansion and a strategic shift to in-house IDE development.",
+        "signals_count": 4,
+        "latency_ms": 5066.226364
+      },
+      "severity_delta": 1,
+      "exceeds_threshold": false
+    },
+    {
+      "id": "gtm-03-product-launch-incremental",
+      "lens": "gtm",
+      "expected_severity_band": [
+        2,
+        5
+      ],
+      "text_preview": "Notion released a minor update to its formula engine on November 14, adding support for date range a...",
+      "oss": {
+        "ok": true,
+        "severity": 2,
+        "summary": "Notion incrementally improves core product functionality with formula engine update, while signaling a major AI-focused overhaul for early 2026.",
+        "signals_count": 3,
+        "latency_ms": 5907.494205
+      },
+      "free": {
+        "ok": true,
+        "severity": 4,
+        "summary": "Notion adds date range functions and plans an AI workspace overhaul in Q1 2026.",
+        "signals_count": 4,
+        "latency_ms": 3985.983211
+      },
+      "severity_delta": 2,
+      "exceeds_threshold": true
+    },
+    {
+      "id": "gtm-04-market-move-quiet",
+      "lens": "gtm",
+      "expected_severity_band": [
+        5,
+        8
+      ],
+      "text_preview": "Slack updated its enterprise SKU page to remove the 'Plus' tier silently. The Wayback Machine confir...",
+      "oss": {
+        "ok": true,
+        "severity": 6,
+        "summary": "Slack has quietly consolidated its enterprise pricing by removing the Plus tier and migrating customers to Business+, indicating a strategic simplification of its go-to-market model.",
+        "signals_count": 3,
+        "latency_ms": 5642.95829
+      },
+      "free": {
+        "ok": true,
+        "severity": 8,
+        "summary": "Slack silently removed the 'Plus' tier from enterprise SKUs, migrating customers to Business+ without announcement.",
+        "signals_count": 3,
+        "latency_ms": 3576.961931
+      },
+      "severity_delta": 2,
+      "exceeds_threshold": true
+    },
+    {
+      "id": "gtm-05-noise-blog-post",
+      "lens": "gtm",
+      "expected_severity_band": [
+        0,
+        3
+      ],
+      "text_preview": "Our quarterly engineering culture report celebrates remote-first values, async standups, and the use...",
+      "oss": {
+        "ok": true,
+        "severity": 1,
+        "summary": "Internal culture report highlighting remote-first and async work practices, with no direct market or competitive signals.",
+        "signals_count": 2,
+        "latency_ms": 5287.462334
+      },
+      "free": {
+        "ok": true,
+        "severity": 3,
+        "summary": "Company emphasizes remote-first culture and async workflows in engineering, highlighting Markdown adoption and cross-functional employee recognition.",
+        "signals_count": 3,
+        "latency_ms": 4304.933657
+      },
+      "severity_delta": 2,
+      "exceeds_threshold": true
+    },
+    {
+      "id": "fin-01-vendor-bankruptcy",
+      "lens": "finance",
+      "expected_severity_band": [
+        8,
+        10
+      ],
+      "text_preview": "Cloud infrastructure provider FibreCore Inc filed Chapter 11 bankruptcy on November 18 after Q3 reve...",
+      "oss": {
+        "ok": true,
+        "severity": 8,
+        "summary": "Major cloud infrastructure provider files for bankruptcy, posing immediate vendor risk to 340 SaaS customers and threatening regional data center capacity.",
+        "signals_count": 5,
+        "latency_ms": 6567.96737
+      },
+      "free": {
+        "ok": true,
+        "severity": 9,
+        "summary": "FibreCore Inc's bankruptcy due to 67% YoY revenue drop impacts 340 SaaS customers and signals vendor risk in cloud infrastructure.",
+        "signals_count": 4,
+        "latency_ms": 4550.821287
+      },
+      "severity_delta": 1,
+      "exceeds_threshold": false
+    },
+    {
+      "id": "fin-02-regulatory-filing-mild",
+      "lens": "finance",
+      "expected_severity_band": [
+        4,
+        7
+      ],
+      "text_preview": "SEC 8-K filing on November 15: Acme Corp disclosed that the previously announced acquisition of Targ...",
+      "oss": {
+        "ok": true,
+        "severity": 4,
+        "summary": "Deal closing delay due to extended DOJ antitrust review introduces modest execution risk and timeline uncertainty.",
+        "signals_count": 3,
+        "latency_ms": 6921.173704
+      },
+      "free": {
+        "ok": true,
+        "severity": 7,
+        "summary": "Acme Corp's $4.2B acquisition of TargetCo faces regulatory delay due to DOJ antitrust review, pushing closing date to December 13 without changes to termination fees.",
+        "signals_count": 2,
+        "latency_ms": 3890.134206
+      },
+      "severity_delta": 3,
+      "exceeds_threshold": true
+    },
+    {
+      "id": "fin-03-earnings-beat",
+      "lens": "finance",
+      "expected_severity_band": [
+        2,
+        5
+      ],
+      "text_preview": "NVIDIA reported Q3 FY26 earnings: revenue $35.1B vs consensus $33.2B, EPS $0.81 vs $0.75 expected. D...",
+      "oss": {
+        "ok": true,
+        "severity": 1,
+        "summary": "NVIDIA reports strong Q3 earnings and guidance, significantly exceeding consensus estimates, driving stock up 6% after-hours.",
+        "signals_count": 4,
+        "latency_ms": 8648.450794
+      },
+      "free": {
+        "ok": true,
+        "severity": 9,
+        "summary": "NVIDIA significantly outperformed Q3 earnings estimates with robust revenue and EPS growth, driven by data center demand, and saw stock gains.",
+        "signals_count": 5,
+        "latency_ms": 4417.279311
+      },
+      "severity_delta": 8,
+      "exceeds_threshold": true
+    },
+    {
+      "id": "fin-04-credit-downgrade",
+      "lens": "finance",
+      "expected_severity_band": [
+        7,
+        9
+      ],
+      "text_preview": "Moody's downgraded Boeing's senior unsecured debt from Baa2 to Baa3, the last notch above junk. Cite...",
+      "oss": {
+        "ok": true,
+        "severity": 7,
+        "summary": "Moody's downgrades Boeing's debt to the brink of junk status with a negative outlook, citing production delays and cash burn, affecting $48B in debt.",
+        "signals_count": 5,
+        "latency_ms": 5995.464869
+      },
+      "free": {
+        "ok": true,
+        "severity": 8,
+        "summary": "Moody's downgrades Boeing's debt due to production delays and strike costs, signaling financial risk.",
+        "signals_count": 5,
+        "latency_ms": 5707.348051
+      },
+      "severity_delta": 1,
+      "exceeds_threshold": false
+    },
+    {
+      "id": "fin-05-noise-press-release",
+      "lens": "finance",
+      "expected_severity_band": [
+        0,
+        2
+      ],
+      "text_preview": "Local credit union announces grand opening of new branch in downtown Wichita. Ribbon cutting ceremon...",
+      "oss": {
+        "ok": true,
+        "severity": 0,
+        "summary": "Routine local market expansion with no material financial or risk signals.",
+        "signals_count": 3,
+        "latency_ms": 9795.419649
+      },
+      "free": {
+        "ok": true,
+        "severity": 3,
+        "summary": "Local credit union expands with downtown Wichita branch opening, mayor's participation signals community engagement.",
+        "signals_count": 3,
+        "latency_ms": 5299.639788
+      },
+      "severity_delta": 3,
+      "exceeds_threshold": true
+    },
+    {
+      "id": "sec-01-active-exploit-cve",
+      "lens": "security",
+      "expected_severity_band": [
+        8,
+        10
+      ],
+      "text_preview": "CISA added CVE-2025-68143 to the Known Exploited Vulnerabilities catalog on November 16. CVSS 8.8 HI...",
+      "oss": {
+        "ok": true,
+        "severity": 9,
+        "summary": "Critical path traversal vulnerability (CVE-2025-68143) in the official MCP server-git component is being actively exploited against developer workstations, requiring immediate patching or workaround.",
+        "signals_count": 5,
+        "latency_ms": 8334.408104
+      },
+      "free": {
+        "ok": true,
+        "severity": 9,
+        "summary": "CVE-2025-68143 path traversal vulnerability in MCP server-git component is actively exploited against developer tools like Claude Code and Cursor.",
+        "signals_count": 6,
+        "latency_ms": 3132.979386
+      },
+      "severity_delta": 0,
+      "exceeds_threshold": false
+    },
+    {
+      "id": "sec-02-leaked-credentials",
+      "lens": "security",
+      "expected_severity_band": [
+        8,
+        10
+      ],
+      "text_preview": "A pastebin dump posted November 12 contains 14,200 plaintext credentials with .gov email addresses. ...",
+      "oss": {
+        "ok": true,
+        "severity": 9,
+        "summary": "Large-scale credential leak of government email accounts with high validation rate, indicating a significant breach of a vulnerable identity provider.",
+        "signals_count": 5,
+        "latency_ms": 2474.739888
+      },
+      "free": {
+        "ok": true,
+        "severity": 9,
+        "summary": "Large dump of 14,200 plaintext credentials, including .gov emails, with 30% validity against SaaS providers, originating from a phished MFA-disabled identity provider.",
+        "signals_count": 4,
+        "latency_ms": 3725.680463
+      },
+      "severity_delta": 0,
+      "exceeds_threshold": false
+    },
+    {
+      "id": "sec-03-supply-chain-typosquat",
+      "lens": "security",
+      "expected_severity_band": [
+        8,
+        10
+      ],
+      "text_preview": "npm packages 'reqeusts', 'requests-py', and 'requrests' published this week each contain identical p...",
+      "oss": {
+        "ok": true,
+        "severity": 9,
+        "summary": "Malicious npm packages impersonating 'requests' library steal AWS credentials and SSH keys via post-install scripts.",
+        "signals_count": 4,
+        "latency_ms": 3152.444734
+      },
+      "free": {
+        "ok": true,
+        "severity": 10,
+        "summary": "Malicious npm packages exfiltrate AWS credentials and SSH keys via post-install scripts to a Cloudflare endpoint.",
+        "signals_count": 5,
+        "latency_ms": 4414.964385
+      },
+      "severity_delta": 1,
+      "exceeds_threshold": false
+    },
+    {
+      "id": "sec-04-low-severity-disclosure",
+      "lens": "security",
+      "expected_severity_band": [
+        2,
+        5
+      ],
+      "text_preview": "Coordinated disclosure: a non-exploitable timing oracle was identified in version 4.x of an obscure ...",
+      "oss": {
+        "ok": true,
+        "severity": 2,
+        "summary": "A low-severity, non-exploitable timing oracle flaw was patched in a niche XML parser with limited commercial impact.",
+        "signals_count": 4,
+        "latency_ms": 3009.239182
+      },
+      "free": {
+        "ok": true,
+        "severity": 4,
+        "summary": "A non-exploitable timing oracle was found in an XML parser used across 50+ products, with a vendor patch released immediately. No active exploits reported.",
+        "signals_count": 4,
+        "latency_ms": 3132.968295
+      },
+      "severity_delta": 2,
+      "exceeds_threshold": true
+    },
+    {
+      "id": "sec-05-noise-marketing",
+      "lens": "security",
+      "expected_severity_band": [
+        0,
+        2
+      ],
+      "text_preview": "Acme Cybersecurity unveils new AI-powered SIEM platform at Black Hat USA, featuring 'next-generation...",
+      "oss": {
+        "ok": true,
+        "severity": 2,
+        "summary": "Product announcement of a new AI-powered SIEM platform, indicating market evolution but not a direct threat.",
+        "signals_count": 3,
+        "latency_ms": 2392.267803
+      },
+      "free": {
+        "ok": true,
+        "severity": 4,
+        "summary": "Acme Cybersecurity introduces an AI-driven SIEM platform with advanced threat detection, adopted by Fortune 500 enterprises.",
+        "signals_count": 4,
+        "latency_ms": 6847.308864
+      },
+      "severity_delta": 2,
+      "exceeds_threshold": true
+    },
+    {
+      "id": "sc-01-supplier-fire",
+      "lens": "supply-chain",
+      "expected_severity_band": [
+        9,
+        10
+      ],
+      "text_preview": "Major fire at the only US fab plant producing automotive-grade silicon carbide modules; full product...",
+      "oss": {
+        "ok": true,
+        "severity": 9,
+        "summary": "A critical, single-source supplier for automotive SiC modules is offline for at least two months, causing immediate and significant production cuts for multiple OEMs.",
+        "signals_count": 5,
+        "latency_ms": 6912.270213
+      },
+      "free": {
+        "ok": true,
+        "severity": 8,
+        "summary": "A major fire at a critical US fab plant halts production of automotive-grade silicon carbide modules, impacting 22% of the US EV powertrain supply and causing OEMs to reduce Q1 build rates by 12-18%",
+        "signals_count": 4,
+        "latency_ms": 4072.949076
+      },
+      "severity_delta": 1,
+      "exceeds_threshold": false
+    },
+    {
+      "id": "sc-02-port-strike",
+      "lens": "supply-chain",
+      "expected_severity_band": [
+        7,
+        9
+      ],
+      "text_preview": "International Longshoremen's Association announced 72-hour East Coast strike beginning December 1 un...",
+      "oss": {
+        "ok": true,
+        "severity": 8,
+        "summary": "A major East Coast port strike is imminent, threatening significant cargo flow disruption and potential inflationary pressure on consumer goods.",
+        "signals_count": 3,
+        "latency_ms": 4874.275324
+      },
+      "free": {
+        "ok": true,
+        "severity": 7,
+        "summary": "East Coast port strike threatens supply chain delays and inflationary pressures if prolonged.",
+        "signals_count": 3,
+        "latency_ms": 4887.496457
+      },
+      "severity_delta": 1,
+      "exceeds_threshold": false
+    },
+    {
+      "id": "sc-03-rare-earth-export-control",
+      "lens": "supply-chain",
+      "expected_severity_band": [
+        7,
+        10
+      ],
+      "text_preview": "Country X announced new export licensing requirement for refined neodymium and dysprosium effective ...",
+      "oss": {
+        "ok": true,
+        "severity": 9,
+        "summary": "A dominant supplier of critical rare earths is implementing restrictive export licensing, threatening severe global shortages and production delays for multiple industries.",
+        "signals_count": 4,
+        "latency_ms": 4412.338502
+      },
+      "free": {
+        "ok": true,
+        "severity": 8,
+        "summary": "Country X's new export licensing for neodymium/dysprosium, supplying 65% of global refined output, introduces supply chain risk via 90-day reviews and restricted end-uses.",
+        "signals_count": 5,
+        "latency_ms": 4068.331469
+      },
+      "severity_delta": 1,
+      "exceeds_threshold": false
+    },
+    {
+      "id": "sc-04-weather-disruption-mild",
+      "lens": "supply-chain",
+      "expected_severity_band": [
+        1,
+        4
+      ],
+      "text_preview": "Heavy snowfall on Interstate 80 corridor caused 6-hour delays for trucking traffic between Sacrament...",
+      "oss": {
+        "ok": true,
+        "severity": 2,
+        "summary": "Temporary logistics disruption due to weather, with normal operations expected to resume shortly and no cargo damage reported.",
+        "signals_count": 2,
+        "latency_ms": 5058.91466
+      },
+      "free": {
+        "ok": true,
+        "severity": 5,
+        "summary": "Heavy snowfall caused 6-hour trucking delays on I-80 between Sacramento and Reno, with normal operations resuming the next day and no cargo damage reported.",
+        "signals_count": 4,
+        "latency_ms": 3952.130685
+      },
+      "severity_delta": 3,
+      "exceeds_threshold": true
+    },
+    {
+      "id": "sc-05-noise-vendor-newsletter",
+      "lens": "supply-chain",
+      "expected_severity_band": [
+        0,
+        2
+      ],
+      "text_preview": "Our annual customer appreciation newsletter highlights warehouse safety achievements, employee of th...",
+      "oss": {
+        "ok": true,
+        "severity": 0,
+        "summary": "No disruption signals; newsletter focuses on internal operations and community partnership.",
+        "signals_count": 1,
+        "latency_ms": 4996.59692
+      },
+      "free": {
+        "ok": true,
+        "severity": 3,
+        "summary": "New recycling partnership for shipping pallets and warehouse safety achievements highlighted in customer newsletter.",
+        "signals_count": 3,
+        "latency_ms": 4526.565394
+      },
+      "severity_delta": 3,
+      "exceeds_threshold": true
+    }
+  ]
+}

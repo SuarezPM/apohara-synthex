@@ -1,0 +1,57 @@
+{
+  "payload": {
+    "schema_version": 2,
+    "target": "https://cloud.google.com/pricing",
+    "lens": "security",
+    "fetchedAt": "2026-05-28T19:16:26.734Z",
+    "sources": [
+      "https://cloud.google.com/pricing"
+    ],
+    "dedup": {
+      "uniqueBlocks": 1,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://cloud.google.com/pricing",
+        "contentHash": "af1fd383511ca97b9ee7b210a9c3e0653a144054751a74e6be878b5fe43d873a",
+        "lens": "security",
+        "severity": 1,
+        "summary": "An unsupported endpoint may indicate outdated services or misconfigured access, posing a low security risk.",
+        "signals": [
+          "Potential outdated or deprecated service",
+          "Possible misconfigured access or routing"
+        ]
+      }
+    ],
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-872852684fbb",
+      "prefilter": "prefilter-v3-1d820634a235"
+    },
+    "decisions": []
+  },
+  "contentHash": "cff6f4445cce84b81356a3d89a6231a033cf3c425a9dacdee3e43e372f304f5c",
+  "seal": {
+    "hmacSha256": "3190e1b79c04e37af9ef59407fd28efad06128cdf675a843de63fb8a7c29b280",
+    "rfc3161Tsa": null,
+    "method": "HMAC-SHA256"
+  },
+  "sealedAt": "2026-05-28T19:16:26.734Z",
+  "timings": {
+    "FETCH": 820.7,
+    "FORGE": 0.1,
+    "CLASSIFY": 4081.9,
+    "PROVE": 0.1
+  }
+}

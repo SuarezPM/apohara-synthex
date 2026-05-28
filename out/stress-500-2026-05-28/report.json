@@ -1,0 +1,23 @@
+{
+  "bench": "stress-test-judges",
+  "target_urls": 500,
+  "processed": 500,
+  "succeeded": 498,
+  "failed": 2,
+  "success_rate": 0.996,
+  "p50_latency_ms": 7514,
+  "p95_latency_ms": 18395,
+  "total_wall_clock_ms": 549009,
+  "cost_estimate_usd": 0.75,
+  "cost_per_url_usd": 0.00151,
+  "budget_usd": 50,
+  "budget_used_pct": 1.5,
+  "surfaces_used": [
+    "unlocker",
+    "serp"
+  ],
+  "concurrency": 8,
+  "host": "CachyOS-PC",
+  "captured_at_iso": "2026-05-28T19:27:21.670Z",
+  "note": "cost is estimated per-surface, NOT the BD billing API actual. Verify in BD dashboard."
+}

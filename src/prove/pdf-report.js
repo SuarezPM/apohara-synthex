@@ -329,6 +329,63 @@ function pageBroker(doc, ev) {
   doc.fillColor(COLORS.ink).y += 8;
 }
 
+function pageDelta(doc, ev) {
+  const { payload = {} } = ev;
+  const dc = payload.delta_chain ?? {};
+  pageHeader(doc, "Delta Evidence Chain", "Watch & Prove");
+
+  sectionTitle(doc, "TSA chain (RFC 3161)");
+  doc.font("Helvetica").fontSize(10).fillColor(COLORS.ink).text(
+    "Each scrape of the same target is sealed with an independent DigiCert RFC 3161 " +
+    "timestamp. The chain below proves both readings existed at the times shown — neither " +
+    "can be back-dated without breaking the cryptographic chain.",
+    { width: doc.page.width - 100 }).moveDown(0.6);
+
+  const prev = dc.previous_tsa_serial ?? null;
+  const curr = dc.current_tsa_serial ?? null;
+  doc.font("Courier").fontSize(9).fillColor(COLORS.ink);
+  doc.text(`previous_tsa_serial : ${prev ?? "— (cold start — first reading)"}`);
+  doc.text(`current_tsa_serial  : ${curr ?? "— (TSA unavailable this run)"}`);
+  doc.moveDown(0.6);
+
+  sectionTitle(doc, "Diff summary");
+  const ds = dc.diff_summary ?? { added: 0, removed: 0, changed: 0 };
+  const tableY = doc.y;
+  const cx = doc.page.margins.left;
+  // Mini-tabla 3 columnas.
+  const cells = [
+    { label: "ADDED", value: ds.added ?? 0, color: COLORS.ok },
+    { label: "REMOVED", value: ds.removed ?? 0, color: COLORS.crit },
+    { label: "CHANGED", value: ds.changed ?? 0, color: COLORS.warn },
+  ];
+  const cellW = (doc.page.width - 100) / 3;
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i];
+    const x = cx + i * cellW;
+    doc.rect(x + 4, tableY, cellW - 8, 56).fill("#f9fafb");
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(COLORS.muted).text(c.label, x + 12, tableY + 8, { width: cellW - 24 });
+    doc.font("Helvetica-Bold").fontSize(28).fillColor(c.color).text(String(c.value), x + 12, tableY + 22, { width: cellW - 24 });
+    doc.fillColor(COLORS.ink);
+  }
+  doc.y = tableY + 64;
+  doc.moveDown(0.8);
+
+  sectionTitle(doc, "Knowledge graph status (Cognee)");
+  const kgStatus = dc.kg_status ?? "skipped";
+  const kgColor = kgStatus === "ingested" ? COLORS.ok : kgStatus === "unreachable" ? COLORS.warn : COLORS.muted;
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(kgColor).text(`status: ${kgStatus.toUpperCase()}`);
+  if (dc.kg_skip_reason) {
+    doc.font("Helvetica").fontSize(9).fillColor(COLORS.muted).text(`reason: ${dc.kg_skip_reason}`);
+  }
+  doc.fillColor(COLORS.ink).moveDown(0.6);
+
+  doc.font("Helvetica-Oblique").fontSize(8).fillColor(COLORS.muted).text(
+    "What this proves: the bytes of the target changed between the two timestamps shown. " +
+    "What this does NOT prove: the truthfulness of either reading. Both snapshots are sealed " +
+    "with HMAC-SHA256 + RFC 3161 — verify with bin/decode-evidence.js.",
+    { width: doc.page.width - 100 }).fillColor(COLORS.ink);
+}
+
 function pageVerify(doc, ev) {
   const { contentHash, seal = {} } = ev;
   const tsa = seal.rfc3161Tsa;
@@ -390,12 +447,16 @@ export async function buildPDFReport(evidence) {
   doc.on("data", (c) => chunks.push(c));
   const done = new Promise((res) => doc.on("end", () => res(Buffer.concat(chunks))));
 
-  // 6 páginas, una por addPage() explícito.
+  // 6 páginas base + 1 página opcional Delta (cuando hay delta_chain v0.6.0+).
+  // Reports v0.5.0 sin delta_chain → 6 páginas (back-compat 100%).
   doc.addPage(); pageExecutiveSummary(doc, evidence, qrPng);
   doc.addPage(); pageCISO(doc, evidence);
   doc.addPage(); pageCFO(doc, evidence);
   doc.addPage(); pageCounsel(doc, evidence);
   doc.addPage(); pageBroker(doc, evidence);
+  if (evidence?.payload?.delta_chain) {
+    doc.addPage(); pageDelta(doc, evidence);
+  }
   doc.addPage(); pageVerify(doc, evidence);
 
   drawFooters(doc, doc.bufferedPageRange().count);
