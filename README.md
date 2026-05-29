@@ -1,6 +1,13 @@
 <div align="center">
 
-# ◆ Synthex
+# ◆ Apohara Synthex
+
+![Apohara Synthex — shield logo over a starfield, RGB wave ribbons across the canvas, chartreuse circuit-board hills below.](public/hero-apohara-landscape.jpg)
+
+**Receipts for what your agents see.**
+v0.7.0 ships cryptographic CMS chain verify against pinned DigiCert anchors · SLSA L3 · npm provenance · [HONESTY](docs/HONESTY.md)
+
+---
 
 ### The evidence layer that lives inside Bright Data
 
