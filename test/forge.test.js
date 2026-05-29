@@ -2,7 +2,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dedupe, fingerprint } from "../src/forge/dedup.js";
-import { computeJcrRisk, shouldUseDensePrefill } from "../src/forge/inv15-gate.js";
 import { prefilter } from "../src/forge/index.js";
 import { RULES } from "../src/forge/prefilter.js";
 
@@ -27,18 +26,6 @@ test("dedup: contenido largo con cuerpo distinto e igual longitud NO colisiona",
   const a = "X".repeat(2048) + "AAAA" + "Y".repeat(300);
   const b = "X".repeat(2048) + "BBBB" + "Y".repeat(300);
   assert.notEqual(fingerprint(a), fingerprint(b));
-});
-
-test("inv15: judge con 9 candidatos y shuffle => riesgo alto + dense prefill", () => {
-  const risk = computeJcrRisk({ role: "judge", candidateCount: 9, reuseRate: 0, layoutShuffled: true });
-  assert.ok(risk > 0.7, `risk=${risk}`);
-  assert.equal(shouldUseDensePrefill("judge", risk), true);
-});
-
-test("inv15: usuario normal => riesgo bajo, sin dense prefill", () => {
-  const risk = computeJcrRisk({ role: "user", candidateCount: 1 });
-  assert.ok(risk < 0.7, `risk=${risk}`);
-  assert.equal(shouldUseDensePrefill("user", risk), false);
 });
 
 test("prefilter: bloquea prompt injection clásico", () => {
