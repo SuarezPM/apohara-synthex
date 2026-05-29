@@ -42,9 +42,20 @@ export function pae(payloadType, payload) {
  */
 export function buildKeyIdStatement({ keyId, publicKeySpkiB64, alg = "Ed25519" }) {
   if (!keyId || !publicKeySpkiB64) throw new TypeError("buildKeyIdStatement: keyId + publicKeySpkiB64 required");
+  // Subject digest = full SHA-256 of the SPKI DER (the actual public key bytes), NOT
+  // the short keyId padded with zeros. The keyId is a 16-byte fingerprint; padding it
+  // to 64 hex chars fabricates a digest that hashes nothing — it cannot be verified
+  // against any real artifact. The SPKI DER is the artifact the subject names, so the
+  // digest must be sha256(SPKI DER). The keyId remains in predicate.keyId.
+  // El digest del subject = SHA-256 completo del SPKI DER (los bytes reales de la clave
+  // pública), NO el keyId corto padeado con ceros. Padear fabrica un digest que no
+  // hashea nada. La clave pública es el artefacto que el subject nombra → el digest
+  // debe ser sha256(SPKI DER). El keyId queda en predicate.keyId.
+  const spkiDer = Buffer.from(publicKeySpkiB64, "base64");
+  const subjectDigest = createHash("sha256").update(spkiDer).digest("hex");
   const statement = {
     _type: "https://in-toto.io/Statement/v1",
-    subject: [{ name: "apohara-synthex-signing-key", digest: { sha256: keyId.padEnd(64, "0") } }],
+    subject: [{ name: "apohara-synthex-signing-key", digest: { sha256: subjectDigest } }],
     predicateType: PREDICATE_TYPE,
     predicate: { keyId, alg, publicKeySpkiB64 },
   };
@@ -160,7 +171,7 @@ function ed25519CheckpointKeyId(origin, spkiDer) {
  * @returns {{ok:boolean, reason:string|null, checks:object}}
  */
 export function verifyRekorBundle(bundle, opts = {}) {
-  const checks = { dsseSig: false, statementKeyId: false, leaf: false, inclusion: false, checkpointSig: false, originPinned: false };
+  const checks = { dsseSig: false, statementKeyId: false, subjectDigest: false, leaf: false, inclusion: false, checkpointSig: false, originPinned: false };
   try {
     if (!bundle?.tlogEntry?.inclusionProof?.checkpoint?.envelope) {
       return { ok: false, reason: "malformed-bundle", checks };
@@ -177,6 +188,17 @@ export function verifyRekorBundle(bundle, opts = {}) {
     checks.statementKeyId = stmt?.predicate?.keyId === bundle.keyId
       && stmt?.predicate?.publicKeySpkiB64 === bundle.publicKey.rawBytes;
     if (!checks.statementKeyId) return { ok: false, reason: "statement-keyid-mismatch", checks };
+
+    // 2b. the sealed subject digest IS sha256(SPKI DER) of the bundle's own pubkey.
+    // Without this, the digest written into the log is never verified against anything —
+    // a fabricated digest would verify against itself (self-contained-verifiability fails).
+    // El digest sellado ES sha256(SPKI DER) de la clave pública del propio bundle. Sin
+    // este check nadie verifica el digest que quedó en el log → un digest fabricado se
+    // verificaría contra sí mismo (rompe la auto-verificabilidad).
+    const spkiDer = Buffer.from(bundle.publicKey.rawBytes, "base64");
+    const expectDigest = createHash("sha256").update(spkiDer).digest("hex");
+    checks.subjectDigest = stmt?.subject?.[0]?.digest?.sha256 === expectDigest;
+    if (!checks.subjectDigest) return { ok: false, reason: "subject-digest-mismatch", checks };
 
     // 3-4. leaf hash + Merkle inclusion → root
     const ip = bundle.tlogEntry.inclusionProof;

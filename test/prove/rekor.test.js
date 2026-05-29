@@ -3,6 +3,15 @@
 // Merkle inclusion proof + checkpoint Ed25519 signature are verified against
 // genuine log data — deterministic, no network. The publish path is covered with
 // an injected fetch.
+//
+// Fixture provenance / Procedencia del fixture (re-anchored 2026-05-29, item 0.3b):
+//   keyId    835ae008640ccd0a8a2174b3c7535fc4
+//   log      log2025-1.rekor.sigstore.dev   logIndex 4729698   treeSize 4729699
+//   The subject digest is now sha256(SPKI DER) (full 32-byte hash), NOT the old
+//   keyId-padded-with-zeros fabrication. Re-anchored for real against Rekor v2
+//   production via `synthex rekor-anchor`; the verifier now checks subjectDigest.
+//   El digest del subject es sha256(SPKI DER) completo; re-anclado real contra
+//   Rekor v2 producción. El verificador ahora chequea subjectDigest.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
