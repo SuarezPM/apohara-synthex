@@ -7,13 +7,16 @@ import { verifyEvidence } from "../src/prove/evidence-report.js";
 import { httpFetcher } from "../src/fetch/http-client.js";
 import { runDemo } from "../demo/demo.js";
 import { assertSafeTarget, rateLimit, clientIp } from "../src/guard.js";
+import { classify } from "../src/classify/aiml-client.js";
+import { pickModel } from "../src/classify/tiers.js";
 
 export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
-  const { target, lens = "all" } = (req.body && typeof req.body === "object" ? req.body : {});
+  // Parity con api/analyze.js: el tier del playground llega también al stream.
+  const { target, lens = "all", tier } = (req.body && typeof req.body === "object" ? req.body : {});
   const hasSecrets = !!process.env.BRIGHT_DATA_TOKEN && !!process.env.AIML_API_KEY;
 
   // SSE headers
@@ -26,6 +29,13 @@ export default async function handler(req, res) {
   const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
   try {
+    // Resolver tier ANTES de abrir el pipeline (headers SSE ya enviados — no podemos usar
+    // res.status(400); errores van via SSE 'error' event + res.end()).
+    let modelOverride = null;
+    if (tier) {
+      try { modelOverride = pickModel({ tier }); }
+      catch (e) { send("error", { error: e.message }); return res.end(); }
+    }
     let mode, evidence, verifyKey;
     if (hasSecrets && target) {
       const rl = rateLimit(clientIp(req));
@@ -34,11 +44,15 @@ export default async function handler(req, res) {
       catch (e) { send("error", { error: e.message }); return res.end(); }
       verifyKey = process.env.SYNTHEX_HMAC_KEY || "synthex-dev";
       mode = "live";
-      send("mode", { mode, target, lens });
-      evidence = await runPipeline(target, {
+      send("mode", { mode, tier: tier ?? "default", model: modelOverride ?? "default", target, lens });
+      const opts = {
         lens, fetcher: httpFetcher(), hmacKey: verifyKey, requestTsa: true,
         emitter: (evt) => send("stage", evt),
-      });
+      };
+      if (modelOverride) {
+        opts.classifier = (text, l, copts = {}) => classify(text, l, { ...copts, model: modelOverride, tier });
+      }
+      evidence = await runPipeline(target, opts);
     } else {
       verifyKey = process.env.SYNTHEX_HMAC_KEY || "synthex-demo";
       mode = "demo"; // sin secrets → snapshot cacheado, NO live (honestidad)
@@ -46,7 +60,7 @@ export default async function handler(req, res) {
       evidence = await runDemo({ requestTsa: true, emitter: (evt) => send("stage", evt) });
     }
 
-    const verify = verifyEvidence(evidence, { hmacKey: verifyKey });
+    const verify = await verifyEvidence(evidence, { hmacKey: verifyKey });
     send("result", { mode, evidence, verify });
     res.end();
   } catch (e) {

@@ -1,7 +1,7 @@
 {
   "name": "@apohara/synthex",
-  "version": "0.6.0",
-  "description": "The JavaScript layer that turns brightdata-mcp into an intelligence & evidence platform: classify what your agents scrape, seal it verifiably (HMAC-SHA256 + RFC 3161 TSA), AND chain re-scrapes cross-time. v0.6 Watch & Prove: 3-layer pre-LLM defense (28 web-injection + 78 DJL + 25 PII), Delta Evidence Chain with TSA serial linkage, 7-page PDF, model tier selector (free/oss/paid), Kiro-native MCP.",
+  "version": "0.7.0",
+  "description": "The JavaScript layer that turns brightdata-mcp into an intelligence & evidence platform: classify what your agents scrape, seal it verifiably (HMAC-SHA256 + RFC 3161 TSA with CMS chain verify to pinned DigiCert anchors, v0.7), AND chain re-scrapes cross-time. Two-layer pre-LLM defense in the main pipeline (78 DJL + 32 prefilter rules) plus a 25-rule PII gate on the monitor/KG-ingest path, Delta Evidence Chain with TSA serial linkage, multi-page PDF, model tier selector (free/oss/paid), Kiro-native MCP.",
   "type": "module",
   "bin": {
     "apohara-synthex": "./server.js",
@@ -52,7 +52,7 @@
   "license": "MIT",
   "author": "Pablo M. Suárez (@SuarezPM)",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.21.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.218.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",

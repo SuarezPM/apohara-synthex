@@ -93,3 +93,28 @@ test("riskScore: sin findings ni bloqueos → 0 / LOW", () => {
   assert.equal(r.score, 0);
   assert.equal(r.band, "LOW");
 });
+
+// v0.7.0 T9/L4 — regression test contra el Kiro audit que asume score=62.
+// La fórmula real (pdf-report.js:56-57):
+//   blockTerm = min(blocked, 5) / 5 * 10  = min(2,5)/5*10 = 4
+//   score = round((maxSev * 0.7 + blockTerm * 0.3) * 10)
+//         = round((8 * 0.7 + 4 * 0.3) * 10)
+//         = round((5.6 + 1.2) * 10)
+//         = round(68) = 68    ← NO 62
+test("riskScore T9/L4: maxSev=8, blocked=2 → score=68 (NOT 62 — Kiro audit was arithmetically wrong)", () => {
+  const ev = baseEvidence({
+    payload: {
+      blocked: [{ url: "https://x", reason: "x" }, { url: "https://y", reason: "y" }],
+      findings: [{ url: "a", severity: 8, summary: "x", signals: [] }],
+    },
+  });
+  const r = riskScore(ev);
+  assert.equal(r.maxSev, 8, "fixture sanity: maxSev=8");
+  assert.equal(r.blocked, 2, "fixture sanity: blocked=2");
+  assert.equal(
+    r.score,
+    68,
+    "REGRESSION: formula = round((maxSev*0.7 + min(blocked,5)/5*10*0.3)*10). Update this comment if you change the formula at src/prove/pdf-report.js:56-57.",
+  );
+  assert.equal(r.band, "MEDIUM");
+});

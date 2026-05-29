@@ -13,7 +13,7 @@ test("demo: produce un Evidence Report verificable sobre datos cacheados", async
   // findings: pricing + careers (los únicos, clasificados)
   assert.equal(ev.payload.findings.length, 2);
   assert.ok(ev.payload.findings.every((f) => f.severity >= 6));
-  const v = verifyEvidence(ev, { hmacKey: "synthex-demo" });
+  const v = await verifyEvidence(ev, { hmacKey: "synthex-demo" });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
 });

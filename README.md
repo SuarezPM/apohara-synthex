@@ -8,7 +8,7 @@
 Turn the web your AI agents touch into classified intelligence, sealed with court-grade, verifiable evidence.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
-![Tests](https://img.shields.io/badge/tests-262%20%C2%B7%20252%20pass%20%C2%B7%2010%20skip-brightgreen)
+![Tests](https://img.shields.io/badge/tests-suite%20green-brightgreen)
 ![Defense Layers](https://img.shields.io/badge/pre--LLM_defense-28%20web--injection%20%2B%2078%20prompt--level-orange)
 ![Token Saver](https://img.shields.io/badge/tokens--saved-deterministic%20pre--LLM%20block%20%2B%20dedup-9775fa)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
@@ -95,7 +95,7 @@ also reachable at `apohara-synthex.vercel.app`).
 Don't trust the claims — run them.
 
 ```bash
-npm test                                   # → 162 tests · 152 pass · 10 skip (opt-in live) · 0 fail
+npm test                                   # → full suite green (zero failing, opt-in live tests skipped)
 npm run demo                               # → Evidence Report; verify → hash OK · HMAC OK · TSA OK
 npm run bench:djl                          # → logs/djl-latency.json (p95<5ms, p99 adv<50ms)
 node bin/decode-evidence.js <evidence.json>  # offline audit-trail inspector (verifies HMAC + TSA, prints decisions[])
@@ -194,7 +194,7 @@ content diff and a 7th PDF page when delta is present.
 
 ## ◆ Honesty
 
-The pitch *is* honesty — so it applies to us too.
+The pitch *is* honesty — so it applies to us too. **Canonical caveats live in [`docs/HONESTY.md`](docs/HONESTY.md)** — RFC-3161 verification scope (v0.7.0 M1), rate-limit posture, PII-gate placement, durability choices, and Risk-Score semantics. This section is the short list; the doc is the long list.
 
 - **Proven live:** Bright Data — Web Unlocker (MCP **and** REST), SERP API, Browser API, Web Scraper / Datasets API, native MCP server (`server.js`) · AI/ML classification (single + 4-lens parallel) · DigiCert RFC 3161 timestamp · downloadable 6-page PDF · Vercel deploy (`/api/analyze` live, end-to-end) · Triggerware API · Cognee MCP tools.
 - **Crawl is multi-page over Web Unlocker, not the native Crawl product.** All 6 Bright Data surfaces are verified live; we name the crawl honestly — the native Crawl API stays opt-in via a Crawl `dataset_id`.

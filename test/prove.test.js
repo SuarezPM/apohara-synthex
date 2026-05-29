@@ -26,7 +26,7 @@ test("evidence: HMAC sella y verifica (sin red)", async () => {
   assert.ok(ev.seal.hmacSha256);
   assert.equal(ev.seal.rfc3161Tsa, null);
   assert.equal(ev.seal.method, "HMAC-SHA256");
-  const v = verifyEvidence(ev, { hmacKey: key });
+  const v = await verifyEvidence(ev, { hmacKey: key });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
   assert.equal(v.tsaOk, null); // no se pidió TSA
@@ -36,7 +36,7 @@ test("evidence: detecta tampering del payload", async () => {
   const key = "k";
   const ev = await buildEvidence({ a: 1 }, { hmacKey: key, requestTsa: false });
   ev.payload.a = 2; // tamper
-  const v = verifyEvidence(ev, { hmacKey: key });
+  const v = await verifyEvidence(ev, { hmacKey: key });
   assert.equal(v.hashOk, false);
 });
 
@@ -122,7 +122,7 @@ test("T3.N3: verifier verifica Evidence Report v1 legacy (sin schema_version)", 
   // Sanity: el payload v1 no tiene schema_version
   assert.equal(ev.payload.schema_version, undefined);
   // El verifier detecta v1 → usa JSON.stringify legacy → verifica correctamente
-  const v = verifyEvidence(ev, { hmacKey: key });
+  const v = await verifyEvidence(ev, { hmacKey: key });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
 });
@@ -131,7 +131,7 @@ test("T3.N3: verifier verifica payload v2 (con schema_version >= 2)", async () =
   const key = "k";
   const ev = await buildEvidence({ schema_version: 2, target: "v2", findings: [] }, { hmacKey: key, requestTsa: false });
   assert.equal(ev.payload.schema_version, 2);
-  const v = verifyEvidence(ev, { hmacKey: key });
+  const v = await verifyEvidence(ev, { hmacKey: key });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
 });
@@ -140,11 +140,11 @@ test("T3.N3: verifier rechaza tampering tanto en v1 como en v2", async () => {
   const key = "k";
   const evV1 = await buildEvidence({ a: 1 }, { hmacKey: key, requestTsa: false });
   evV1.payload.a = 999;
-  assert.equal(verifyEvidence(evV1, { hmacKey: key }).hashOk, false);
+  assert.equal((await verifyEvidence(evV1, { hmacKey: key })).hashOk, false);
 
   const evV2 = await buildEvidence({ schema_version: 2, a: 1 }, { hmacKey: key, requestTsa: false });
   evV2.payload.a = 999;
-  assert.equal(verifyEvidence(evV2, { hmacKey: key }).hashOk, false);
+  assert.equal((await verifyEvidence(evV2, { hmacKey: key })).hashOk, false);
 });
 
 test("evidence: TSA real DigiCert sella el hash (requiere red)", async () => {
@@ -153,7 +153,7 @@ test("evidence: TSA real DigiCert sella el hash (requiere red)", async () => {
     assert.equal(ev.seal.method, "HMAC-SHA256 + RFC 3161 TSA");
     assert.ok(ev.seal.rfc3161Tsa.token);
     assert.ok(ev.seal.rfc3161Tsa.genTime);
-    const v = verifyEvidence(ev, { hmacKey: "k" });
+    const v = await verifyEvidence(ev, { hmacKey: "k" });
     assert.equal(v.tsaOk, true);
   } else {
     // Fallback honesto: sin red, el sello es HMAC-only y el método lo declara.

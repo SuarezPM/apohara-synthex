@@ -40,7 +40,7 @@ async function main() {
   console.log(`\n⬡ APOHARA SYNTHEX — Evidence Report (DEMO · corrida CACHEADA ${CACHED_AT}, NO live)\n`);
   const ev = await runDemo({ requestTsa: true });
   console.log(JSON.stringify(ev, null, 2));
-  const v = verifyEvidence(ev, { hmacKey: process.env.SYNTHEX_HMAC_KEY || "synthex-demo" });
+  const v = await verifyEvidence(ev, { hmacKey: process.env.SYNTHEX_HMAC_KEY || "synthex-demo" });
   console.log("\n── Verificación ──");
   console.log("  hash :", v.hashOk ? "OK" : "FALLO");
   console.log("  HMAC :", v.hmacOk ? "OK" : "FALLO");

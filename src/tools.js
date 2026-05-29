@@ -15,8 +15,15 @@ export const tools = [
       hmacKey: z.string().optional().describe("Clave HMAC (default: SYNTHEX_HMAC_KEY)"),
     }),
     execute: async ({ evidence, hmacKey }) => {
-      const ev = typeof evidence === "string" ? JSON.parse(evidence) : evidence;
-      const result = verifyEvidence(ev, { hmacKey: hmacKey ?? process.env.SYNTHEX_HMAC_KEY ?? "synthex-dev" });
+      // Try/catch sobre JSON.parse: input MCP malformado no debe crashear el server.
+      let ev;
+      if (typeof evidence === "string") {
+        try { ev = JSON.parse(evidence); }
+        catch (e) { return JSON.stringify({ error: "malformed JSON in evidence string", detail: e.message }, null, 2); }
+      } else {
+        ev = evidence;
+      }
+      const result = await verifyEvidence(ev, { hmacKey: hmacKey ?? process.env.SYNTHEX_HMAC_KEY ?? "synthex-dev" });
       return JSON.stringify(result, null, 2);
     },
   },

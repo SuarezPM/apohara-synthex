@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       mode = "demo"; // sin secrets en el deploy → snapshot cacheado, NO live (honestidad)
     }
 
-    const verify = verifyEvidence(evidence, { hmacKey: verifyKey });
+    const verify = await verifyEvidence(evidence, { hmacKey: verifyKey });
     res.status(200).json({ mode, tier: tier ?? "default", model: modelOverride ?? "default", evidence, verify });
   } catch (e) {
     console.error("[analyze] error:", e); // detalle server-side; al cliente, mensaje genérico

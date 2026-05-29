@@ -32,7 +32,7 @@ test("pipeline: fetch→forge→classify→prove con mocks produce evidence sell
   assert.equal(ev.payload.findings[0].lens, "gtm");
   // sellado HMAC verificable
   assert.ok(ev.seal.hmacSha256);
-  const v = verifyEvidence(ev, { hmacKey: "synthex-dev" });
+  const v = await verifyEvidence(ev, { hmacKey: "synthex-dev" });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
 });
@@ -60,7 +60,7 @@ test("pipeline: lens='all' clasifica bajo las 4 lentes por doc", async () => {
   assert.equal(tri.security.severity, 9);
   assert.equal(tri["supply-chain"].severity, 6);
   // sello sigue siendo verificable con el shape de 4 lentes
-  const v = verifyEvidence(ev, { hmacKey: "synthex-dev" });
+  const v = await verifyEvidence(ev, { hmacKey: "synthex-dev" });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
 });
