@@ -44,6 +44,25 @@ async function defaultFetch(target, { maxResults = 3 } = {}) {
 }
 
 /**
+ * map con límite de concurrencia: corre `fn` sobre `items` con a lo sumo `limit` en vuelo a la vez,
+ * preservando el orden de resultados. Acota las ráfagas que saturarían los rate-limits de Bright
+ * Data / AI-ML cuando hay muchos targets o documentos (adaptación del PR #2: Promise.all → bounded).
+ */
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  const cap = Math.max(1, Math.min(limit, items.length));
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: cap }, worker));
+  return results;
+}
+
+/**
  * Ejecuta el pipeline completo y devuelve un Evidence Report.
  * @param {string} target  URL o término objetivo.
  * @param {{lens?:string, hmacKey?:string, requestTsa?:boolean, fetcher?:Function, classifier?:Function, emitter?:Function}} opts
@@ -59,6 +78,7 @@ export async function runPipeline(target, opts = {}) {
     classifier,
     emitter,
     dedupMode = "exact", // "semantic" (opt-in, CLI-only) carga dedup-semantic.js con import() dinámico
+    concurrency = Number(process.env.SYNTHEX_CONCURRENCY) || 6, // cap de FETCH/CLASSIFY en vuelo (PR #2 acotado)
   } = opts;
 
   await startTelemetry(); // arranca el exporter OTLP solo si hay endpoint (idempotente)
@@ -87,7 +107,7 @@ export async function runPipeline(target, opts = {}) {
   const targets = Array.isArray(target) ? target : [target];
   const docs = await timed("FETCH", async ({ record }) => {
     const out = (
-      await Promise.all(targets.map((t) => (fetcher ? fetcher(t) : defaultFetch(t))))
+      await mapLimit(targets, concurrency, (t) => (fetcher ? fetcher(t) : defaultFetch(t)))
     ).flat();
     record("urls", out.length);
     return out;
@@ -172,21 +192,19 @@ export async function runPipeline(target, opts = {}) {
     record("lens", lens);
     record("docs", safe.length);
     if (lens === "all") {
-      return Promise.all(
-        safe.map(async (d) => {
-          const tri = Object.fromEntries(
-            await Promise.all(LENS_SET.map(async (l) => [l, await doClassify(d.content, l, classifyOpts)])),
-          );
-          return { url: d.url, contentHash: d.contentHash, trilens: tri };
-        }),
-      );
+      // map externo capeado a `concurrency`; las 4 lentes internas por doc siguen en paralelo
+      // (hasta concurrency×4 llamadas al clasificador en vuelo en el peor caso).
+      return mapLimit(safe, concurrency, async (d) => {
+        const tri = Object.fromEntries(
+          await Promise.all(LENS_SET.map(async (l) => [l, await doClassify(d.content, l, classifyOpts)])),
+        );
+        return { url: d.url, contentHash: d.contentHash, trilens: tri };
+      });
     }
-    return Promise.all(
-      safe.map(async (d) => {
-        const c = await doClassify(d.content, lens, classifyOpts);
-        return { url: d.url, contentHash: d.contentHash, ...c };
-      })
-    );
+    return mapLimit(safe, concurrency, async (d) => {
+      const c = await doClassify(d.content, lens, classifyOpts);
+      return { url: d.url, contentHash: d.contentHash, ...c };
+    });
   });
 
   // 4. PROVE: sellar el reporte.
