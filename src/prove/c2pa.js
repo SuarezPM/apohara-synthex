@@ -20,13 +20,14 @@
 // Used in canonical (Core-Deterministic) mode so two emissions of the same claim
 // produce byte-identical sidecars.
 import { Buffer } from "node:buffer";
-import { randomBytes, webcrypto, createPublicKey, createPrivateKey } from "node:crypto";
+import { randomBytes, webcrypto, createPublicKey, createPrivateKey, createHash } from "node:crypto";
 import * as pkijs from "pkijs";
 import * as asn1js from "asn1js";
 import { Encoder, Tag as CborTag, decode as cborDecode } from "cbor-x";
 
 // ─── Constants ────────────────────────────────────────────────────────────
 const ED25519_OID = "1.3.101.112"; // RFC 8410 §3
+const EKU_DOCUMENT_SIGNING_OID = "1.3.6.1.5.5.7.3.36"; // id-kp-documentSigning, RFC 9336
 const COSE_SIGN1_TAG = 18;
 const COSE_HEADER_ALG = 1;
 const COSE_HEADER_X5CHAIN = 33;
@@ -94,7 +95,21 @@ export async function buildSelfSignedEd25519Cert(opts) {
   );
   cert.subjectPublicKeyInfo = new pkijs.PublicKeyInfo({ schema: spkiAsn1.result });
 
-  // Extensions: KeyUsage (digitalSignature) + BasicConstraints (CA:FALSE).
+  // RFC 5280 keyIdentifier (method 1): SHA-1 of the raw public key bytes.
+  // Ed25519 SPKI DER is 44 bytes; the trailing 32 are the raw public key.
+  // c2pa-rs's check_certificate_profile requires AKI present on the end-entity
+  // (aki_good) — without it the cert is rejected as "certificate params incorrect".
+  const rawPubKey = Buffer.from(spkiDer).subarray(-32);
+  const keyIdentifier = createHash("sha1").update(rawPubKey).digest();
+  const kidAb = new Uint8Array(keyIdentifier).buffer;
+
+  // Extensions: KeyUsage (digitalSignature) + BasicConstraints (CA:FALSE) +
+  // ExtendedKeyUsage (id-kp-documentSigning). The EKU is what c2pa-rs's
+  // certificate_trust_policy validates the end-entity profile against — without
+  // it c2patool rejects the cert outright. 1.3.6.1.5.5.7.3.36 (RFC 9336) is in
+  // c2pa-rs's default valid_eku_oids allow-list, so no custom trust_config is
+  // needed for the manifest to validate (the signer is still "untrusted source"
+  // because it's self-signed — see HONESTY §1.6).
   cert.extensions = [
     new pkijs.Extension({
       extnID: "2.5.29.15",
@@ -108,6 +123,28 @@ export async function buildSelfSignedEd25519Cert(opts) {
       extnID: "2.5.29.19",
       critical: true,
       extnValue: new asn1js.Sequence({ value: [new asn1js.Boolean({ value: false })] }).toBER(false),
+    }),
+    new pkijs.Extension({
+      extnID: "2.5.29.37", // extKeyUsage
+      critical: false,
+      extnValue: new pkijs.ExtKeyUsage({
+        keyPurposes: [EKU_DOCUMENT_SIGNING_OID],
+      }).toSchema().toBER(false),
+    }),
+    new pkijs.Extension({
+      extnID: "2.5.29.14", // subjectKeyIdentifier
+      critical: false,
+      extnValue: new asn1js.OctetString({ valueHex: kidAb }).toBER(false),
+    }),
+    new pkijs.Extension({
+      extnID: "2.5.29.35", // authorityKeyIdentifier (self-issued → points at own SKI)
+      critical: false,
+      extnValue: new asn1js.Sequence({
+        value: [
+          // [0] keyIdentifier IMPLICIT OCTET STRING
+          new asn1js.Primitive({ idBlock: { tagClass: 3, tagNumber: 0 }, valueHex: kidAb }),
+        ],
+      }).toBER(false),
     }),
   ];
 

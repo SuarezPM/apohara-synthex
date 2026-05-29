@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { runPipeline, mcpText } from "../src/pipeline.js";
 import { verifyEvidence } from "../src/prove/evidence-report.js";
+import { generateKeyPair } from "../src/prove/asymmetric.js";
 
 test("mcpText extrae texto de un resultado de tool MCP", () => {
   assert.equal(mcpText({ content: [{ type: "text", text: "hola" }, { type: "text", text: "mundo" }] }), "hola\nmundo");
@@ -195,4 +196,44 @@ test("pipeline: multi-fuente (array de targets) consolida en un Evidence Report"
   assert.equal(ev.payload.sources.length, 3);
   assert.equal(ev.payload.findings.length, 3);
   assert.deepEqual(ev.payload.target, ["acme.com", "globex.com", "initech.com"]);
+});
+
+// ─── Ed25519 seal wiring (v0.8.0 feature reached the pipeline) ──────────────
+// Regression guard for the wiring gap: buildEvidence accepted signingKey, but
+// runPipeline never destructured/forwarded it → the asymmetric seal (the
+// load-bearing v0.8.0 feature) was unreachable from the product's main path.
+
+test("pipeline: signingKey en opts → seal.signature Ed25519 presente y verificable", async () => {
+  const kp = generateKeyPair();
+  const fetcher = async () => [{ url: "x", content: "señal a firmar asimétricamente" }];
+  const classifier = async (text, lens) => ({ lens, severity: 5, summary: "ok", signals: [] });
+  const ev = await runPipeline("sign-test", {
+    lens: "security", fetcher, classifier, requestTsa: false,
+    hmacKey: "k", signingKey: kp.privateKeyPem,
+  });
+  assert.ok(ev.seal.signature, "seal.signature debe estar presente cuando hay signingKey");
+  assert.equal(ev.seal.signature.alg, "Ed25519");
+  assert.equal(ev.seal.signature.keyId, kp.keyId);
+  const v = await verifyEvidence(ev, { hmacKey: "k" });
+  assert.equal(v.signatureValid, true);
+});
+
+test("pipeline: signerIdentity en opts se propaga al seal cuando hay firma", async () => {
+  const kp = generateKeyPair();
+  const fetcher = async () => [{ url: "x", content: "señal" }];
+  const classifier = async (text, lens) => ({ lens, severity: 5, summary: "ok", signals: [] });
+  const identity = { channel: "dns", uri: "_synthex.example.com", keyId: kp.keyId };
+  const ev = await runPipeline("id-test", {
+    lens: "security", fetcher, classifier, requestTsa: false,
+    hmacKey: "k", signingKey: kp.privateKeyPem, signerIdentity: identity,
+  });
+  assert.deepEqual(ev.seal.signerIdentity, identity);
+});
+
+test("pipeline: sin signingKey → seal.signature null (symmetric-only preservado, no-regression)", async () => {
+  const fetcher = async () => [{ url: "x", content: "señal" }];
+  const classifier = async (text, lens) => ({ lens, severity: 5, summary: "ok", signals: [] });
+  const ev = await runPipeline("nosign", { lens: "security", fetcher, classifier, requestTsa: false, hmacKey: "k" });
+  assert.equal(ev.seal.signature, null);
+  assert.equal(ev.seal.signerIdentity, null);
 });

@@ -8,15 +8,22 @@
 //   node bin/synthex.mjs https://example.com security --dedup=semantic   # dedup near-dup (opt-in)
 //   node bin/synthex.mjs keygen [--out=<dir>] [--force]  # v0.8 — generate Ed25519 signing keypair
 //   node bin/synthex.mjs publish-keyid [--domain=<your-domain>] # v0.8 — print publication formats
-import { mkdirSync, writeFileSync, chmodSync, existsSync, readFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, chmodSync, existsSync, readFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { Buffer } from "node:buffer";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { createPublicKey, createPrivateKey } from "node:crypto";
 import { runPipeline } from "../src/pipeline.js";
 import { runDemo } from "../demo/demo.js";
 import { verifyEvidence } from "../src/prove/evidence-report.js";
-import { generateKeyPair, keyIdOf } from "../src/prove/asymmetric.js";
+import { generateKeyPair, keyIdOf, resolveSigningKey } from "../src/prove/asymmetric.js";
 import { buildSelfSignedEd25519Cert, buildC2paManifest, verifyC2paManifest } from "../src/prove/c2pa.js";
+import { renderCardPng, buildCardManifestDefinition } from "../src/prove/evidence-card.js";
+import { anchorKeyId, verifyRekorBundle } from "../src/prove/rekor.js";
+
+const execFileP = promisify(execFile);
 
 /**
  * Parser argv mínimo. Soporta `--flag` (boolean), `--key=value`, y posicionales.
@@ -59,6 +66,20 @@ const USAGE = `apohara-synthex — Evidence layer over Bright Data
      c2pa.hash.data assertion, signed Ed25519+COSE_Sign1 with x5chain.
   node bin/synthex.mjs c2pa-verify <sidecar.c2pa.json> [--evidence=<evidence.json>]
      Verifies the C2PA sidecar with our own verifier (COSE math + hash binding).
+  node bin/synthex.mjs evidence-card <evidence.json> [--out=<card.png>] [--key-dir=<dir>]
+     Renders a PNG Evidence Card and embeds a REAL C2PA manifest (verifiable by
+     c2patool / contentcredentials.org). A com.apohara.synthex assertion binds the
+     card to the evidence's contentHash + seal keyId — card and PDF attest the same
+     evidence. Requires c2patool + a keypair (run keygen first). Signer is
+     self-signed → "untrusted source" in c2patool (HONESTY §1.6).
+  node bin/synthex.mjs rekor-anchor [--key-dir=<dir>]
+     Anchors the signing keyId ONCE in Sigstore's Rekor v2 transparency log (as a
+     DSSE in-toto statement signed by the seal key). Writes synthex-rekor-anchor.json
+     (inclusion proof + checkpoint) for OFFLINE verification. A public, append-only,
+     monitorable record of the keyId — NOT a new timestamp, NOT identity (HONESTY §1.3).
+  node bin/synthex.mjs rekor-verify <bundle.json>
+     Verifies a Rekor anchor bundle fully offline (DSSE sig + Merkle inclusion proof
+     + checkpoint Ed25519 signature against the TUF-pinned log key).
 
   Resolution order at sign time:
      1. SYNTHEX_SIGNING_KEY (inline pkcs8 PEM or base64)
@@ -206,12 +227,29 @@ export async function main(argv) {
       evidencePath: typeof flags.evidence === "string" ? flags.evidence : null,
     });
   }
+  if (positional[0] === "evidence-card") {
+    return runEvidenceCard({
+      evidencePath: positional[1],
+      outPath: typeof flags.out === "string" ? flags.out : null,
+      keyDir: typeof flags["key-dir"] === "string" ? flags["key-dir"] : null,
+    });
+  }
+  if (positional[0] === "rekor-anchor") {
+    return runRekorAnchor({ keyDir: typeof flags["key-dir"] === "string" ? flags["key-dir"] : null });
+  }
+  if (positional[0] === "rekor-verify") {
+    return runRekorVerify({ bundlePath: positional[1] });
+  }
 
   const hmacKey = process.env.SYNTHEX_HMAC_KEY || "synthex-demo";
+  // v0.8.0 — resolve the Ed25519 signing key (env inline → file → XDG default).
+  // Presence opt-in: a configured key activates the asymmetric seal; absence
+  // keeps the honest symmetric-only fallback (signatureValid:'symmetric-only').
+  const signingKey = resolveSigningKey();
   let ev;
   if (flags.demo) {
     const lens = positional[0] || "gtm";
-    ev = await runDemo({ requestTsa: true, lens });
+    ev = await runDemo({ requestTsa: true, lens, signingKey });
   } else {
     const target = positional[0];
     if (!target) {
@@ -220,7 +258,7 @@ export async function main(argv) {
     }
     const lens = positional[1] || "security";
     const dedupMode = flags.dedup === "semantic" ? "semantic" : "exact";
-    ev = await runPipeline(target, { lens, dedupMode, hmacKey, requestTsa: true });
+    ev = await runPipeline(target, { lens, dedupMode, hmacKey, requestTsa: true, signingKey });
   }
   // El reporte va a stdout (parseable); la verificación a stderr (no contamina el JSON).
   console.log(JSON.stringify(ev, null, 2));
@@ -288,6 +326,116 @@ async function runC2paVerify({ sidecarPath, evidencePath }) {
   if (expectedHash) {
     console.log(`  vs evidence hash   : ${v.contentHash === expectedHash ? "OK match" : "MISMATCH"}`);
   }
+  return v.ok ? 0 : 1;
+}
+
+// ─── evidence-card verb (v0.9) ──────────────────────────────────────────
+// Renders a PNG Evidence Card and embeds a REAL C2PA manifest via c2patool.
+// The com.apohara.synthex assertion binds the card to evidence.contentHash +
+// seal keyId, so the card and the PDF attest the same evidence (HONESTY §1.6).
+
+async function runEvidenceCard({ evidencePath, outPath, keyDir }) {
+  if (!evidencePath) {
+    console.error("usage: synthex evidence-card <evidence.json> [--out=<card.png>] [--key-dir=<dir>]");
+    return 2;
+  }
+  const dir = keyDir || DEFAULT_KEY_DIR;
+  const keyPath = join(dir, "synthex-ed25519.key");
+  const certPath = join(dir, "synthex-c2pa.crt");
+  if (!existsSync(keyPath) || !existsSync(certPath)) {
+    console.error(`missing key or cert in ${dir} — run 'synthex keygen' first`);
+    return 2;
+  }
+  const ev = JSON.parse(readFileSync(evidencePath, "utf8"));
+  if (!ev?.seal?.signature?.keyId) {
+    console.error("evidence is symmetric-only (no Ed25519 seal) — re-run the pipeline with a signing key");
+    console.error("configured (SYNTHEX_SIGNING_KEY / keygen) so the card can bind to the seal keyId.");
+    return 2;
+  }
+  const out = outPath || evidencePath.replace(/\.json$/, "") + ".card.png";
+
+  const tmp = mkdtempSync(join(tmpdir(), "synthex-card-"));
+  try {
+    const unsignedPath = join(tmp, "card.png");
+    writeFileSync(unsignedPath, await renderCardPng(ev));
+
+    const manifestDef = buildCardManifestDefinition(ev, { privateKeyPath: keyPath, signCertPath: certPath });
+    const manifestPath = join(tmp, "manifest.json");
+    writeFileSync(manifestPath, JSON.stringify(manifestDef, null, 2));
+
+    try {
+      await execFileP("c2patool", [unsignedPath, "-m", manifestPath, "-o", out, "-f"]);
+    } catch (e) {
+      if (e.code === "ENOENT") {
+        console.error("c2patool not found — install with: cargo install c2patool");
+        console.error("(the unsigned card was rendered but NOT C2PA-signed)");
+        return 3;
+      }
+      console.error("c2patool failed:", String(e.stderr || e.message || "").split("\n")[0]);
+      return 1;
+    }
+
+    console.log(`Wrote C2PA evidence card → ${out}`);
+    console.log(`  contentHash : ${ev.contentHash}`);
+    console.log(`  seal keyId  : ${ev.seal.signature.keyId}`);
+    console.log(`  The com.apohara.synthex assertion binds this card to the sealed evidence.`);
+    console.log(`  Verify: c2patool ${out}   (signer self-signed → 'untrusted source', expected — HONESTY §1.6)`);
+    return 0;
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+// ─── rekor-anchor / rekor-verify verbs (v0.9) ────────────────────────────
+
+function _keyIdAndSpki(keyPem) {
+  const spkiDer = createPublicKey(createPrivateKey(keyPem)).export({ type: "spki", format: "der" });
+  return { publicKeySpkiB64: Buffer.from(spkiDer).toString("base64"), keyId: keyIdOf(spkiDer) };
+}
+
+async function runRekorAnchor({ keyDir }) {
+  const dir = keyDir || DEFAULT_KEY_DIR;
+  const keyPath = join(dir, "synthex-ed25519.key");
+  if (!existsSync(keyPath)) {
+    console.error(`missing key in ${dir} — run 'synthex keygen' first`);
+    return 2;
+  }
+  const keyPem = readFileSync(keyPath, "utf8");
+  const { keyId, publicKeySpkiB64 } = _keyIdAndSpki(keyPem);
+  console.error(`Anchoring keyId ${keyId} in Rekor v2 (DSSE in-toto statement)…`);
+  let bundle;
+  try {
+    bundle = await anchorKeyId(keyPem, { keyId, publicKeySpkiB64 });
+  } catch (e) {
+    console.error("rekor anchor failed:", e.message);
+    return 1;
+  }
+  const out = join(dir, "synthex-rekor-anchor.json");
+  writeFileSync(out, JSON.stringify(bundle, null, 2));
+  const v = verifyRekorBundle(bundle); // verify offline immediately
+  console.log(`Wrote Rekor anchor bundle → ${out}`);
+  console.log(`  keyId        : ${keyId}`);
+  console.log(`  log          : ${bundle.logOrigin}`);
+  console.log(`  logIndex     : ${bundle.tlogEntry.logIndex}`);
+  console.log(`  offline verify: ${v.ok ? "OK" : `FAIL (${v.reason})`}`);
+  console.log(`  Rekor = public append-only, monitorable record of the keyId. NOT a new`);
+  console.log(`  timestamp (the RFC 3161 TSA does that), NOT identity (a bare key is anonymous`);
+  console.log(`  — real identity is OIDC+Fulcio, an interactive opt-in). HONESTY §1.3.`);
+  return v.ok ? 0 : 1;
+}
+
+function runRekorVerify({ bundlePath }) {
+  if (!bundlePath) {
+    console.error("usage: synthex rekor-verify <bundle.json>");
+    return 2;
+  }
+  const bundle = JSON.parse(readFileSync(bundlePath, "utf8"));
+  const v = verifyRekorBundle(bundle);
+  console.log("── Rekor anchor verification (offline) ──");
+  console.log(`  keyId        : ${bundle.keyId}`);
+  console.log(`  log origin   : ${bundle.logOrigin}`);
+  for (const [k, val] of Object.entries(v.checks)) console.log(`  ${k.padEnd(13)}: ${val ? "OK" : "FAIL"}`);
+  console.log(`  verdict      : ${v.ok ? "VALID" : `INVALID (${v.reason})`}`);
   return v.ok ? 0 : 1;
 }
 

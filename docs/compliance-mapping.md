@@ -52,7 +52,8 @@ The reviewer of 2026-05-29 flagged that the page mentions "EU AI Act / DORA" wit
 **What Synthex provides:**
 
 - **`bin/decode-evidence.js`** — open-source detection tool. Anyone with a Synthex-sealed evidence file can verify it without contacting us. The CLI prints per-layer verdicts (`hash`, `HMAC`, `TSA`, `sig`) so the verifier reads the *exact same* truth Synthex saw at seal time. No SaaS dependency.
-- **(v0.8) `npx synthex c2pa-verify`** — C2PA-compatible verification (planned). Adobe's `c2patool` will independently validate the sidecar.
+- **(v0.9) `npx synthex evidence-card`** — REAL C2PA Content Credentials. Emits a PNG card whose embedded manifest **`c2patool` verifies as Valid** (CI gate in `scripts/c2pa-interop-test.sh`), bound to the same `contentHash` as the PDF; the own `c2pa-verify` checks the JSON sidecar offline. Self-signed signer → "untrusted source" (HONESTY §1.6).
+- **(v0.9) `npx synthex rekor-anchor`** — anchors the keyId in Sigstore Rekor v2 (public append-only log); `rekor-verify` checks the inclusion proof + checkpoint signature fully offline.
 - **Sealed `policy_bundle_version`** in every payload — a verifier can determine *which version* of the DJL+prefilter+PII rules was in effect when the classification happened (`src/pipeline.js:173-176`). Version drift is visible.
 
 **Honesty:** Synthex is not itself a "covered provider" of generative AI — we don't generate the synthetic content SB 942 targets. We're an intelligence/evidence layer over scraping. The detection-tool obligation is what generative providers ship; Synthex's verification tooling is the model for what *third-party verification* should look like, applicable to any provenance system.

@@ -518,10 +518,10 @@ h2.head em {
     <span class="marquee-item"><span class="val">385 ms</span><span class="lbl">DigiCert TSA p95</span><span class="sep">◆</span></span>
     <span class="marquee-item"><span class="val">RFC 3161</span><span class="lbl">DigiCert</span><span class="sep">◆</span></span>
     <span class="marquee-item"><span class="val">SLSA L3</span><span class="lbl">+ npm provenance</span><span class="sep">◆</span></span>
-    <span class="marquee-item"><span class="val">131</span><span class="lbl">deterministic pre-LLM rules</span><span class="sep">◆</span></span>
+    <span class="marquee-item"><span class="val">110</span><span class="lbl">deterministic pre-LLM rules</span><span class="sep">◆</span></span>
     <span class="marquee-item"><span class="val">4 lenses</span><span class="lbl">in parallel</span><span class="sep">◆</span></span>
     <span class="marquee-item"><span class="val">Node 24 LTS</span><span class="lbl">100% JavaScript · MIT</span><span class="sep">◆</span></span>
-    <span class="marquee-item"><span class="val">262 / 252</span><span class="lbl">tests passing</span><span class="sep">◆</span></span>
+    <span class="marquee-item"><span class="val">421 / 411</span><span class="lbl">tests passing</span><span class="sep">◆</span></span>
     <!-- duplicated for seamless infinite loop (CSS translateX -50%) -->
     <span class="marquee-item"><span class="val">500</span><span class="lbl">URLs sealed live</span><span class="sep">◆</span></span>
     <span class="marquee-item"><span class="val">99.6%</span><span class="lbl">success rate</span><span class="sep">◆</span></span>
@@ -529,10 +529,10 @@ h2.head em {
     <span class="marquee-item"><span class="val">385 ms</span><span class="lbl">DigiCert TSA p95</span><span class="sep">◆</span></span>
     <span class="marquee-item"><span class="val">RFC 3161</span><span class="lbl">DigiCert</span><span class="sep">◆</span></span>
     <span class="marquee-item"><span class="val">SLSA L3</span><span class="lbl">+ npm provenance</span><span class="sep">◆</span></span>
-    <span class="marquee-item"><span class="val">131</span><span class="lbl">deterministic pre-LLM rules</span><span class="sep">◆</span></span>
+    <span class="marquee-item"><span class="val">110</span><span class="lbl">deterministic pre-LLM rules</span><span class="sep">◆</span></span>
     <span class="marquee-item"><span class="val">4 lenses</span><span class="lbl">in parallel</span><span class="sep">◆</span></span>
     <span class="marquee-item"><span class="val">Node 24 LTS</span><span class="lbl">100% JavaScript · MIT</span><span class="sep">◆</span></span>
-    <span class="marquee-item"><span class="val">262 / 252</span><span class="lbl">tests passing</span><span class="sep">◆</span></span>
+    <span class="marquee-item"><span class="val">421 / 411</span><span class="lbl">tests passing</span><span class="sep">◆</span></span>
   </div>
 </section>
 
@@ -619,9 +619,9 @@ h2.head em {
     </div>
     <div class="substrate"><span>● EVERY BYTE SCREENED · EVERY REPORT SIGNED</span><span>SHA-256 · HMAC-SHA256 · RFC 3161</span></div>
     <div class="stats">
-      <div class="stat s-lime"><div class="v">262</div><div class="l">tests · 252 pass · 0 fail</div></div>
+      <div class="stat s-lime"><div class="v">421</div><div class="l">tests · 411 pass · 0 fail</div></div>
       <div class="stat s-teal"><div class="v">6/6</div><div class="l">Bright Data surfaces · live</div></div>
-      <div class="stat s-amber"><div class="v">131</div><div class="l">rules · 3 layers · pre-LLM</div></div>
+      <div class="stat s-amber"><div class="v">110</div><div class="l">rules · 3 layers · pre-LLM</div></div>
       <div class="stat s-violet"><div class="v">500</div><div class="l">URLs · 99.6% · $0.75 · live stress</div></div>
     </div>
   </div>
@@ -645,8 +645,8 @@ h2.head em {
         <pre>{ id:<span class="s">"DJL-PI-001"</span>, re:<span class="n">/ignore previous instructions/i</span>, sev:<span class="n">9</span> },
 { id:<span class="s">"DJL-HARM-011"</span>, re:<span class="n">/(?:kill myself|suicidarme)/i</span>, sev:<span class="n">10</span> },
 { id:<span class="s">"SSRF-1"</span>, re:<span class="n">/169\.254\.169\.254/</span>, severity:<span class="n">9</span> },
-<span class="c">// 78 DJL + 28 web · ≥ 8 → BLOCK pre-LLM</span></pre>
-        <div class="ft"><span class="m">106 rules · 2 layers · 78/78 fixture coverage</span><span class="l">SkillFortify-aligned</span></div></div>
+<span class="c">// 78 DJL + 32 web · ≥ 8 → BLOCK pre-LLM</span></pre>
+        <div class="ft"><span class="m">110 rules · 2 layers · 78/78 fixture coverage</span><span class="l">SkillFortify-aligned</span></div></div>
 
       <div class="codecard s-amber"><div class="hd"><span class="name">CLASSIFY</span><span class="tag">src/pipeline.js</span></div>
         <pre><span class="c">// lens="all" → 4 lenses in parallel on one scrape</span>
@@ -838,7 +838,7 @@ $ openssl ts -reply -in synthex.tsr -text
       <div class="winrow"><span class="c">✓</span> RFC 3161 TSA (DigiCert) — verifiable offline with <span class="mono">openssl ts</span></div>
       <div class="winrow"><span class="c">✓</span> Downloadable 6-page signed Evidence Report — 4-buyer framing (CISO · CFO · GC · Broker)</div>
       <div class="winrow"><span class="c">✓</span> 4-lens classification in parallel — GTM · Finance · Security · Supply-chain</div>
-      <div class="winrow"><span class="c">✓</span> Two-layer pre-LLM defense (28 web-injection + 78 prompt-level = 106 rules) — blocks injection <em>before</em> the LLM call</div>
+      <div class="winrow"><span class="c">✓</span> Two-layer pre-LLM defense (32 web-injection + 78 prompt-level = 110 rules) — blocks injection <em>before</em> the LLM call</div>
       <div class="winrow"><span class="c">✓</span> <em>Tokens saved</em> sealed inside every Evidence Report — dedup + blocked bytes + estimated tokens, verifiable with <span class="mono">decode-evidence</span></div>
       <div class="winrow"><span class="c">✓</span> OpenTelemetry GenAI spans + live SSE pipeline view — observable, not a black box</div>
     </div>
@@ -866,7 +866,7 @@ $ openssl ts -reply -in synthex.tsr -text
       <a class="cta-mono" href="https://www.npmjs.com/package/@apohara/synthex" target="_blank" rel="noopener"><span class="hash">$</span> npm i @apohara/synthex</a>
       <a class="cta-ghost" href="https://github.com/SuarezPM/apohara-synthex/blob/main/docs/HONESTY.md" target="_blank" rel="noopener">Read HONESTY →</a>
     </div>
-    <p class="final-meta">v0.7.0 · SLSA L3 · npm provenance · Web Data UNLOCKED · Bright Data × lablab.ai · MIT</p>
+    <p class="final-meta">v0.9.0 · Ed25519 seal · C2PA Content Credentials · Rekor v2 · SLSA L3 · npm provenance · Web Data UNLOCKED · Bright Data × lablab.ai · MIT</p>
   </div>
 </section>
 

@@ -1,6 +1,6 @@
 {
   "name": "@apohara/synthex",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "The JavaScript layer that turns brightdata-mcp into an intelligence & evidence platform: classify what your agents scrape, seal it verifiably (HMAC-SHA256 + Ed25519 asymmetric signature with identity-publishable keyId, v0.8 + RFC 3161 TSA with CMS chain verify + cert-validity + EKU id-kp-timeStamping hardening to pinned DigiCert anchors), AND chain re-scrapes cross-time. Two-layer pre-LLM defense in the main pipeline (78 DJL + 32 prefilter rules) plus a 25-rule PII gate on the monitor/KG-ingest path, plus opt-in Layer-2 semantic injection-guard (Prompt-Guard 86M, calibrated REVIEW/BLOCK), CaMeL-style flow gate on react/Cognee, opt-in OCSP revocation surfacing, C2PA-shaped sidecar emission, Delta Evidence Chain with TSA serial linkage, multi-page PDF, model tier selector (free/oss/paid), Kiro-native MCP.",
   "type": "module",
   "bin": {

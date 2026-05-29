@@ -53,6 +53,8 @@ export async function runPipeline(target, opts = {}) {
     lens = "security",
     hmacKey = process.env.SYNTHEX_HMAC_KEY || "synthex-dev",
     requestTsa = true,
+    signingKey,       // v0.8.0 — Ed25519 pkcs8 PEM/base64; presence opt-in → asymmetric seal
+    signerIdentity,   // v0.8.0 — out-of-band identity pointer carried in the seal
     fetcher,
     classifier,
     emitter,
@@ -258,7 +260,7 @@ export async function runPipeline(target, opts = {}) {
         findings,
       };
   const evidence = await timed("PROVE", async ({ record }) => {
-    const ev = await buildEvidence(payload, { hmacKey, requestTsa });
+    const ev = await buildEvidence(payload, { hmacKey, requestTsa, signingKey, signerIdentity });
     record("method", ev.seal.method);
     recordSealed();
     return ev;
