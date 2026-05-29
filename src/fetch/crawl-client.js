@@ -1,17 +1,16 @@
 // CRAWL — recorre un sitio (seed → links internos → N páginas) y lo devuelve como markdown.
-// Dos modos:
-//  - DEFAULT (sin dataset extra): crawl multi-página REAL sobre el Web Unlocker REST de Bright Data
-//    — scrapea el seed, extrae links internos del markdown, y scrapea hasta `maxPages` páginas del
-//    mismo host. Funciona con BRIGHT_DATA_TOKEN + WEB_UNLOCKER_ZONE (lo que ya tenemos), serverless.
-//  - NATIVO (opt-in): si hay BRIGHT_DATA_CRAWL_DATASET_ID (dataset gd_... de Crawl), usa la Crawl API
-//    asíncrona (trigger → progress → snapshot). Preferido cuando esté configurado.
-// HONESTIDAD: el modo default es "multi-page crawl vía Web Unlocker", no la Crawl API nativa —
-// se etiqueta así. Ambos modos devuelven [{url, content}] para el pipeline.
+// Dos modos, ambos devuelven [{url, content}] para el pipeline:
+//  - DEFAULT (Web Unlocker): scrapea el seed, extrae links internos del markdown y scrapea hasta
+//    `maxPages` páginas del mismo host vía Web Unlocker REST. Solo necesita BRIGHT_DATA_TOKEN
+//    (+ WEB_UNLOCKER_ZONE). Serverless.
+//  - NATIVO (opt-in, preferido): si hay BRIGHT_DATA_CRAWL_DATASET_ID, la extracción de contenido
+//    usa la Crawl API REAL de Bright Data (POST /datasets/v3/scrape, síncrono → markdown). El
+//    descubrimiento de links internos sigue siendo nuestro (sobre el markdown del seed).
+// HONESTIDAD: en modo nativo el contenido SÍ sale del Crawl API de Bright Data (no Web Unlocker);
+// el discovery del dominio es nuestro. El modo default se etiqueta como "crawl vía Web Unlocker".
 import { BrightDataHttpClient } from "./http-client.js";
 
-const TRIGGER_URL = "https://api.brightdata.com/datasets/v3/trigger";
-const PROGRESS_URL = "https://api.brightdata.com/datasets/v3/progress";
-const SNAPSHOT_URL = "https://api.brightdata.com/datasets/v3/snapshot";
+const SCRAPE_URL = "https://api.brightdata.com/datasets/v3/scrape";
 
 /** Extrae links http(s) de un markdown: `[txt](url)` y `<url>`. */
 export function extractLinks(markdown) {
@@ -35,6 +34,31 @@ export function sameHostLinks(seedUrl, links) {
       if (u.host !== host || ASSET.test(u.pathname) || seen.has(clean) || clean === new URL(seedUrl).origin + new URL(seedUrl).pathname) continue;
       seen.add(clean); out.push(clean);
     } catch { /* link inválido */ }
+  }
+  return out;
+}
+
+/**
+ * Parsea la respuesta del Crawl API (/scrape) → [{url, content}], quedándose solo con las páginas
+ * que trajeron markdown. La API responde NDJSON (una línea JSON por URL) o, a veces, un JSON array;
+ * las páginas muertas vuelven como objeto con `warning_code` (sin markdown) y se omiten.
+ */
+export function parseScrapeNdjson(text) {
+  const out = [];
+  const push = (o) => {
+    if (o && typeof o.markdown === "string" && o.markdown) out.push({ url: o.url ?? o.input?.url ?? "", content: o.markdown });
+  };
+  const trimmed = String(text ?? "").trim();
+  if (!trimmed) return out;
+  try {
+    const parsed = JSON.parse(trimmed); // ¿array u objeto único?
+    if (Array.isArray(parsed)) { parsed.forEach(push); return out; }
+    if (parsed && typeof parsed === "object") { push(parsed); return out; }
+  } catch { /* no es un JSON único → tratar como NDJSON línea-por-línea */ }
+  for (const line of trimmed.split("\n")) {
+    const t = line.trim();
+    if (!t) continue;
+    try { push(JSON.parse(t)); } catch { /* línea no-JSON → omitir */ }
   }
   return out;
 }
@@ -66,33 +90,47 @@ export class BrightDataCrawlClient {
     return docs;
   }
 
-  // ── Crawl API NATIVA (opt-in, requiere BRIGHT_DATA_CRAWL_DATASET_ID) ──
-  async trigger(url, { includeErrors = true, outputFields = "markdown", timeoutMs = 40000 } = {}) {
+  // ── Crawl API NATIVA de Bright Data (opt-in, requiere BRIGHT_DATA_CRAWL_DATASET_ID) ──
+
+  /**
+   * Scrapea un batch de URLs vía POST /datasets/v3/scrape (síncrono) → [{url, content:markdown}].
+   * include_errors=true: las páginas muertas vuelven como warning (sin markdown) y parseScrapeNdjson
+   * las omite. Best-effort: devuelve lo que haya traído markdown.
+   */
+  async scrapeBatch(urls, { timeoutMs = 60000 } = {}) {
     if (!this.datasetId) throw new Error("Falta BRIGHT_DATA_CRAWL_DATASET_ID para la Crawl API nativa.");
-    const qs = new URLSearchParams({ dataset_id: this.datasetId, include_errors: String(includeErrors), custom_output_fields: outputFields });
-    const res = await fetch(`${TRIGGER_URL}?${qs}`, {
-      method: "POST", headers: { Authorization: `Bearer ${this.apiToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify([{ url }]), signal: AbortSignal.timeout(timeoutMs),
+    if (!this.apiToken) throw new Error("Falta BRIGHT_DATA_TOKEN para la Crawl API nativa.");
+    const qs = new URLSearchParams({ dataset_id: this.datasetId, notify: "false", include_errors: "true" });
+    const res = await fetch(`${SCRAPE_URL}?${qs}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.apiToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ input: urls.map((url) => ({ url })) }),
+      signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!res.ok) throw new Error(`Bright Data Crawl trigger HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    const data = await res.json();
-    const snapshotId = data?.snapshot_id ?? data?.id;
-    if (!snapshotId) throw new Error(`Crawl: respuesta sin snapshot_id. ${JSON.stringify(data).slice(0, 200)}`);
-    return snapshotId;
+    if (!res.ok) throw new Error(`Bright Data Crawl scrape HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    return parseScrapeNdjson(await res.text());
   }
-  async progress(snapshotId, { timeoutMs = 20000 } = {}) {
-    const res = await fetch(`${PROGRESS_URL}/${snapshotId}`, { headers: { Authorization: `Bearer ${this.apiToken}` }, signal: AbortSignal.timeout(timeoutMs) });
-    if (!res.ok) throw new Error(`Bright Data Crawl progress HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    return res.json();
-  }
-  async snapshot(snapshotId, { format = "json", timeoutMs = 40000 } = {}) {
-    const res = await fetch(`${SNAPSHOT_URL}/${snapshotId}?format=${encodeURIComponent(format)}`, { headers: { Authorization: `Bearer ${this.apiToken}` }, signal: AbortSignal.timeout(timeoutMs) });
-    if (!res.ok) throw new Error(`Bright Data Crawl snapshot HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    return format === "json" ? res.json() : res.text();
+
+  /**
+   * Crawl nativo: scrapea el seed vía Crawl API, descubre links internos del markdown del seed y
+   * scrapea el resto en un solo batch. Devuelve [{url, content}] (el seed primero), mismo shape
+   * que crawl(). Se usa cuando hay BRIGHT_DATA_CRAWL_DATASET_ID configurado.
+   */
+  async crawlNative(seedUrl, { maxPages = 5, timeoutMs = 60000 } = {}) {
+    if (!/^https?:\/\//i.test(seedUrl)) throw new Error("Crawl: el seed debe ser una URL http(s).");
+    const seedDocs = await this.scrapeBatch([seedUrl], { timeoutMs });
+    const seedMd = seedDocs.find((d) => d.url === seedUrl)?.content ?? seedDocs[0]?.content ?? "";
+    const targets = sameHostLinks(seedUrl, extractLinks(seedMd)).slice(0, Math.max(0, maxPages - 1));
+    const rest = targets.length ? await this.scrapeBatch(targets, { timeoutMs }) : [];
+    const seen = new Set(), docs = [];
+    for (const d of [...seedDocs, ...rest]) {
+      if (d.content && !seen.has(d.url)) { seen.add(d.url); docs.push(d); }
+    }
+    return docs;
   }
 }
 
-/** Helper: crawl multi-página → [{url, content}]. Espejo de la forma de los otros fetchers. */
+/** Helper: crawl multi-página (Web Unlocker) → [{url, content}]. Espejo de los otros fetchers. */
 export function crawlSite(seedUrl, opts = {}) {
   return new BrightDataCrawlClient(opts).crawl(seedUrl, opts);
 }

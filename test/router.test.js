@@ -102,11 +102,23 @@ test("router: mode 'crawl' → crawl multi-página vía Web Unlocker devuelve [{
   };
   globalThis.fetch = async (_u, init) => ({ ok: true, text: async () => pages[JSON.parse(init.body).url] ?? "?" });
   try {
-    const docs = await smartFetcher({ apiToken: "tok", zone: "z", mode: "crawl", maxPages: 2 })("https://acme.com");
+    const docs = await smartFetcher({ apiToken: "tok", zone: "z", mode: "crawl", datasetId: null, maxPages: 2 })("https://acme.com");
     assert.equal(docs[0].url, "https://acme.com");      // seed primero
     assert.equal(docs.length, 2);                        // seed + 1 interna
     assert.equal(docs[1].url, "https://acme.com/a");
     assert.equal(docs[1].content, "página A");
+  } finally { globalThis.fetch = orig; }
+});
+
+test("router: mode 'crawl' con dataset_id → Crawl API nativo (/datasets/v3/scrape, body {input})", async () => {
+  const orig = globalThis.fetch; let captured;
+  globalThis.fetch = async (url, init) => { captured = { url, body: JSON.parse(init.body) }; return { ok: true, text: async () => JSON.stringify({ markdown: "# seed", url: "https://acme.com" }) }; };
+  try {
+    const docs = await smartFetcher({ apiToken: "tok", mode: "crawl", datasetId: "gd_crawl", maxPages: 1 })("https://acme.com");
+    assert.match(captured.url, /\/datasets\/v3\/scrape\?/);          // usó el Crawl API, no Web Unlocker
+    assert.match(captured.url, /dataset_id=gd_crawl/);
+    assert.deepEqual(captured.body, { input: [{ url: "https://acme.com" }] }); // shape verificado del Crawl API
+    assert.equal(docs[0].content, "# seed");
   } finally { globalThis.fetch = orig; }
 });
 

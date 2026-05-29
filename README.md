@@ -124,13 +124,13 @@ Opt-in live checks (gated by env flags so the suite never fakes a pass): `AIML_L
 | **Bright Data — SERP API** | FETCH (structured JSON, zone `serp_api1`) | ✅ live |
 | **Bright Data — Browser API** | FETCH (Playwright `connectOverCDP`, JS-heavy) | ✅ live (local/flag) |
 | **Bright Data — Web Scraper / Datasets** | FETCH (`datasets/v3/scrape`) | ✅ live |
-| **Bright Data — Crawl** | FETCH (multi-page via Web Unlocker) | ✅ live · native Crawl API opt-in |
+| **Bright Data — Crawl** | FETCH (Web Unlocker default · native Crawl API with `dataset_id`) | ✅ live · native Crawl API wired (opt-in) |
 | **Bright Data — MCP** | FETCH substrate (`server.js` companion) | ✅ live |
 | **AI/ML API** | CLASSIFY brain (frontier model, extraction) | ✅ live classification |
 | **Cognee** | MEMORY knowledge graph (OSS, via its MCP) | ✅ tools `remember`/`recall` confirmed |
 | **Triggerware** | REACT (poll deltas → fire pipeline) | ✅ live API (`GET /triggers` 200) |
 
-**All 6 Bright Data surfaces verified LIVE with real code.** Crawl is a multi-page crawl over Web Unlocker; the native Crawl API stays opt-in via a Crawl `dataset_id`.
+**All 6 Bright Data surfaces verified LIVE with real code.** Crawl runs multi-page over Web Unlocker by default; with a Crawl `dataset_id` set, the FETCH layer uses Bright Data's **native Crawl API** (`datasets/v3/scrape` → markdown) for content extraction — preferred, with Web Unlocker fallback.
 
 ---
 
@@ -205,7 +205,7 @@ content diff and a 7th PDF page when delta is present.
 The pitch *is* honesty — so it applies to us too. **Canonical caveats live in [`docs/HONESTY.md`](docs/HONESTY.md)** — RFC-3161 verification scope (v0.7.0 M1), rate-limit posture, PII-gate placement, durability choices, and Risk-Score semantics. This section is the short list; the doc is the long list.
 
 - **Proven live:** Bright Data — Web Unlocker (MCP **and** REST), SERP API, Browser API, Web Scraper / Datasets API, native MCP server (`server.js`) · AI/ML classification (single + 4-lens parallel) · DigiCert RFC 3161 timestamp · downloadable 6-page PDF · Vercel deploy (`/api/analyze` live, end-to-end) · Triggerware API · Cognee MCP tools.
-- **Crawl is multi-page over Web Unlocker, not the native Crawl product.** All 6 Bright Data surfaces are verified live; we name the crawl honestly — the native Crawl API stays opt-in via a Crawl `dataset_id`.
+- **Crawl: Web Unlocker by default, native Crawl API when configured.** All 6 Bright Data surfaces are verified live; with a Crawl `dataset_id` the FETCH layer calls Bright Data's native Crawl API (`datasets/v3/scrape`) and falls back to the multi-page Web Unlocker crawl if it errors. We name it honestly: the link discovery is ours, the content extraction is Bright Data's.
 - **Risk Score is an internal estimate:** the PDF's Synthex Risk Score (0–100) is a deterministic heuristic computed from the report's own data, with the formula printed on the page. It is **NOT** a Munich Re rating or any third-party underwriting score.
 - **Opt-in (cost/credentials):** Cognee memory is default in the local/CLI path but **off** on the public endpoint; its `remember` ingest uses an LLM → behind `COGNEE_LIVE`. OTel OTLP export only runs if `OTEL_EXPORTER_OTLP_ENDPOINT` is set (otherwise spans are no-op / console-only). Network tests are env-gated so the suite never fabricates a pass.
 - **Two-layer defense scope:** Synthex runs **32 web-injection rules** (`src/forge/prefilter.js` — SSRF, prototype-pollution, MCP tool poisoning, indirect prompt-injection, BrowseSafe / VPI-Bench text vectors, Spanish-voseo jailbreaks added in v0.7) **plus 78 prompt-level rules** (`src/forge/djl.js` — jailbreak, harm/PII bilingual EN+ES, SQLi/XSS, exfiltration, tool misuse, sector policy). Both layers are **heuristic regex deterministic** — *inspired by adversarial-resilient guard patterns referenced in* the SkillFortify benchmark (arXiv 2603.00195). Note: SkillFortify itself argues *against* purely heuristic approaches in favor of formal methods; we use the paper for the threat taxonomy, not as an endorsement of our regex approach. They do **not** stop *visual* prompt injection (VPI in rendered screenshots/images) — a different threat model.

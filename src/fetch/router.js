@@ -46,9 +46,15 @@ export function smartFetcher(opts = {}) {
       return [{ url, content }];
     }
 
-    // 3. URL + crawl → crawl multi-página sobre Web Unlocker (seed → links internos → N páginas).
+    // 3. URL + crawl → Crawl API nativo de Bright Data si hay dataset configurado (preferido),
+    //    con fallback al crawl multi-página sobre Web Unlocker. Ambos → [{url, content}].
     if (mode === "crawl") {
-      return new BrightDataCrawlClient(opts).crawl(target, opts); // [{url, content}] del mismo host
+      const crawler = new BrightDataCrawlClient(opts);
+      if (crawler.datasetId) {
+        try { return await crawler.crawlNative(target, opts); }
+        catch { return crawler.crawl(target, opts); } // fallback robusto si la Crawl API falla
+      }
+      return crawler.crawl(target, opts);
     }
 
     // 4. URL + dataset → Datasets API (scraper estructurado).

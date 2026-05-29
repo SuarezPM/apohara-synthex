@@ -2,7 +2,7 @@
 // Helpers puros (extractLinks/sameHostLinks). Path nativo opt-in (trigger) con dataset de crawl.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BrightDataCrawlClient, crawlSite, extractLinks, sameHostLinks } from "../src/fetch/crawl-client.js";
+import { BrightDataCrawlClient, crawlSite, extractLinks, sameHostLinks, parseScrapeNdjson } from "../src/fetch/crawl-client.js";
 
 test("crawl: extractLinks saca links [txt](url) y <url> del markdown", () => {
   const md = "ver [docs](https://a.com/docs) y <https://a.com/api> y [x](/rel) y [y](https://b.com)";
@@ -57,18 +57,51 @@ test("crawl: una página interna que falla no rompe el crawl (best-effort)", asy
   } finally { globalThis.fetch = orig; }
 });
 
-test("crawl nativo (opt-in): trigger sin dataset de crawl lanza error claro", async () => {
-  await assert.rejects(() => new BrightDataCrawlClient({ apiToken: "tok", datasetId: null }).trigger("https://x.com"), /BRIGHT_DATA_CRAWL_DATASET_ID/);
+test("crawl nativo: parseScrapeNdjson saca [{url,content}] y omite dead pages", () => {
+  const ndjson = [
+    JSON.stringify({ input: { url: "https://x.com/dead" }, warning: "dead page", warning_code: "dead_page" }),
+    JSON.stringify({ markdown: "# Home", url: "https://x.com/", page_title: "Home" }),
+  ].join("\n");
+  assert.deepEqual(parseScrapeNdjson(ndjson), [{ url: "https://x.com/", content: "# Home" }]);
 });
 
-test("crawl nativo (opt-in): trigger con dataset arma query+body y devuelve snapshot_id", async () => {
+test("crawl nativo: parseScrapeNdjson también acepta JSON array", () => {
+  const arr = JSON.stringify([{ markdown: "# A", url: "https://x.com/a" }, { warning_code: "dead_page", input: { url: "https://x.com/b" } }]);
+  assert.deepEqual(parseScrapeNdjson(arr), [{ url: "https://x.com/a", content: "# A" }]);
+});
+
+test("crawl nativo: scrapeBatch sin dataset lanza error claro", async () => {
+  await assert.rejects(() => new BrightDataCrawlClient({ apiToken: "tok", datasetId: null }).scrapeBatch(["https://x.com"]), /BRIGHT_DATA_CRAWL_DATASET_ID/);
+});
+
+test("crawl nativo: scrapeBatch arma /scrape?dataset_id + body {input:[...]} y parsea NDJSON", async () => {
   const orig = globalThis.fetch; let captured;
-  globalThis.fetch = async (url, init) => { captured = { url, init }; return { ok: true, json: async () => ({ snapshot_id: "snap_123" }) }; };
+  globalThis.fetch = async (url, init) => { captured = { url, init }; return { ok: true, text: async () => JSON.stringify({ markdown: "# A", url: "https://acme.com/a" }) }; };
   try {
-    const id = await new BrightDataCrawlClient({ apiToken: "tok", datasetId: "gd_crawl" }).trigger("https://acme.com", { outputFields: "markdown" });
-    assert.equal(id, "snap_123");
+    const docs = await new BrightDataCrawlClient({ apiToken: "tok", datasetId: "gd_crawl" }).scrapeBatch(["https://acme.com/a"]);
+    assert.match(captured.url, /\/datasets\/v3\/scrape\?/);
     assert.match(captured.url, /dataset_id=gd_crawl/);
-    assert.deepEqual(JSON.parse(captured.init.body), [{ url: "https://acme.com" }]);
+    assert.deepEqual(JSON.parse(captured.init.body), { input: [{ url: "https://acme.com/a" }] });
+    assert.deepEqual(docs, [{ url: "https://acme.com/a", content: "# A" }]);
+  } finally { globalThis.fetch = orig; }
+});
+
+test("crawl nativo: crawlNative scrapea seed, descubre links internos y devuelve [{url,content}]", async () => {
+  const orig = globalThis.fetch;
+  const md = {
+    "https://acme.com/": "# Home [a](https://acme.com/a) [b](https://acme.com/b) [ext](https://other.com/z)",
+    "https://acme.com/a": "# A",
+    "https://acme.com/b": "# B",
+  };
+  globalThis.fetch = async (_url, init) => {
+    const urls = JSON.parse(init.body).input.map((i) => i.url);
+    return { ok: true, text: async () => urls.map((u) => JSON.stringify({ markdown: md[u] ?? "", url: u })).join("\n") };
+  };
+  try {
+    const docs = await new BrightDataCrawlClient({ apiToken: "tok", datasetId: "gd_crawl" }).crawlNative("https://acme.com/", { maxPages: 3 });
+    assert.equal(docs[0].url, "https://acme.com/");                 // seed primero
+    assert.deepEqual(docs.map((d) => d.url).sort(), ["https://acme.com/", "https://acme.com/a", "https://acme.com/b"]); // other.com excluido
+    assert.equal(docs.find((d) => d.url === "https://acme.com/a").content, "# A");
   } finally { globalThis.fetch = orig; }
 });
 
