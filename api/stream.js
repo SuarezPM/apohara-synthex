@@ -15,7 +15,7 @@ export const config = { maxDuration: 60 };
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
-  // T3/H4 — parity con api/analyze.js: tier del playground llega al stream también.
+  // Parity con api/analyze.js: el tier del playground llega también al stream.
   const { target, lens = "all", tier } = (req.body && typeof req.body === "object" ? req.body : {});
   const hasSecrets = !!process.env.BRIGHT_DATA_TOKEN && !!process.env.AIML_API_KEY;
 
@@ -29,8 +29,8 @@ export default async function handler(req, res) {
   const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
   try {
-    // T3/H4 — resolver tier ANTES de abrir el pipeline (headers ya enviados → no podemos
-    // usar res.status(400); errores van via SSE 'error' event y res.end()).
+    // Resolver tier ANTES de abrir el pipeline (headers SSE ya enviados — no podemos usar
+    // res.status(400); errores van via SSE 'error' event + res.end()).
     let modelOverride = null;
     if (tier) {
       try { modelOverride = pickModel({ tier }); }

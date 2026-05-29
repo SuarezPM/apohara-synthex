@@ -55,8 +55,8 @@ The product pitches *verifiable honesty over polished claims*. That rule applies
 ## §3 · PII and data scope
 
 ### 3.1 Where the 25-rule PII filter actually runs (M2)
-- The marketing claim of "3 layers of pre-LLM defense (28 DJL + 78 prefilter + 25 PII)" describes the *available* layers, **not** the layers active on every request. The realities:
-  - The main `runPipeline` path applies **2 layers**: DJL (`src/forge/djl.js`, 28 rules) + prefilter (`src/forge/prefilter.js`, ~78 rules).
+- The marketing claim of "3 layers of pre-LLM defense (78 DJL + 32 prefilter + 25 PII)" describes the *available* layers, **not** the layers active on every request. The realities:
+  - The main `runPipeline` path applies **2 layers**: DJL (`src/forge/djl.js`, 78 rules — prompt-level harm/PII/jailbreak) + prefilter (`src/forge/prefilter.js`, 32 rules — web-injection / Spanish-voseo PI / SSRF / proto-pollution / MCP tool-poisoning).
   - The **25-rule PII gate** (`src/forge/pii-filter.js`) runs on the **monitor / stress / KG-ingest path** only — the place where we forward to Cognee. It is by design scoped there, not in the main `runPipeline`.
 - We do not claim GDPR compliance. The PII gate reduces obvious leak surface during KG ingest; it is not a substitute for downstream data handling.
 

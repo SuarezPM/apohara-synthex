@@ -15,7 +15,7 @@ export const tools = [
       hmacKey: z.string().optional().describe("Clave HMAC (default: SYNTHEX_HMAC_KEY)"),
     }),
     execute: async ({ evidence, hmacKey }) => {
-      // T7/M8 — try/catch sobre JSON.parse: input MCP malformado no debe crashear el server.
+      // Try/catch sobre JSON.parse: input MCP malformado no debe crashear el server.
       let ev;
       if (typeof evidence === "string") {
         try { ev = JSON.parse(evidence); }

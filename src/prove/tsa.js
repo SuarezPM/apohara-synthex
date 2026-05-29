@@ -186,10 +186,9 @@ export async function requestTimestamp(hashBytes, { tsaUrl = DEFAULT_TSA_URL, ti
   });
   const der = req.toSchema().toBER(false);
 
-  // T6/M6 — retry-with-backoff sobre el fetch. Backoff exponencial bounded:
-  // intentos 1..(retries+1), sleep 500ms, 1000ms, ..., 500ms * 2^(i-1).
-  // Si todos fallan rethrow el último error → evidence-report.js cae a HMAC-only (fallback
-  // honesto preservado, gracias a su try/catch alrededor de requestTimestamp).
+  // Retry-with-backoff sobre el fetch. Backoff exponencial bounded: intentos 1..(retries+1),
+  // sleep 500ms, 1000ms, ..., 500ms * 2^(i-1). Si todos fallan rethrow el último error →
+  // evidence-report.js cae a HMAC-only (fallback honesto preservado vía su try/catch).
   const maxAttempts = Math.max(1, retries + 1);
   let lastErr = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -263,7 +262,7 @@ export async function verifyTimestamp(respDer, hashBytes, opts = {}) {
   const h = hashBytes instanceof Uint8Array ? hashBytes : new Uint8Array(hashBytes);
   const match = tokenHash.length === h.length && tokenHash.every((b, i) => b === h[i]);
 
-  // M1 — CMS signature verify against pinned trust anchors (custom path).
+  // CMS signature verify against pinned trust anchors (custom path).
   const trustedCerts = opts.trustedCerts ?? loadAnchors();
   const { ok, reason } = await verifyCmsSigned(signed, trustedCerts);
 

@@ -22,12 +22,11 @@ export const HMAC_EXCLUDED_KEYS = Object.freeze([
   "kg_status",
   "kg_latency_ms",
   "surface_status",
-  // v0.7.0 T4/M3 — emit-metadata del classifier sobre la truncation del INPUT LLM (no de la
-  // raw text). Excluidas del HMAC pre-image para que el contentHash no dependa de si el
-  // classifier vio el doc entero o lo truncó. La raw text en el payload sigue intacta.
+  // Emit-metadata del classifier: si truncó el INPUT al LLM (la raw text del payload
+  // sigue intacta). Fuera del HMAC pre-image → contentHash idéntico haya o no truncación.
   "truncated",
   "charsSeen",
-  // v0.7.0 T11/AI-3 — flag visible "low confidence" para tier free; emit-metadata UI/PDF.
+  // Flag visible "low confidence" del tier free; sólo informativo para UI/PDF.
   "lowConfidenceTier",
 ]);
 
@@ -94,7 +93,7 @@ export async function buildEvidence(payload, { hmacKey, requestTsa = true } = {}
 
 /**
  * Verifica un Evidence Report. Devuelve qué pasó (no afirma lo que no comprobó).
- * Async (M1, v0.7.0) porque verifyTimestamp usa webcrypto.subtle para CMS verify.
+ * Async porque verifyTimestamp usa webcrypto.subtle para CMS verify.
  *
  * `signatureValid` + `signatureValidReason` solo se setean cuando hay TSA token;
  * en HMAC-only (rfc3161Tsa=null) ambos quedan en null (no se ejecutó .verify()).
@@ -108,8 +107,8 @@ export async function buildEvidence(payload, { hmacKey, requestTsa = true } = {}
  * }>}
  */
 export async function verifyEvidence(evidence, { hmacKey, trustedCerts } = {}) {
-  // T7/M8 — shape guard contra input malformado. Sin esto, evidence.payload undefined
-  // o evidence.contentHash no-string puede crashear _serializeForHmac. Defensa cheap.
+  // Shape guard: sin esto, evidence.payload undefined o contentHash no-string crashea
+  // _serializeForHmac. Defensa de boundary cheap; los datos vienen de JSON externo.
   if (!evidence || typeof evidence !== "object" || !evidence.payload || typeof evidence.contentHash !== "string") {
     return { hashOk: false, hmacOk: null, tsaOk: null, signatureValid: null, signatureValidReason: null, error: "malformed evidence" };
   }
