@@ -1,0 +1,19 @@
+/* Hallmark · tokens — Apohara Synthex design system (brand-locked, atmospheric)
+ * Portable token export. The landing inlines these in <style> for LCP; this file
+ * is the portable source of truth (import it on any sibling page).
+ * macrostructure: Cinematic Scrollytelling · genre: atmospheric · accent hue: chartreuse
+ */
+:root {
+  /* surfaces — dark atmospheric */
+  --void: #090a10; --void-2: #0d0f18; --black: #050609; --mid: #161a28; --raised: #1d2236;
+  /* ink */
+  --bone: #EDEFF0; --muted: #888fb0; --faint: #5a6080; --line: #232743;
+  /* accents — chartreuse anchor + per-scene hues */
+  --lime: #25B13F; --lime-2: #2ed24c; --teal: #22b8cf; --violet: #9775fa; --amber: #e8a13a; --red: #e5484d;
+  /* type — 2+1 pairing: pixel display, sans body, mono technical */
+  --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --pixel: 'Press Start 2P', monospace;
+  /* layout + motion */
+  --maxw: 1080px; --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
