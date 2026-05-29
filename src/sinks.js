@@ -2,10 +2,11 @@
 // Cada sink es async ({target, lens, evidence, alert, signals, maxSeverity}).
 // Cubren dos gaps del análisis de fit: memoria estructurada (Cognee) y delivery (webhook).
 //
-// **v0.8.0 — CaMeL-style flow-data gate (HONESTY §8.B):**
+// **v0.8.0 — CaMeL-style flow-data gate (HONESTY §8.B); widened v1.0.0 (A1):**
 // Both webhookSink and cogneeSink suppress their action when ANY contributing
-// source URL was marked REVIEW by the Layer-2 injection-guard (decisions[].
-// outcome === "REVIEW" && layer === "injection-guard"). Operator override:
+// source URL was marked REVIEW (or BLOCK) by a gating layer — injection-guard,
+// DJL or prefilter (the L1 regex layers now emit REVIEW on ingest after the D5 FP
+// fix), or the L3 ALIGNMENT_CHECK stage (Phase 1). Operator override:
 //   - SYNTHEX_REACT_TRUST_REVIEWED=1   → webhook fires even with REVIEW'd sources
 //   - SYNTHEX_COGNEE_TRUST_REVIEWED=1  → ingest happens even with REVIEW'd sources
 // Why these two and NOT classify: classify is label-only (low-risk, no
@@ -18,12 +19,25 @@
 // for audit (operator can replay the run from the sealed record).
 import { CogneeClient } from "./memory/index.js";
 
-/** Extract URLs the injection-guard marked REVIEW from the sealed decisions[]. */
+// Layers/stages whose REVIEW (or BLOCK) verdict gates the action/persistence sinks.
+// v1.0.0 (A1) — widened beyond injection-guard: the D5 FP fix makes DJL/prefilter emit REVIEW
+// rows on ingest, so a doc REVIEW'd by L1 regex must ALSO gate webhook (§2.4) and Cognee (§2.3),
+// not just L2. ALIGNMENT_CHECK (L3, Phase 1) is included now so the predicate is ready when L3
+// starts sealing rows; it matches by stage because L3 rows carry no `layer`.
+// Capas/etapas cuyo veredicto REVIEW (o BLOCK) gate-a los sinks de acción/persistencia.
+const _GATING_LAYERS = new Set(["injection-guard", "djl", "prefilter"]);
+const _GATING_OUTCOMES = new Set(["REVIEW", "BLOCK"]);
+
+/** Extract URLs a gating layer/stage marked REVIEW/BLOCK from the sealed decisions[]. */
 function _reviewedUrls(evidence) {
   const rows = evidence?.payload?.decisions ?? [];
   return new Set(
     rows
-      .filter((d) => d.outcome === "REVIEW" && d.layer === "injection-guard")
+      .filter(
+        (d) =>
+          _GATING_OUTCOMES.has(d.outcome) &&
+          (_GATING_LAYERS.has(d.layer) || d.stage === "ALIGNMENT_CHECK"),
+      )
       .map((d) => d.url),
   );
 }

@@ -164,9 +164,9 @@ test("webhookSink: sin REVIEW'd sources → dispara normalmente", async () => {
   }
 });
 
-test("webhookSink: REVIEW row de OTRA layer (no injection-guard) NO suprime", async () => {
-  // El gate solo aplica a injection-guard. Si alguien añade outcome:"REVIEW" en otra capa,
-  // no debe activar el gate por accidente (la semántica del gate es específica a Layer-2).
+test("webhookSink: REVIEW row de DJL (L1 regex) SUPRIME — gate ampliado v1.0.0 (A1)", async () => {
+  // v1.0.0 (A1): tras el FP fix D5, DJL/prefilter emiten REVIEW en ingesta. El gate CaMeL se
+  // amplió para honrar esas filas — un doc REVIEW'd por L1 regex NO debe disparar el webhook.
   const calls = [];
   const origFetch = globalThis.fetch;
   globalThis.fetch = async (url) => { calls.push(url); return { ok: true }; };
@@ -178,11 +178,68 @@ test("webhookSink: REVIEW row de OTRA layer (no injection-guard) NO suprime", as
         contentHash: "h",
         payload: {
           sources: ["x"],
-          decisions: [{ url: "x", outcome: "REVIEW", layer: "djl" }], // ← otra capa
+          decisions: [{ url: "x", outcome: "REVIEW", layer: "djl", stage: "DJL", severity: 9 }],
         },
       },
     });
-    assert.equal(calls.length, 1, "REVIEW en capa que NO es injection-guard no debe gate-ar");
+    assert.equal(calls.length, 0, "REVIEW de DJL debe gate-ar el webhook (gate ampliado A1)");
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
+
+test("webhookSink: REVIEW row de capa NO gateadora NO suprime", async () => {
+  // El gate aplica a {injection-guard, djl, prefilter} + stage ALIGNMENT_CHECK. Una capa
+  // arbitraria (p.ej. una etapa de classify futura) NO debe gate-ar por accidente.
+  const calls = [];
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => { calls.push(url); return { ok: true }; };
+  try {
+    const sink = webhookSink("https://hook/x", { env: {} });
+    await sink({
+      alert: { target: "acme", maxSeverity: 9 },
+      evidence: {
+        contentHash: "h",
+        payload: {
+          sources: ["x"],
+          decisions: [{ url: "x", outcome: "REVIEW", layer: "classify-debug" }], // ← capa no gateadora
+        },
+      },
+    });
+    assert.equal(calls.length, 1, "REVIEW en una capa fuera del set de gating no debe gate-ar");
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
+
+test("cogneeSink + webhookSink: Evidence Report cuyo ÚNICO REVIEW row es layer 'djl' → ambos suprimidos (A1)", async () => {
+  // Caso integral de la Parte B: un report donde la única señal es un REVIEW de DJL debe
+  // suprimir TANTO la ingesta a Cognee COMO el disparo del webhook (sin opt-in).
+  const evidence = {
+    contentHash: "h-djl",
+    payload: {
+      sources: ["djl-reviewed.example/x"],
+      findings: [{ url: "djl-reviewed.example/x", summary: "kept + reviewed" }],
+      decisions: [
+        { url: "djl-reviewed.example/x", outcome: "REVIEW", layer: "djl", stage: "DJL", severity: 9 },
+      ],
+    },
+  };
+
+  // Cognee NO ingiere
+  let remembered = null;
+  const cognee = cogneeSink({ remember: async (t) => { remembered = t; } }, { env: {} });
+  await cognee({ target: "acme", lens: "gtm", evidence, signals: ["s"], maxSeverity: 5 });
+  assert.equal(remembered, null, "cognee debe suprimir el ingest por el REVIEW de DJL");
+
+  // Webhook NO dispara
+  const calls = [];
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => { calls.push(url); return { ok: true }; };
+  try {
+    const webhook = webhookSink("https://hook/x", { env: {} });
+    await webhook({ alert: { target: "acme", maxSeverity: 9 }, evidence });
+    assert.equal(calls.length, 0, "webhook debe suprimir el disparo por el REVIEW de DJL");
   } finally {
     globalThis.fetch = origFetch;
   }
