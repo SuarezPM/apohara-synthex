@@ -3,7 +3,10 @@
 // Zero network; pure node:crypto via webcrypto.subtle (native, Node ≥24).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { generateKeyPair, sign, verify, keyIdOf } from "../../src/prove/asymmetric.js";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { generateKeyPair, sign, verify, keyIdOf, resolveSigningKey } from "../../src/prove/asymmetric.js";
 
 test("generateKeyPair · returns pkcs8 PEM + spki PEM + 32-hex keyId + 88-char SPKI b64", () => {
   const kp = generateKeyPair();
@@ -92,4 +95,50 @@ test("verify · A's signature verified with B's embedded pubkey → bad-signatur
   const r = await verify(canonical, spoofed);
   assert.equal(r.ok, false);
   assert.equal(r.reason, "bad-signature");
+});
+
+// ─── resolveSigningKey · disk-backed paths (NO fs injection) ───────────────
+// These exercise the REAL filesystem path that production uses. The pre-existing
+// tests all injected `fs` or used inline PEM, hiding the ESM `require("node:fs")`
+// crash on the file-path and XDG-default branches (the "recommended" modes).
+
+test("resolveSigningKey · SYNTHEX_SIGNING_KEY inline → normalized pkcs8 PEM (no disk)", () => {
+  const kp = generateKeyPair();
+  const k = resolveSigningKey({ env: { SYNTHEX_SIGNING_KEY: kp.privateKeyPem } });
+  assert.match(k, /-----BEGIN PRIVATE KEY-----/);
+  assert.equal(k.trim(), kp.privateKeyPem.trim());
+});
+
+test("resolveSigningKey · SYNTHEX_SIGNING_KEY_FILE reads real file off disk (no fs injection)", (t) => {
+  const kp = generateKeyPair();
+  const dir = mkdtempSync(join(tmpdir(), "synthex-keyfile-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const keyPath = join(dir, "synthex-ed25519.key");
+  writeFileSync(keyPath, kp.privateKeyPem, { mode: 0o600 });
+  // fs defaults to null → must use node:fs internally without crashing.
+  const k = resolveSigningKey({ env: { SYNTHEX_SIGNING_KEY_FILE: keyPath } });
+  assert.equal(k.trim(), kp.privateKeyPem.trim());
+});
+
+test("resolveSigningKey · XDG default ('recommended') reads real file off disk (no fs injection)", (t) => {
+  const kp = generateKeyPair();
+  const xdgHome = mkdtempSync(join(tmpdir(), "synthex-xdg-"));
+  t.after(() => rmSync(xdgHome, { recursive: true, force: true }));
+  mkdirSync(join(xdgHome, "apohara", "synthex"), { recursive: true });
+  writeFileSync(join(xdgHome, "apohara", "synthex", "synthex-ed25519.key"), kp.privateKeyPem, { mode: 0o600 });
+  // The crash here was SILENT: require() throw was swallowed by the catch → null,
+  // so the seal degraded to symmetric-only without warning. Must load the key.
+  const k = resolveSigningKey({ env: { XDG_CONFIG_HOME: xdgHome } });
+  assert.equal(k.trim(), kp.privateKeyPem.trim());
+});
+
+test("resolveSigningKey · XDG default with no key file present → null (no throw)", (t) => {
+  const xdgHome = mkdtempSync(join(tmpdir(), "synthex-xdg-empty-"));
+  t.after(() => rmSync(xdgHome, { recursive: true, force: true }));
+  const k = resolveSigningKey({ env: { XDG_CONFIG_HOME: xdgHome } });
+  assert.equal(k, null);
+});
+
+test("resolveSigningKey · no env configured → null", () => {
+  assert.equal(resolveSigningKey({ env: {} }), null);
 });

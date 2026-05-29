@@ -1,58 +1,77 @@
 #!/usr/bin/env bash
-# C2PA interop test — verifies our sidecar with c2patool when available.
+# C2PA interop gate (v0.9.0) — PROVES interop with c2patool, doesn't just claim it.
 #
-# Status (v0.8.0): our c2pa.js emits a structurally-spec-shaped sidecar that
-# OUR verifier round-trips (see test/prove/c2pa.test.js · 9/9 pass). Direct
-# c2patool verification of our JSON sidecar is NOT supported (c2patool expects
-# JUMBF-wrapped manifest stores embedded in media containers). c2patool also
-# rejects our self-signed cert because it lacks C2PA-specific EKUs
-# (1.3.6.1.5.5.7.3.36 id-kp-credentialSign and adjacent OIDs from C2PA v2 §14.10).
+# Two checks:
+#   1. Own verifier round-trip on the JSON sidecar (no external deps; always runs).
+#   2. REAL c2patool interop: render a PNG Evidence Card, embed a C2PA manifest
+#      via c2patool, verify it with c2patool, and assert the com.apohara.synthex
+#      assertion binds the card to the evidence's contentHash. This is the gate
+#      that makes "C2PA interop" an empirical fact instead of a README claim.
 #
-# Full c2patool interop is a v0.9 goal. Two paths:
-#   (a) Emit JUMBF directly — significant additional work (JUMBF box structure,
-#       binary CBOR with COSE_Sign1 in proper containers).
-#   (b) Drive c2patool externally via --signer-path with our Ed25519 key + a
-#       C2PA-EKU-equipped self-signed cert. Requires cert engineering to add
-#       the specific EKU OIDs c2patool's allow-list/trust-anchor flow expects.
+# The signer is self-signed → c2patool reports the signer as an untrusted source,
+# which is EXPECTED and documented (HONESTY §1.6); the manifest itself is Valid.
+# Real trust needs a CA in the C2PA trust list (out of scope).
 #
-# This script is a placeholder for the v0.9 work. It prints the current state
-# and exits 0 if c2patool is installed (so CI doesn't fail), 0 if it isn't.
+# Skips (exit 0) when an optional tool is missing so CI doesn't fail on
+# environments without c2patool (Rust binary) or Playwright's Chromium:
+#   - c2patool:  cargo install c2patool
+#   - chromium:  npx playwright install chromium
 set -euo pipefail
 
-echo "== C2PA interop status (v0.8.0) =="
-if ! command -v c2patool >/dev/null 2>&1; then
-  echo "  c2patool: NOT INSTALLED — skip"
-  echo "  install via: cargo install c2patool"
-  exit 0
-fi
-echo "  c2patool: $(c2patool --version 2>&1 | head -1)"
+cd "$(dirname "$0")/.."
 
+echo "== C2PA interop gate (v0.9.0) =="
+
+# ── 1. own verifier round-trip (sidecar JSON) ──────────────────────────────
+TMP1="$(mktemp -d)"; trap 'rm -rf "$TMP1"' EXIT
+node bin/synthex.mjs keygen --out="$TMP1" >/dev/null
 if [ ! -f "samples/synthex-evidence-report.json" ]; then
-  echo "  ERROR: samples/synthex-evidence-report.json not found (run from repo root)"
-  exit 1
+  echo "  ERROR: samples/synthex-evidence-report.json not found (run from repo root)"; exit 1
 fi
-
-TMPDIR="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR"' EXIT
-
-echo "  Testing our own emitter + verifier round-trip..."
-node bin/synthex.mjs keygen --out="$TMPDIR" >/dev/null
 node bin/synthex.mjs c2pa-emit samples/synthex-evidence-report.json \
-  --out="$TMPDIR/sidecar.c2pa.json" --key-dir="$TMPDIR" >/dev/null
-if node bin/synthex.mjs c2pa-verify "$TMPDIR/sidecar.c2pa.json" \
+  --out="$TMP1/sidecar.c2pa.json" --key-dir="$TMP1" >/dev/null
+if node bin/synthex.mjs c2pa-verify "$TMP1/sidecar.c2pa.json" \
      --evidence=samples/synthex-evidence-report.json >/dev/null; then
-  echo "  own verifier round-trip: OK"
+  echo "  [1] own verifier round-trip (sidecar) : OK"
 else
-  echo "  own verifier round-trip: FAIL"
-  exit 1
+  echo "  [1] own verifier round-trip (sidecar) : FAIL"; exit 1
 fi
 
-echo ""
-echo "  Testing c2patool acceptance of our sidecar..."
-if c2patool "$TMPDIR/sidecar.c2pa.json" 2>/dev/null; then
-  echo "  c2patool verify: OK — interop achieved!"
-else
-  echo "  c2patool verify: NOT YET (expected in v0.8 — see scripts/c2pa-interop-test.sh comments)"
+# ── 2. REAL c2patool interop (evidence card PNG) ───────────────────────────
+if ! command -v c2patool >/dev/null 2>&1; then
+  echo "  [2] c2patool interop : SKIP (c2patool not installed — cargo install c2patool)"
+  echo "== end (1 ok, 1 skipped) =="; exit 0
 fi
-echo "== end =="
+echo "  [2] c2patool: $(c2patool --version 2>&1 | head -1)"
+
+# The card render needs Playwright's Chromium.
+if ! node -e 'import("playwright").then(p=>p.chromium.launch({headless:true}).then(b=>b.close())).catch(()=>process.exit(7))' >/dev/null 2>&1; then
+  echo "  [2] c2patool interop : SKIP (Chromium not installed — npx playwright install chromium)"
+  echo "== end (1 ok, card skipped) =="; exit 0
+fi
+
+# Seal an evidence with the SAME key the card is signed with, then emit + verify the card.
+SYNTHEX_SIGNING_KEY_FILE="$TMP1/synthex-ed25519.key" \
+  node bin/synthex.mjs --demo security >"$TMP1/evidence.json" 2>/dev/null
+node bin/synthex.mjs evidence-card "$TMP1/evidence.json" \
+  --out="$TMP1/card.png" --key-dir="$TMP1" >/dev/null
+
+# c2patool verdict must be Valid (signer untrusted self-signed, but manifest valid).
+STATE="$(c2patool "$TMP1/card.png" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).validation_state||"")}catch{console.log("")}})')"
+if [ "$STATE" = "Valid" ]; then
+  echo "  [2] c2patool verify (card)            : OK (validation_state=Valid)"
+else
+  echo "  [2] c2patool verify (card)            : FAIL (validation_state='$STATE')"; exit 1
+fi
+
+# Binding: com.apohara.synthex.contentHash MUST equal evidence.contentHash.
+EVHASH="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$TMP1/evidence.json')).contentHash)")"
+CARDHASH="$(c2patool "$TMP1/card.png" --detailed 2>/dev/null | grep -oE '[a-f0-9]{64}' | grep -x "$EVHASH" | head -1 || true)"
+if [ "$CARDHASH" = "$EVHASH" ]; then
+  echo "  [2] binding com.apohara.synthex       : OK (card and evidence share contentHash)"
+else
+  echo "  [2] binding com.apohara.synthex       : FAIL (card hash != evidence hash)"; exit 1
+fi
+
+echo "== end (all checks passed) =="
 exit 0

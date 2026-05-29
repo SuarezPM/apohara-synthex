@@ -25,7 +25,7 @@ const demoClassifier = async (text, lens) => {
 
 /** Corre el demo y devuelve el Evidence Report. requestTsa=false en tests para rapidez.
  *  emitter (opcional) se reenvía al pipeline para el stream SSE de la UI en modo demo. */
-export async function runDemo({ requestTsa = true, emitter, lens = "gtm" } = {}) {
+export async function runDemo({ requestTsa = true, emitter, lens = "gtm", signingKey, signerIdentity } = {}) {
   return runPipeline("Competitor X", {
     lens,
     fetcher: async () => CACHED_DOCS,
@@ -33,6 +33,8 @@ export async function runDemo({ requestTsa = true, emitter, lens = "gtm" } = {})
     hmacKey: process.env.SYNTHEX_HMAC_KEY || "synthex-demo",
     requestTsa,
     emitter,
+    signingKey,
+    signerIdentity,
   });
 }
 

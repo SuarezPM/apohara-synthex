@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import * as asn1js from "asn1js";
 import * as pkijs from "pkijs";
 import { Buffer } from "node:buffer";
+import { createPublicKey, createHash } from "node:crypto";
 import { generateKeyPair } from "../../src/prove/asymmetric.js";
 import { buildEvidence } from "../../src/prove/evidence-report.js";
 import { buildSelfSignedEd25519Cert, buildC2paManifest, verifyC2paManifest } from "../../src/prove/c2pa.js";
@@ -47,6 +48,43 @@ test("buildSelfSignedEd25519Cert: produce DER parseable + SPKI = clave Ed25519",
   assert.equal(cert.signatureAlgorithm.algorithmId, "1.3.101.112");
   // SubjectPublicKey OID también Ed25519
   assert.equal(cert.subjectPublicKeyInfo.algorithm.algorithmId, "1.3.101.112");
+});
+
+test("buildSelfSignedEd25519Cert: incluye EKU documentSigning + AKI + SKI (perfil c2pa-rs)", async () => {
+  // c2pa-rs check_certificate_profile exige, para el end-entity (CA:FALSE):
+  // EKU en allow-list + AKI presente + KeyUsage digitalSignature. Sin las 3,
+  // c2patool rechaza el cert como "the certificate is invalid".
+  const kp = generateKeyPair();
+  const der = await buildSelfSignedEd25519Cert({ privateKeyPem: kp.privateKeyPem, publicKeyPem: kp.publicKeyPem });
+  const asn1 = asn1js.fromBER(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength));
+  const cert = new pkijs.Certificate({ schema: asn1.result });
+  const ext = (oid) => cert.extensions.find((e) => e.extnID === oid);
+
+  const eku = ext("2.5.29.37");
+  assert.ok(eku, "cert debe tener ExtendedKeyUsage (2.5.29.37)");
+  assert.ok(eku.parsedValue?.keyPurposes?.includes("1.3.6.1.5.5.7.3.36"),
+    "EKU debe incluir id-kp-documentSigning (1.3.6.1.5.5.7.3.36, RFC 9336)");
+  assert.ok(ext("2.5.29.14"), "cert debe tener SubjectKeyIdentifier (2.5.29.14)");
+  assert.ok(ext("2.5.29.35"), "cert debe tener AuthorityKeyIdentifier (2.5.29.35)");
+});
+
+test("buildSelfSignedEd25519Cert: SKI y AKI keyId == SHA-1(pubkey raw) (self-issued)", async () => {
+  const kp = generateKeyPair();
+  const der = await buildSelfSignedEd25519Cert({ privateKeyPem: kp.privateKeyPem, publicKeyPem: kp.publicKeyPem });
+  const asn1 = asn1js.fromBER(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength));
+  const cert = new pkijs.Certificate({ schema: asn1.result });
+
+  const spkiDer = createPublicKey(kp.publicKeyPem).export({ type: "spki", format: "der" });
+  const rawPub = Buffer.from(spkiDer).subarray(-32);
+  const expectedKid = createHash("sha1").update(rawPub).digest("hex");
+
+  const ski = cert.extensions.find((e) => e.extnID === "2.5.29.14");
+  const skiHex = Buffer.from(ski.parsedValue.valueBlock.valueHexView).toString("hex");
+  assert.equal(skiHex, expectedKid, "SKI debe ser SHA-1 de la pubkey raw");
+
+  const aki = cert.extensions.find((e) => e.extnID === "2.5.29.35");
+  const akiHex = Buffer.from(aki.parsedValue.keyIdentifier.valueBlock.valueHexView).toString("hex");
+  assert.equal(akiHex, expectedKid, "AKI keyIdentifier debe igualar el SKI (self-issued)");
 });
 
 test("buildSelfSignedEd25519Cert: defaults — CN='Apohara Synthex Evidence Signer'", async () => {

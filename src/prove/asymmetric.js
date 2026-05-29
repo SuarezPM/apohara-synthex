@@ -21,6 +21,7 @@
 // stable in Node ≥24.
 import { webcrypto, createHash, generateKeyPairSync, createPublicKey, createPrivateKey } from "node:crypto";
 import { Buffer } from "node:buffer";
+import { readFileSync } from "node:fs";
 
 const ALG = "Ed25519";
 
@@ -188,7 +189,7 @@ export function resolveSigningKey({ env = process.env, fs = null } = {}) {
   }
   const explicitPath = env.SYNTHEX_SIGNING_KEY_FILE;
   if (typeof explicitPath === "string" && explicitPath.length > 0) {
-    const f = fs ?? require("node:fs");
+    const f = fs ?? { readFileSync };
     return f.readFileSync(explicitPath, "utf8");
   }
   // XDG default
@@ -196,7 +197,7 @@ export function resolveSigningKey({ env = process.env, fs = null } = {}) {
   if (!xdg) return null;
   const def = `${xdg}/apohara/synthex/synthex-ed25519.key`;
   try {
-    const f = fs ?? require("node:fs");
+    const f = fs ?? { readFileSync };
     return f.readFileSync(def, "utf8");
   } catch {
     return null;
