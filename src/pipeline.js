@@ -83,8 +83,9 @@ export async function runPipeline(target, opts = {}) {
   // 1. FETCH — target puede ser un string o un array de fuentes (multi-fuente / scale).
   const targets = Array.isArray(target) ? target : [target];
   const docs = await timed("FETCH", async ({ record }) => {
-    const out = [];
-    for (const t of targets) out.push(...(fetcher ? await fetcher(t) : await defaultFetch(t)));
+    const out = (
+      await Promise.all(targets.map((t) => (fetcher ? fetcher(t) : defaultFetch(t))))
+    ).flat();
     record("urls", out.length);
     return out;
   });
@@ -144,12 +145,12 @@ export async function runPipeline(target, opts = {}) {
         }),
       );
     }
-    const out = [];
-    for (const d of safe) {
-      const c = await doClassify(d.content, lens, classifyOpts);
-      out.push({ url: d.url, contentHash: d.contentHash, ...c });
-    }
-    return out;
+    return Promise.all(
+      safe.map(async (d) => {
+        const c = await doClassify(d.content, lens, classifyOpts);
+        return { url: d.url, contentHash: d.contentHash, ...c };
+      })
+    );
   });
 
   // 4. PROVE: sellar el reporte.
