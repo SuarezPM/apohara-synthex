@@ -24,13 +24,15 @@ function fingerprint(content) {
 }
 function dedupe(batch) {
   const seen = new Set();
-  let hits = 0, misses = 0, bytesSaved = 0;
+  let hits = 0, misses = 0, bytesSaved = 0, totalBytes = 0;
   for (const { content } of batch) {
+    totalBytes += content.length;
     const h = fingerprint(content);
     if (seen.has(h)) { hits++; bytesSaved += content.length; }
     else { seen.add(h); misses++; }
   }
-  return { unique: misses, duplicates: hits, bytesSaved, dedupRatio: hits / (hits + misses) };
+  return { unique: misses, duplicates: hits, bytesSaved, totalBytes,
+    dedupRatio: hits / (hits + misses), tokenRatio: bytesSaved / totalBytes };
 }
 
 // ── corpus: 10 unique vendor pages + 6 exact duplicates from real-world aliasing ──
@@ -68,12 +70,14 @@ const batch = [
 ];
 
 const r = dedupe(batch);
-const pct = (r.dedupRatio * 100).toFixed(0);
-const tokensSaved = Math.round(r.bytesSaved / 4); // ~4 chars/token (cl100k ballpark)
+const pagePct = (r.dedupRatio * 100).toFixed(0);
+const tokenPct = (r.tokenRatio * 100).toFixed(0);
+const tokensSaved = Math.round(r.bytesSaved / 4);   // ~4 chars/token (cl100k ballpark)
+const tokensTotal = Math.round(r.totalBytes / 4);
 console.log("\n== Bright Data scrape_batch dedup (PR #140) · measured ==\n");
 console.log(`  batch size       : ${batch.length} pages`);
 console.log(`  unique content   : ${r.unique}`);
 console.log(`  exact duplicates : ${r.duplicates}  (tracking-param aliases, trailing slash, fragments, re-scrape)`);
-console.log(`  dedup ratio      : ${pct}%  (duplicate pages that reach the LLM = 0)`);
-console.log(`  bytes saved      : ${r.bytesSaved.toLocaleString()}  (~${tokensSaved.toLocaleString()} classification tokens not spent, @4 chars/token)`);
-console.log(`\n  → ${pct}% fewer pages classified on this batch. Savings scale with the duplicate rate of the crawl.\n`);
+console.log(`  pages deduped    : ${pagePct}%  (${r.duplicates}/${batch.length} — duplicate pages that reach the LLM = 0)`);
+console.log(`  token spend cut  : ${tokenPct}%  (${tokensSaved} of ~${tokensTotal} classification tokens, @4 chars/token)`);
+console.log(`\n  → ${tokenPct}% less token spend on this batch. Savings scale with the duplicate rate of the crawl.\n`);
