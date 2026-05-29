@@ -14,12 +14,14 @@ import { homedir, tmpdir } from "node:os";
 import { Buffer } from "node:buffer";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { createPublicKey, createPrivateKey } from "node:crypto";
 import { runPipeline } from "../src/pipeline.js";
 import { runDemo } from "../demo/demo.js";
 import { verifyEvidence } from "../src/prove/evidence-report.js";
 import { generateKeyPair, keyIdOf, resolveSigningKey } from "../src/prove/asymmetric.js";
 import { buildSelfSignedEd25519Cert, buildC2paManifest, verifyC2paManifest } from "../src/prove/c2pa.js";
 import { renderCardPng, buildCardManifestDefinition } from "../src/prove/evidence-card.js";
+import { anchorKeyId, verifyRekorBundle } from "../src/prove/rekor.js";
 
 const execFileP = promisify(execFile);
 
@@ -70,6 +72,14 @@ const USAGE = `apohara-synthex — Evidence layer over Bright Data
      card to the evidence's contentHash + seal keyId — card and PDF attest the same
      evidence. Requires c2patool + a keypair (run keygen first). Signer is
      self-signed → "untrusted source" in c2patool (HONESTY §1.6).
+  node bin/synthex.mjs rekor-anchor [--key-dir=<dir>]
+     Anchors the signing keyId ONCE in Sigstore's Rekor v2 transparency log (as a
+     DSSE in-toto statement signed by the seal key). Writes synthex-rekor-anchor.json
+     (inclusion proof + checkpoint) for OFFLINE verification. A public, append-only,
+     monitorable record of the keyId — NOT a new timestamp, NOT identity (HONESTY §1.3).
+  node bin/synthex.mjs rekor-verify <bundle.json>
+     Verifies a Rekor anchor bundle fully offline (DSSE sig + Merkle inclusion proof
+     + checkpoint Ed25519 signature against the TUF-pinned log key).
 
   Resolution order at sign time:
      1. SYNTHEX_SIGNING_KEY (inline pkcs8 PEM or base64)
@@ -224,6 +234,12 @@ export async function main(argv) {
       keyDir: typeof flags["key-dir"] === "string" ? flags["key-dir"] : null,
     });
   }
+  if (positional[0] === "rekor-anchor") {
+    return runRekorAnchor({ keyDir: typeof flags["key-dir"] === "string" ? flags["key-dir"] : null });
+  }
+  if (positional[0] === "rekor-verify") {
+    return runRekorVerify({ bundlePath: positional[1] });
+  }
 
   const hmacKey = process.env.SYNTHEX_HMAC_KEY || "synthex-demo";
   // v0.8.0 — resolve the Ed25519 signing key (env inline → file → XDG default).
@@ -368,6 +384,59 @@ async function runEvidenceCard({ evidencePath, outPath, keyDir }) {
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+// ─── rekor-anchor / rekor-verify verbs (v0.9) ────────────────────────────
+
+function _keyIdAndSpki(keyPem) {
+  const spkiDer = createPublicKey(createPrivateKey(keyPem)).export({ type: "spki", format: "der" });
+  return { publicKeySpkiB64: Buffer.from(spkiDer).toString("base64"), keyId: keyIdOf(spkiDer) };
+}
+
+async function runRekorAnchor({ keyDir }) {
+  const dir = keyDir || DEFAULT_KEY_DIR;
+  const keyPath = join(dir, "synthex-ed25519.key");
+  if (!existsSync(keyPath)) {
+    console.error(`missing key in ${dir} — run 'synthex keygen' first`);
+    return 2;
+  }
+  const keyPem = readFileSync(keyPath, "utf8");
+  const { keyId, publicKeySpkiB64 } = _keyIdAndSpki(keyPem);
+  console.error(`Anchoring keyId ${keyId} in Rekor v2 (DSSE in-toto statement)…`);
+  let bundle;
+  try {
+    bundle = await anchorKeyId(keyPem, { keyId, publicKeySpkiB64 });
+  } catch (e) {
+    console.error("rekor anchor failed:", e.message);
+    return 1;
+  }
+  const out = join(dir, "synthex-rekor-anchor.json");
+  writeFileSync(out, JSON.stringify(bundle, null, 2));
+  const v = verifyRekorBundle(bundle); // verify offline immediately
+  console.log(`Wrote Rekor anchor bundle → ${out}`);
+  console.log(`  keyId        : ${keyId}`);
+  console.log(`  log          : ${bundle.logOrigin}`);
+  console.log(`  logIndex     : ${bundle.tlogEntry.logIndex}`);
+  console.log(`  offline verify: ${v.ok ? "OK" : `FAIL (${v.reason})`}`);
+  console.log(`  Rekor = public append-only, monitorable record of the keyId. NOT a new`);
+  console.log(`  timestamp (the RFC 3161 TSA does that), NOT identity (a bare key is anonymous`);
+  console.log(`  — real identity is OIDC+Fulcio, an interactive opt-in). HONESTY §1.3.`);
+  return v.ok ? 0 : 1;
+}
+
+function runRekorVerify({ bundlePath }) {
+  if (!bundlePath) {
+    console.error("usage: synthex rekor-verify <bundle.json>");
+    return 2;
+  }
+  const bundle = JSON.parse(readFileSync(bundlePath, "utf8"));
+  const v = verifyRekorBundle(bundle);
+  console.log("── Rekor anchor verification (offline) ──");
+  console.log(`  keyId        : ${bundle.keyId}`);
+  console.log(`  log origin   : ${bundle.logOrigin}`);
+  for (const [k, val] of Object.entries(v.checks)) console.log(`  ${k.padEnd(13)}: ${val ? "OK" : "FAIL"}`);
+  console.log(`  verdict      : ${v.ok ? "VALID" : `INVALID (${v.reason})`}`);
+  return v.ok ? 0 : 1;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
