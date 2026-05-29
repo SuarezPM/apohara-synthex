@@ -580,7 +580,7 @@ h2.head em {
           <div class="prow allow" role="listitem"><span class="idx" aria-hidden="true">03</span><span class="cell"><span class="vchip">ALLOW</span><span class="site">docs.aws.amazon.com/iam</span><span class="reason">classify: clean · sev 1</span></span><span class="ms">141ms</span></div>
           <div class="prow review" role="listitem"><span class="idx" aria-hidden="true">04</span><span class="cell"><span class="vchip">REVIEW</span><span class="site">blog.acme.io/llm-agents</span><span class="reason">guard: pii-pattern · DJL-PII-7 · sev 6</span></span><span class="ms">173ms</span></div>
           <div class="prow allow" role="listitem"><span class="idx" aria-hidden="true">05</span><span class="cell"><span class="vchip">ALLOW</span><span class="site">status.vendor.com</span><span class="reason">classify: clean · sev 0</span></span><span class="ms">88ms</span></div>
-          <div class="prow block" role="listitem"><span class="idx" aria-hidden="true">06</span><span class="cell"><span class="vchip">BLOCK</span><span class="site">pastebin-mirror.xyz/raw/x9f2</span><span class="reason">guard: prompt-injection · DJL-PI-001 · sev 9 — blocked before the LLM</span></span><span class="ms">79ms</span></div>
+          <div class="prow review" role="listitem"><span class="idx" aria-hidden="true">06</span><span class="cell"><span class="vchip">REVIEW</span><span class="site">pastebin-mirror.xyz/raw/x9f2</span><span class="reason">guard: prompt-injection · DJL-PI-001 · sev 9 — flagged REVIEW · L1 never blocks ingest</span></span><span class="ms">79ms</span></div>
           <div class="prow allow" role="listitem"><span class="idx" aria-hidden="true">07</span><span class="cell"><span class="vchip">ALLOW</span><span class="site">npmjs.com/package/vendor-sdk</span><span class="reason">classify: clean · sev 1</span></span><span class="ms">112ms</span></div>
           <div class="prow review" role="listitem"><span class="idx" aria-hidden="true">08</span><span class="cell"><span class="vchip">REVIEW</span><span class="site">gist.github.com/leak/config.env</span><span class="reason">guard: secret-pattern · DJL-EXF-3 · sev 7</span></span><span class="ms">156ms</span></div>
           <div class="prow allow" role="listitem"><span class="idx" aria-hidden="true">09</span><span class="cell"><span class="vchip">ALLOW</span><span class="site">vendor-changelog.dev</span><span class="reason">classify: clean · sev 2</span></span><span class="ms">104ms</span></div>
@@ -590,7 +590,7 @@ h2.head em {
         </div>
       </div>
       <div class="pcon-foot">
-        <span class="tally">12 pages · <b>9 allow</b> · <b style="color:var(--amber)">2 review</b> · <b style="color:var(--red)">1 block</b> · 0 LLM tokens on the blocked payload</span>
+        <span class="tally">12 pages · <b>9 allow</b> · <b style="color:var(--amber)">3 review</b> · <b>0 block</b> · L1 regex never drops a scraped doc</span>
         <span class="sealed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> sealed · Ed25519 + RFC 3161 TSA + C2PA</span>
       </div>
     </div>
@@ -669,7 +669,7 @@ h2.head em {
     </div>
     <div class="substrate"><span>● EVERY BYTE SCREENED · EVERY REPORT SIGNED</span><span>Ed25519 · RFC 3161 · C2PA</span></div>
     <div class="stats">
-      <div class="stat s-lime"><div class="v">421</div><div class="l">tests · 411 pass · 0 fail · 10 skip</div></div>
+      <div class="stat s-lime"><div class="v">427</div><div class="l">tests · 417 pass · 0 fail · 10 skip</div></div>
       <div class="stat s-teal"><div class="v">6/6</div><div class="l">Bright Data surfaces · live</div></div>
       <div class="stat s-amber"><div class="v">110</div><div class="l">pre-LLM rules · 2 layers · 78 DJL + 32 prefilter</div></div>
       <div class="stat s-violet"><div class="v">500</div><div class="l">URLs · 99.6% · $0.75 · live stress</div></div>
