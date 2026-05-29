@@ -13,6 +13,7 @@
 const PRIVATE_HOSTS = [
   /^localhost$/i, /\.local$/i, /^0\./, /^127\./, /^10\./, /^192\.168\./,
   /^169\.254\./, /^172\.(1[6-9]|2\d|3[01])\./, /^\[?::1\]?$/, /169\.254\.169\.254/, /metadata\.(google|goog)/i,
+  /^\[?::\]?$/, /^\[?(0:0:0:0:0:ffff:|::ffff:)/i,
 ];
 
 export function isUrlTarget(t) { return /^https?:\/\//i.test(String(t ?? "")); }
