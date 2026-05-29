@@ -1,10 +1,12 @@
 // TELEMETRY/tokens — estimación honesta de tokens ahorrados pre-LLM.
 //
 // Sirve para reportar al usuario cuántos tokens (estimados) NO se gastaron en el LLM
-// gracias a las 3 capas pre-LLM de Synthex:
+// gracias a las capas pre-LLM de Synthex:
 //   1. dedupe (SHA-256 exact, lossless) → docs duplicados eliminados
-//   2. DJL (78 reglas prompt-level)     → docs blocked, no llegan al LLM
-//   3. prefilter (28 reglas web)         → idem para web-injection
+//   2. Layer-2 injection-guard (opt-in) → docs BLOCK, no llegan al LLM
+// v1.0.0 (D5 FP fix): DJL/prefilter (L1 regex) ya NO dropean docs en ingesta — son REVIEW-only,
+// el doc se conserva y SÍ se clasifica. Por eso L1 ya NO aporta a `blocked_bytes` (solo dedup +
+// el BLOCK real de Layer-2). La severidad L1 sigue sellada como señal en decisions[].
 //
 // HONESTIDAD: "tokens" es una aproximación. Los tokenizers reales varían:
 //   * GPT-4 (cl100k_base):  ~4.2 chars/token sobre texto en inglés
@@ -30,7 +32,7 @@ export function estimateTokens(bytes) {
  * @param {object} args
  * @param {Array<{content:string}>} args.original  docs pre-dedup (entrada FETCH)
  * @param {Array<{content:string}>} args.unique    docs post-dedup
- * @param {Array<{content:string}>} args.blocked   docs bloqueados (DJL ∪ prefilter)
+ * @param {Array<{content:string}>} args.blocked   docs bloqueados (post-D5: solo Layer-2)
  * @returns {{dedup_bytes:number, blocked_bytes:number, total_bytes:number,
  *           estimated_tokens:number, chars_per_token:number, note:string}}
  */

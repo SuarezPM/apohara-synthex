@@ -3,7 +3,7 @@
 // fetcher y classifier son inyectables para testear sin red (y para el demo determinista).
 import { BrightDataClient } from "./fetch/bright-data-client.js";
 import { dedupe, prefilter } from "./forge/index.js";
-import { evaluate as djlScreen, POLICY_BUNDLE_VERSION as DJL_POLICY_BUNDLE_VERSION } from "./forge/djl.js";
+import { evaluate as djlScreen, RULES as DJL_RULES, POLICY_BUNDLE_VERSION as DJL_POLICY_BUNDLE_VERSION } from "./forge/djl.js";
 import { POLICY_BUNDLE_VERSION as PREFILTER_POLICY_BUNDLE_VERSION } from "./forge/prefilter.js";
 import { screen as injectionGuardScreen, POLICY_BUNDLE_VERSION as GUARD_POLICY_BUNDLE_VERSION } from "./forge/injection-guard.js";
 import { classify as defaultClassify } from "./classify/aiml-client.js";
@@ -17,6 +17,16 @@ import { computeTokensSaved } from "./telemetry/tokens.js";
 const _SCHEMA_V2 = process.env.EVIDENCE_SCHEMA_V2 !== "0";
 
 const LENS_SET = ["gtm", "finance", "security", "supply-chain"];
+
+// DJL's verdict exposes matched rule_ids but not their severity; map id→severity once from the
+// frozen RULES so a REVIEW row can seal the real max severity that triggered it (the signal stays
+// sealed even though L1 no longer drops the doc — D5 FP fix).
+// El verdict de DJL expone rule_ids pero no su severidad; mapeamos id→severity una vez desde las
+// RULES congeladas para que la fila REVIEW selle la severidad real que la disparó (la señal sigue
+// sellada aunque L1 ya no dropee el doc — corrección FP D5).
+const _DJL_RULE_SEVERITY = new Map(DJL_RULES.map((r) => [r.id, r.severity]));
+const _maxDjlSeverity = (matchedRuleIds = []) =>
+  matchedRuleIds.reduce((max, id) => Math.max(max, _DJL_RULE_SEVERITY.get(id) ?? 0), 0);
 
 /** Extrae el texto de un resultado de tool MCP ({content:[{type:'text',text}]}). */
 export function mcpText(result) {
@@ -115,8 +125,14 @@ export async function runPipeline(target, opts = {}) {
 
   // 2. FORGE: dedup + DJL (78 reglas) + prefilter (32 reglas) + Layer-2 injection-guard (opt-in v0.8).
   // Orden: dedupe baja N → DJL prompt-level → prefilter web-injection → guard semantic detector.
-  // `blocked` es UNIÓN 3-way (DJL ∪ prefilter ∪ injection-guard); `reason` siempre set, `layer` distingue origen.
-  // tokensSaved: estimación honesta de tokens NO gastados en LLM gracias a las capas pre-LLM.
+  // `blocked` (post-D5) = SOLO injection-guard: ningún doc se dropea por L1 regex. DJL/prefilter
+  // grado-BLOCK (sev≥8) producen filas REVIEW (`djlReviewed`/`prefReviewed`) y el doc se conserva.
+  // tokensSaved: estimación honesta de tokens NO gastados en LLM gracias a dedup + L2 blocked.
+  //
+  // v1.0.0 (corrección FP D5) — L1 regex (DJL+prefilter) es REVIEW-only en ingesta: la severidad
+  // sigue siendo señal sellada, pero ya NO dropea el doc scrapeado (eliminaba el 80% FP en corpus
+  // benigno de seguridad). La autoridad de BLOCK en ingesta queda solo en L2 calificado (y L3,
+  // Phase 1). Ver docs/guard-fp-measurement.md + docs/HONESTY.md §8.A.
   //
   // Layer-2 (injection-guard) — opt-in via SYNTHEX_GUARD_URL (or opts.injectionGuard). When unset,
   // step is SKIPPED entirely → blocked/safe identical to v0.7. When set, screen() each doc via
@@ -131,7 +147,7 @@ export async function runPipeline(target, opts = {}) {
     ? opts.injectionGuard.screen
     : injectionGuardScreen;
 
-  const { blocked, safe, dedup, tokensSaved, guardReviewed } = await timed("FORGE", async ({ record }) => {
+  const { blocked, safe, dedup, tokensSaved, guardReviewed, djlReviewed, prefReviewed } = await timed("FORGE", async ({ record }) => {
     // Default exact (SHA-256, lossless, sync). Semántico = opt-in: import() DINÁMICO para que el
     // grafo de deps de api/** nunca alcance @xenova/transformers (bundle serverless limpio).
     const { unique, stats } = dedupMode === "semantic"
@@ -139,20 +155,29 @@ export async function runPipeline(target, opts = {}) {
       : dedupe(docs);
 
     // Layer 1a — DJL screen (78 reglas regex deterministas pre-LLM).
+    // v1.0.0 (D5 FP fix) — L1 regex is REVIEW-only on ingest: a scraped doc is NEVER dropped by
+    // regex severity. DJL still reports its decision (severity stays a sealed signal), but a
+    // BLOCK-grade hit (sev≥8) now marks the doc REVIEW and KEEPS it in `safe` instead of dropping
+    // it. BLOCK authority on ingest belongs to nobody in L1 — only a qualified L2 (Phase 1) /L3.
+    // v1.0.0 (corrección FP) — L1 regex es REVIEW-only en la ingesta: ningún doc scrapeado se
+    // dropea por severidad regex. DJL sigue reportando su decision (la severidad sigue siendo
+    // señal sellada), pero un hit grado-BLOCK (sev≥8) ahora marca REVIEW y CONSERVA el doc en
+    // `safe` en vez de dropearlo. La autoridad de BLOCK en ingesta no la tiene nadie de L1.
     const djled = unique.map((d) => ({ ...d, djl: djlScreen(d.content) }));
-    const djlBlocked = djled
+    const djlReviewed = djled
       .filter((d) => d.djl.decision === "BLOCK")
-      .map((d) => ({ ...d, reason: d.djl.matched_rules[0], layer: "djl" }));
-    const passDjl = djled.filter((d) => d.djl.decision !== "BLOCK");
+      .map((d) => ({ ...d, reason: d.djl.matched_rules[0], severity: _maxDjlSeverity(d.djl.matched_rules), layer: "djl" }));
 
-    // Layer 1b — PREFILTER (32 reglas web-injection sobre lo que DJL dejó pasar).
-    const screened = passDjl.map((d) => ({ ...d, screen: prefilter(d.content) }));
-    const prefBlocked = screened
+    // Layer 1b — PREFILTER (32 reglas web-injection). Corre sobre TODOS los docs (ya no solo
+    // sobre lo que DJL "dejó pasar", porque DJL ya no dropea). Mismo trato REVIEW-only que DJL.
+    const screened = djled.map((d) => ({ ...d, screen: prefilter(d.content) }));
+    const prefReviewed = screened
       .filter((d) => d.screen.action === "BLOCK")
-      .map((d) => ({ ...d, reason: d.screen.category, layer: "prefilter" }));
-    const safe1 = screened.filter((d) => d.screen.action !== "BLOCK");
+      .map((d) => ({ ...d, reason: d.screen.category, severity: d.screen.severity, layer: "prefilter" }));
+    const safe1 = screened;
 
-    // Layer 2 — INJECTION_GUARD (opt-in, calibrated REVIEW-by-default).
+    // Layer 2 — INJECTION_GUARD (opt-in, calibrated REVIEW-by-default). El ÚNICO L1/L2 con
+    // autoridad BLOCK hoy (drop real del doc); su threshold se mantiene (fuera de scope D5).
     let guardBlocked = [];
     let guardReviewed = [];
     let safe = safe1;
@@ -167,12 +192,12 @@ export async function runPipeline(target, opts = {}) {
       safe = verdicts.filter((d) => d.guard?.verdict !== "block");
     }
 
-    // Unión 3-way sin doble conteo: cada capa actúa sobre un subconjunto disjunto del anterior.
-    const blocked = [...djlBlocked, ...prefBlocked, ...guardBlocked];
+    // `blocked` = solo lo que L2 dropea (BLOCK real). DJL/prefilter ya NO bloquean ingesta.
+    const blocked = guardBlocked;
     const tokensSaved = computeTokensSaved({ original: docs, unique, blocked });
     record("dedup", stats.duplicateBlocks);
-    record("djl_blocked", djlBlocked.length);
-    record("prefilter_blocked", prefBlocked.length);
+    record("djl_reviewed", djlReviewed.length);
+    record("prefilter_reviewed", prefReviewed.length);
     if (guardEnabled) {
       record("guard_blocked", guardBlocked.length);
       record("guard_reviewed", guardReviewed.length);
@@ -180,7 +205,7 @@ export async function runPipeline(target, opts = {}) {
     record("blocked", blocked.length);
     record("tokens_saved_est", tokensSaved.estimated_tokens);
     recordBlocked(blocked.length);
-    return { blocked, safe, dedup: stats, tokensSaved, guardReviewed };
+    return { blocked, safe, dedup: stats, tokensSaved, guardReviewed, djlReviewed, prefReviewed };
   });
 
   // 3. CLASSIFY (cada doc seguro). lens="all" → las 4 lentes (GTM+Finance+Security+SupplyChain)
@@ -243,7 +268,8 @@ export async function runPipeline(target, opts = {}) {
           ...(guardEnabled ? { injectionGuard: GUARD_POLICY_BUNDLE_VERSION } : {}),
         },
         decisions: [
-          // 3-way BLOCK union (DJL ∪ PREFILTER ∪ INJECTION_GUARD)
+          // BLOCK rows — post-D5 only INJECTION_GUARD (L2) drops a doc on ingest; L1 regex is
+          // REVIEW-only (DJL/prefilter BLOCK-grade hits surface as REVIEW rows below, never here).
           ...blocked.map((d) => ({
             stage: _layerMeta[d.layer].stage,
             url: d.url,
@@ -254,6 +280,19 @@ export async function runPipeline(target, opts = {}) {
             policy_bundle_version: _layerMeta[d.layer].bundle,
             at: fetchedAt,
             ..._guardDecisionExtras(d),
+          })),
+          // REVIEW rows from L1 regex (DJL + prefilter) — D5 FP fix: the doc is KEPT and classified,
+          // the BLOCK-grade severity is sealed as REVIEW signal. layer distinguishes DJL vs prefilter.
+          ...[...djlReviewed, ...prefReviewed].map((d) => ({
+            stage: _layerMeta[d.layer].stage,
+            url: d.url,
+            contentHash: sha256(String(d.content ?? "")).toString("hex"),
+            rule_matched: [d.reason],
+            outcome: "REVIEW",
+            layer: d.layer,
+            severity: d.severity,
+            policy_bundle_version: _layerMeta[d.layer].bundle,
+            at: fetchedAt,
           })),
           // REVIEW rows from injection-guard (kept but annotated; HONESTY §8.A)
           ...guardReviewed.map((d) => ({
