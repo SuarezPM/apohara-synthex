@@ -15,10 +15,16 @@ import { verifyEvidence } from "../src/prove/evidence-report.js";
 
 const USAGE = `decode-evidence — inspeccioná un Evidence Report sellado.
 
-  node bin/decode-evidence.js <path-to-evidence.json>
+  node bin/decode-evidence.js <path-to-evidence.json> [--expected-keyid=<hex>]
 
 Env:
-  SYNTHEX_HMAC_KEY   clave HMAC para verificar (default: "synthex-demo")
+  SYNTHEX_HMAC_KEY      clave HMAC para verificar (default: "synthex-demo")
+  SYNTHEX_EXPECTED_KEYID  pin para el Ed25519 keyId (alternativa a --expected-keyid)
+
+Identity (v0.8): --expected-keyid pins the asymmetric signer's keyId. Without it,
+the verifier reports identityVerified:null (signature math is good, identity is not
+pinned). The keyId must come from out-of-band publication — DNS TXT or .well-known
+JSON — not from the report itself. See docs/HONESTY.md §1.4.
 `;
 
 function printDecisionsTable(decisions) {
@@ -72,20 +78,45 @@ function printSummary(ev) {
   console.log(`  sealedAt       : ${ev.sealedAt ?? "—"}`);
 }
 
-async function printVerify(ev, hmacKey) {
-  const v = await verifyEvidence(ev, { hmacKey });
+async function printVerify(ev, hmacKey, expectedKeyId) {
+  const v = await verifyEvidence(ev, { hmacKey, expectedKeyId });
   console.log("\n── Verification ──");
-  console.log(`  hash : ${v.hashOk ? "OK" : "FAIL"}`);
-  console.log(`  HMAC : ${v.hmacOk === true ? "OK" : v.hmacOk === false ? "FAIL" : "skipped (no key)"}`);
-  console.log(`  TSA  : ${v.tsaOk === true ? "OK (RFC 3161 · DigiCert)" : v.tsaOk === null ? "skipped (no TSA in payload)" : "FAIL"}`);
-  // M1 (v0.7.0): cryptographic CMS signature verification against pinned DigiCert anchors.
+  console.log(`  hash    : ${v.hashOk ? "OK" : "FAIL"}`);
+  console.log(`  HMAC    : ${v.hmacOk === true ? "OK" : v.hmacOk === false ? "FAIL" : "skipped (no key)"}`);
+  console.log(`  TSA     : ${v.tsaOk === true ? "OK (RFC 3161 · DigiCert)" : v.tsaOk === null ? "skipped (no TSA in payload)" : "FAIL"}`);
+  // v0.7 → v0.8: TSA CMS chain verification (was "sig"; now under tsa-sig).
+  const tsaSigLabel = v.tsaSignatureValid === true
+    ? "OK (CMS chain verifies against pinned DigiCert anchors)"
+    : v.tsaSignatureValid === false
+      ? `FAIL (${v.tsaSignatureValidReason})`
+      : "skipped (no TSA in payload)";
+  console.log(`  tsa-sig : ${tsaSigLabel}`);
+  // v0.8: Ed25519 asymmetric signature (the load-bearing non-repudiation fix).
+  const sigKeyId = ev.seal?.signature?.keyId;
   const sigLabel = v.signatureValid === true
-    ? "OK (chain verifies against pinned DigiCert anchors)"
+    ? `OK (Ed25519 · keyId ${sigKeyId?.slice(0, 12)}…)`
     : v.signatureValid === false
       ? `FAIL (${v.signatureValidReason})`
-      : "skipped (no TSA in payload)";
-  console.log(`  sig  : ${sigLabel}`);
+      : v.signatureValid === "symmetric-only"
+        ? "n/a · symmetric-only (HMAC+TSA integrity; no Ed25519 layer present)"
+        : "skipped";
+  console.log(`  sig     : ${sigLabel}`);
+  // v0.8: Identity verification via out-of-band keyId publication.
+  const identityLabel = v.identityVerified === true
+    ? `OK (keyId pinned; channel: ${v.identityChannel ?? "unverified"})`
+    : v.identityVerified === false
+      ? "FAIL (embedded keyId does not match --expected-keyid)"
+      : "n/a (no --expected-keyid; signature is integrity-not-identity per HONESTY §1.4)";
+  console.log(`  identity: ${identityLabel}`);
   return v;
+}
+
+function parseExpectedKeyId(argv, env) {
+  // --expected-keyid=<hex> takes precedence over SYNTHEX_EXPECTED_KEYID env.
+  for (const a of argv) {
+    if (a.startsWith("--expected-keyid=")) return a.slice("--expected-keyid=".length);
+  }
+  return env.SYNTHEX_EXPECTED_KEYID || null;
 }
 
 export async function main(argv) {
@@ -98,12 +129,15 @@ export async function main(argv) {
   const raw = readFileSync(path, "utf8");
   const ev = JSON.parse(raw);
   const hmacKey = process.env.SYNTHEX_HMAC_KEY || "synthex-demo";
+  const expectedKeyId = parseExpectedKeyId(argv, process.env);
 
   printSummary(ev);
   if (ev.payload?.schema_version >= 2) printDecisionsTable(ev.payload.decisions ?? []);
   if (ev.payload?.delta_chain) printDeltaChain(ev.payload.delta_chain);
-  const v = await printVerify(ev, hmacKey);
-  return v.hashOk && v.hmacOk !== false ? 0 : 1;
+  const v = await printVerify(ev, hmacKey, expectedKeyId);
+  // Fail when hash/HMAC fail, OR when an explicit --expected-keyid was provided and identity mismatched.
+  const identityFail = expectedKeyId && v.identityVerified === false;
+  return v.hashOk && v.hmacOk !== false && !identityFail ? 0 : 1;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

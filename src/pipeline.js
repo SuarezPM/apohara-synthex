@@ -153,15 +153,17 @@ export async function runPipeline(target, opts = {}) {
   });
 
   // 4. PROVE: sellar el reporte.
-  // Payload v2 (default): incluye schema_version + decisions[] (audit trail por stage) +
-  // policy_bundle_version (sha pin de los corpus DJL+prefilter en uso). El sellado HMAC usa
-  // canonicalize() (RFC 8785-like) → reproducible aunque el orden de claves cambie.
-  // Payload v1 (legacy, opt-out vía EVIDENCE_SCHEMA_V2=0): shape exacto de Synthex v3.
+  // Payload v3 (default since v0.8.0): same canonical pre-image as v2 (so contentHash + HMAC
+  // pre-image byte-identical); the v3 schema enables `seal.signature` + `seal.signerIdentity`
+  // (additive, both in seal, NOT in payload) without changing the pre-image. v2 hand-built
+  // payloads stay valid (v2 + v3 fall through the same `>= 2` branch in _serializeForHmac).
+  // Payload v1 (legacy, opt-out vía EVIDENCE_SCHEMA_V2=0): shape exacto de Synthex v3 (the
+  // 2026 SDK, not to be confused with the v3 schema version).
   const fetchedAt = new Date().toISOString();
   const blockedForPayload = blocked.map((d) => ({ url: d.url, reason: d.reason, layer: d.layer }));
   const payload = _SCHEMA_V2
     ? {
-        schema_version: 2,
+        schema_version: 3,
         target,
         lens,
         fetchedAt,

@@ -60,7 +60,7 @@ export async function sealDeltaChain(args = {}) {
   const previousTsaSerial = prev_evidence?.seal?.rfc3161Tsa?.serial ?? null;
   const payload = {
     ...curr_snapshot,
-    schema_version: 2,
+    schema_version: 3,
     snapshot_hash: currHash,
     delta_chain: {
       previous_tsa_serial: previousTsaSerial,

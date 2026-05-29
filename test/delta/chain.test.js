@@ -16,7 +16,7 @@ test("sealDeltaChain: cold start produces evidence con delta_chain.previous_tsa_
     hmacKey: "test-key",
     requestTsa: false,
   });
-  assert.equal(ev.payload.schema_version, 2);
+  assert.equal(ev.payload.schema_version, 3);
   assert.ok(ev.payload.delta_chain);
   assert.equal(ev.payload.delta_chain.previous_tsa_serial, null);
   assert.equal(ev.payload.delta_chain.current_tsa_serial, null); // requestTsa=false

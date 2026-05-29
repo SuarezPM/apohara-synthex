@@ -25,3 +25,8 @@ out/stress-*/evidence-*.json
 !out/stress-*/evidence-0016.json
 !out/stress-*/evidence-0017.json
 out/nemotron-vs-deepseek-calibration.json
+# v0.8 Ed25519 signing keys — NEVER commit private material. Public key (.pub)
+# is fine to publish but the .key (pkcs8 PEM, mode 0600) is operator-private.
+*.key
+synthex-ed25519.*
+!synthex-ed25519.pub

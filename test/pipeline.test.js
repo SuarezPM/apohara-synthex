@@ -101,9 +101,9 @@ test("pipeline: payload v2 incluye tokens_saved (estimación honesta dedup + blo
   const classifier = async (text, lens) => ({ lens, severity: 4, summary: "ok", signals: [] });
   const ev = await runPipeline("test-tokens", { lens: "security", fetcher, classifier, requestTsa: false });
 
-  assert.equal(ev.payload.schema_version, 2);
+  assert.equal(ev.payload.schema_version, 3);
   const ts = ev.payload.tokens_saved;
-  assert.ok(ts, "tokens_saved debe estar presente en payload v2");
+  assert.ok(ts, "tokens_saved debe estar presente en payload v3 (added in v2, preserved in v3)");
   assert.ok(ts.dedup_bytes >= a.length, `dedup_bytes ${ts.dedup_bytes} debe cubrir al menos un clone (~${a.length}B)`);
   assert.ok(ts.blocked_bytes >= 30, "blocked_bytes debe contar el doc djl-block");
   assert.equal(ts.total_bytes, ts.dedup_bytes + ts.blocked_bytes);

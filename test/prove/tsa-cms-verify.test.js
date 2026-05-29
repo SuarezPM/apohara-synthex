@@ -4,9 +4,10 @@
 //   AC1   positive   sample real DigiCert token        → signatureValid:true,  reason:null
 //   AC2a  negative   trustedCerts:[]  (anchor-stale)   → signatureValid:false, reason:"untrusted-anchor"
 //   AC2b  negative   flipped byte in signature (forged)→ signatureValid:false, reason:"forged"
-//   AC4   short-cir  evidence sin rfc3161Tsa (HMAC-only) → signatureValid:null
-//   AC4b  back-compat 1 v2 HMAC-only fixture de stress-piloto-50 → signatureValid:null
-//   AC6   v1+TSA     sample legacy (schema_version undefined) verifica end-to-end
+//   AC4   short-cir  evidence sin rfc3161Tsa (HMAC-only) → signatureValid:'symmetric-only' (v0.8)
+//   AC4b  back-compat 1 v2 HMAC-only fixture de stress-piloto-50 → signatureValid:'symmetric-only'
+//   AC6   v1+TSA     sample legacy (schema_version undefined) verifica end-to-end (tsaSignatureValid:true,
+//                    signatureValid:'symmetric-only' because v1 has no Ed25519 asymmetric layer)
 //   anchor-guard    fingerprint mismatch lanza on load (anti-silent-drift)
 //   pre-demo smoke  smoke pass que separa staleness ("untrusted-anchor") de forgería
 //                   — drives PM-6-agudo detection antes de cualquier live demo.
@@ -70,44 +71,53 @@ test("M1 AC2b · negative forged: signature-byte flip yields reason:'forged' (no
   );
 });
 
-test("M1 AC4 · HMAC-only short-circuit: evidence sin rfc3161Tsa → signatureValid:null (NOT false)", async () => {
+test("M1 AC4 · HMAC-only short-circuit: evidence sin rfc3161Tsa → signatureValid:'symmetric-only' (v0.8)", async () => {
   const ev = await buildEvidence({ a: 1, b: 2 }, { hmacKey: "k", requestTsa: false });
   assert.equal(ev.seal.rfc3161Tsa, null, "fixture sanity: no TSA token");
   const v = await verifyEvidence(ev, { hmacKey: "k" });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
   assert.equal(v.tsaOk, null);
+  assert.equal(v.tsaSignatureValid, null, "no TSA token → no CMS chain verify");
+  // v0.8 semantics: signatureValid is the Ed25519 asymmetric verdict. Absent → 'symmetric-only'
+  // (explainer string, NOT false — failure would mean a present signature didn't verify).
   assert.equal(
     v.signatureValid,
-    null,
-    "no TSA token → never call .verify() → signatureValid:null (NOT false, NOT throw)",
+    "symmetric-only",
+    "no asymmetric signature in seal → 'symmetric-only' (HMAC-only is the integrity layer here)",
   );
-  assert.equal(v.signatureValidReason, null);
+  assert.equal(v.signatureValidReason, "symmetric-only");
 });
 
-test("M1 AC4b · piloto-50 back-compat: HMAC-only batch verifies with signatureValid:null", async () => {
+test("M1 AC4b · piloto-50 back-compat: HMAC-only batch verifies with signatureValid:'symmetric-only'", async () => {
   // Pick the first available fixture in the batch (all 47 are method:HMAC-SHA256, rfc3161Tsa:null).
   const files = readdirSync(PILOTO_DIR).filter((n) => n.startsWith("evidence-") && n.endsWith(".json"));
   assert.ok(files.length > 0, `piloto-50 dir has fixtures: ${PILOTO_DIR}`);
   const ev = JSON.parse(readFileSync(`${PILOTO_DIR}/${files[0]}`, "utf8"));
   assert.equal(ev.seal.rfc3161Tsa, null, "fixture sanity: piloto-50 is HMAC-only");
   const v = await verifyEvidence(ev, { hmacKey: "synthex-dev" });
-  // hash + HMAC still verify; TSA short-circuit returns null (no .verify() call).
-  assert.equal(v.hashOk, true, "v2 HMAC re-verifies under post-M1 codec");
+  // hash + HMAC still verify; v2 fixtures have no asymmetric layer → 'symmetric-only' explainer.
+  assert.equal(v.hashOk, true, "v2 HMAC re-verifies under post-v0.8 codec");
   assert.equal(v.hmacOk, true);
-  assert.equal(v.signatureValid, null, "null-token short-circuit at scale");
+  assert.equal(v.tsaSignatureValid, null, "no TSA → no CMS chain to check");
+  assert.equal(v.signatureValid, "symmetric-only", "v2 fixtures: no Ed25519 sig present → 'symmetric-only' (back-compat)");
 });
 
 test("M1 AC6 · v1+TSA back-compat: schema_version undefined + TSA token verifies end-to-end", async () => {
   // samples/synthex-evidence-report.json is legacy v1 (no schema_version) WITH a real TSA token.
-  // Post-M1 verifier must accept TSA tokens on payloads that lack schema_version.
+  // Post-v0.8 verifier preserves TSA verification AND honestly reports the absent asymmetric layer.
   const ev = loadSample();
   assert.equal(ev.payload.schema_version, undefined, "fixture sanity: legacy v1 payload");
   assert.ok(ev.seal.rfc3161Tsa?.token, "fixture sanity: has TSA token");
   const v = await verifyEvidence(ev, { hmacKey: "synthex-demo" });
   assert.equal(v.hashOk, true, "v1 path serializes with JSON.stringify");
-  assert.equal(v.signatureValid, true, "TSA verifies on v1/legacy payload too");
-  assert.equal(v.signatureValidReason, null);
+  // TSA CMS chain verifies — now reported under the dedicated tsaSignatureValid key.
+  assert.equal(v.tsaOk, true, "TSA granted + match holds");
+  assert.equal(v.tsaSignatureValid, true, "CMS chain verifies on v1/legacy payload too (was old 'signatureValid')");
+  assert.equal(v.tsaSignatureValidReason, null);
+  // signatureValid now reports the asymmetric layer (absent in v1) — 'symmetric-only' is correct.
+  assert.equal(v.signatureValid, "symmetric-only", "v1 has no Ed25519 layer → 'symmetric-only' explainer");
+  assert.equal(v.signatureValidReason, "symmetric-only");
 });
 
 test("M1 anchor-guard · fingerprints frozen + loadAnchors() returns intermediate+root", () => {

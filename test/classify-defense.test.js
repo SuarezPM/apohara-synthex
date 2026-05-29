@@ -66,7 +66,7 @@ test("T10/AI-1: severity clamp 0-10 sigue activo (defense-in-depth pre-existente
 });
 
 // ---------------------------------------------------------------------------
-// T6/M6 × M1 — coexistence: retry exhausto → HMAC-only → signatureValid:null
+// T6/M6 × M1 — coexistence: retry exhausto → HMAC-only → signatureValid:'symmetric-only' (v0.8)
 // ---------------------------------------------------------------------------
 
 test("T6/M6: requestTimestamp con retries=0 sobre URL inválido falla rápido (sanity: opción retries respetada)", async () => {
@@ -78,17 +78,20 @@ test("T6/M6: requestTimestamp con retries=0 sobre URL inválido falla rápido (s
   );
 });
 
-test("T6/M6 × M1 coexistence: TSA caída → evidence HMAC-only → verifyEvidence signatureValid:null (NO crash, NO false)", async () => {
+test("T6/M6 × M1 coexistence: TSA caída → evidence HMAC-only → signatureValid:'symmetric-only' (NO crash, NO false)", async () => {
   // Simula PR-1 + PR-2 viviendo en el mismo tsa.js sin conflicto:
   // 1) buildEvidence con requestTsa:false → tsa=null (equivale a M6 retry-exhaust path)
   // 2) verifyEvidence ejecuta el null-token short-circuit del M1 verifyTimestamp
-  // 3) signatureValid:null (NOT false, NOT throw)
+  // 3) v0.8: signatureValid:'symmetric-only' (Ed25519 absent, NOT false, NOT throw)
   const ev = await buildEvidence({ schema_version: 2, target: "test", findings: [] }, { hmacKey: "k", requestTsa: false });
   assert.equal(ev.seal.rfc3161Tsa, null, "HMAC-only fallback path (M6 retry-exhaust equivalent)");
   const v = await verifyEvidence(ev, { hmacKey: "k" });
   assert.equal(v.hashOk, true);
   assert.equal(v.hmacOk, true);
   assert.equal(v.tsaOk, null);
-  assert.equal(v.signatureValid, null, "M1 short-circuit: no token → no .verify() call → null");
-  assert.equal(v.signatureValidReason, null);
+  assert.equal(v.tsaSignatureValid, null, "M1 short-circuit: no token → no CMS .verify()");
+  // v0.8 semantics: signatureValid reports the Ed25519 asymmetric layer. Absent → 'symmetric-only'
+  // explainer string (NOT false — would mean "we ran asymm check and it failed").
+  assert.equal(v.signatureValid, "symmetric-only", "no Ed25519 sig present → 'symmetric-only' (v0.8 semantics)");
+  assert.equal(v.signatureValidReason, "symmetric-only");
 });

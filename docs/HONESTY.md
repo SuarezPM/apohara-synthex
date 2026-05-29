@@ -8,23 +8,56 @@ The product pitches *verifiable honesty over polished claims*. That rule applies
 
 ## §1 · Cryptographic seal — what it does and doesn't prove
 
-### 1.1 RFC 3161 TSA · what `signatureValid:true` means (M1, v0.7.0)
-- **What the verifier now checks** (`src/prove/tsa.js verifyTimestamp`):
+### 1.1 RFC 3161 TSA · what `tsaSignatureValid:true` means (M1 v0.7.0 · validity hardened v0.8 commit 1)
+> **v0.8 rename** — what v0.7 reported as `signatureValid` (the TSA CMS chain verdict) is now reported as `tsaSignatureValid` / `tsaSignatureValidReason`. The `signatureValid` key now carries the Ed25519 asymmetric verdict introduced in v0.8 (see §1.4). Same checks, distinct fields.
+
+- **What the verifier now checks** (`src/prove/tsa.js verifyTimestamp` + `verifyCmsSigned`):
   1. `status: granted` on the `TimeStampResp`.
   2. `messageImprint` inside the token equals our `SHA-256(contentHash)`.
   3. The CMS `messageDigest` signed attribute equals `SHA-256(TSTInfo bytes)`.
   4. The CMS signature math verifies against the signer cert's public key (RSA-PKCS1-v1_5).
-  5. The certificate chain (signer → intermediate → root) terminates at one of the two pinned DigiCert anchors in `src/prove/tsa-anchors.js`, verified link-by-link by issuer DN + signature.
+  5. **v0.8** — the signer cert carries the `id-kp-timeStamping` Extended Key Usage (OID 1.3.6.1.5.5.7.3.8 — RFC 3161 §2.3 requirement).
+  6. **v0.8** — every cert in the chain has `notBefore ≤ genTime ≤ notAfter`. The check is anchored at `tstInfo.genTime`, **not** `Date.now()`, so tokens stay verifiable forever as of when they were stamped (even if the signer cert eventually expires).
+  7. The certificate chain (signer → intermediate → root) terminates at one of the two pinned DigiCert anchors in `src/prove/tsa-anchors.js`, verified link-by-link by issuer DN + signature.
 - **What it does NOT prove**:
-  - Not OCSP / CRL revocation — we don't go online to ask DigiCert "is this responder still trusted today?"; we only check that the responder cert was issued by our pinned anchors.
+  - Not OCSP / CRL revocation — we don't go online to ask DigiCert "is this responder still trusted today?"; we only check that the responder cert was issued by our pinned anchors. (v0.8 Commit 3 adds opt-in OCSP — see §1.5.)
   - Not the *truth* of the sealed content — only that the bytes existed at `genTime` and have not been altered.
-  - Not a court ruling — the term "court-grade" in marketing copy means "cryptographically reproducible and standards-based"; admissibility depends on the jurisdiction and the dispute.
-- **Failure modes operators must distinguish** (returned as `signatureValidReason`):
+  - Not a court ruling — "court-grade" tone in marketing copy was a 2026-05-29 audit finding and was reworded across README/SLIDES to "timestamped, third-party-verifiable evidence". Admissibility depends on jurisdiction and dispute.
+- **Failure modes operators must distinguish** (returned as `tsaSignatureValidReason`):
   - `"forged"` — the signature math fails. The token was edited or the responder cert is wrong.
-  - `"untrusted-anchor"` — the math passes but the chain doesn't reach our pinned anchors. **Most common cause: DigiCert rotated the TSA CA and our pin is stale.** A genuine fresh token shows this; it is NOT a forgery alert. The anchor-rotation runbook (Follow-up F4, v0.7.1) is the response.
+  - `"untrusted-anchor"` — the math passes but the chain doesn't reach our pinned anchors. **Most common cause: DigiCert rotated the TSA CA and our pin is stale.** A genuine fresh token shows this; it is NOT a forgery alert. The anchor-rotation runbook (Follow-up F4) is the response.
   - `"chain-incomplete"` — the signer cert isn't in the CMS or the chain can't be walked.
+  - **v0.8** `"cert-missing-eku"` — the signer cert lacks `id-kp-timeStamping`. RFC 3161 §2.3 violation; not a forgery, an issuer-policy break.
+  - **v0.8** `"gentime-outside-validity"` — the TSTInfo `genTime` is outside the signer cert's `notBefore` / `notAfter` window. A token signed by a cert that wasn't valid at that instant.
+  - **v0.8** `"cert-expired"` / `"cert-not-yet-valid"` — same idea for an intermediate or root cert in the chain at the time of stamping.
   - `null` — there is no TSA token in this evidence (HMAC-only seal); we never called `.verify()`. NOT a failure.
-- **The HMAC-only fallback is honest by design**: if the TSA call fails at seal time, `rfc3161Tsa` is `null` and the evidence is sealed with HMAC-SHA256 alone. The seal method string says so explicitly (`"HMAC-SHA256"` vs `"HMAC-SHA256 + RFC 3161 TSA"`). A v0.5 / v0.6 evidence file (or any HMAC-only fixture in [`out/stress-piloto-50-2026-05-28/`](../out/stress-piloto-50-2026-05-28)) still verifies under the v0.7 verifier — `signatureValid` short-circuits to `null`.
+- **The HMAC-only fallback is honest by design**: if the TSA call fails at seal time, `rfc3161Tsa` is `null` and the evidence is sealed with HMAC-SHA256 alone (plus Ed25519 if a signing key is configured). The seal `method` string composes from the layers present (`"HMAC-SHA256"`, `"HMAC-SHA256 + Ed25519"`, `"HMAC-SHA256 + RFC 3161 TSA"`, `"HMAC-SHA256 + Ed25519 + RFC 3161 TSA"`). v0.5 / v0.6 / v0.7 evidence files still verify under v0.8 — `tsaSignatureValid` short-circuits to `null` when there's no TSA token, and `signatureValid` reports `'symmetric-only'` (explainer string, not failure) when there's no Ed25519 layer.
+
+### 1.4 Asymmetric signature · what `signatureValid:true` means (v0.8 Commit 2 — Ed25519)
+**This is the load-bearing fix for the 2026-05-29 audit finding that HMAC-SHA256 is symmetric → no non-repudiation.** Anyone with `SYNTHEX_HMAC_KEY` could forge any report. v0.8 adds an additive `seal.signature` block: an Ed25519 signature over the same canonical bytes the HMAC signs, with the public key embedded for offline verification.
+
+- **What `signatureValid:true` proves**: the holder of the private half of the embedded public key signed these exact canonical bytes. Anyone with the public key verifies; **only** the private-key holder can sign. That's non-repudiation **relative to the embedded key**.
+- **What it does NOT prove without out-of-band publication — the binding identity-vs-key gap**: embedding the public key in the report is *circular*. The report attests its own key. Anyone can generate a keypair, sign their own report, and embed the matching pubkey — Ed25519 math will verify. For a third party to know **WHO** signed (not just **THAT** someone with a specific key signed), the keyId must be published through a channel the verifier trusts independently of the report:
+  - **DNS TXT record** — `_synthex-keyid.<domain>` (recommended; signed by the DNS operator's TLS / DNSSEC; visible to anyone resolving the domain).
+  - **`.well-known` JSON** — `https://<domain>/.well-known/synthex-keys.json` (signed by the domain's TLS cert; standard discovery convention).
+  - **Transparency log** — Sigstore Rekor or equivalent (Follow-up; not v0.8). Append-only public log.
+  - The verifier pins via `--expected-keyid=<hex>` (or `SYNTHEX_EXPECTED_KEYID`); the comparison happens against the embedded `seal.signature.keyId` and surfaces as `identityVerified: true|false`. Without `--expected-keyid`, the verifier returns `identityVerified: null` — signature math is good, identity is **not** pinned. This distinction is contractual.
+  - `npx synthex publish-keyid --domain=<your-domain>` prints both publication formats for the operator to copy-paste. Run it once after `npx synthex keygen`.
+- **Persistent default · NO ephemeral, NO auto-generation** (per reviewer A1):
+  - The signing key is resolved in this order: `SYNTHEX_SIGNING_KEY` (env inline) → `SYNTHEX_SIGNING_KEY_FILE` (env path) → `~/.config/apohara/synthex/synthex-ed25519.key` (XDG default; `XDG_CONFIG_HOME` aware) → unsigned.
+  - Ephemeral-per-run was rejected because (a) it's demo theatre — "some random key signed this" is not what a General Counsel wants to read; (b) it breaks `delta_chain` continuity (the chain's whole point is that the *same custodian* signed every link from `previous_tsa_serial → current_tsa_serial`; rotating keys per snapshot makes the chain structurally valid but custodially meaningless). The operator must explicitly opt in to signing by running `npx synthex keygen` and persisting the key.
+- **Tri-modal `signatureValid` value**:
+  - `true` — Ed25519 verify passed.
+  - `false` — verify failed; `signatureValidReason` carries one of: `"bad-signature"` (math fail = tamper alarm), `"malformed-signature"` (block decode failed, or `keyId` mismatches the embedded SPKI), `"key-mismatch"` (caller supplied `--expected-keyid` and it didn't match).
+  - `"symmetric-only"` — no `seal.signature` block present (v1 / v2 fixtures + v3 without a signing key). **NOT a failure** — it's an explainer string: the report's integrity rests on HMAC + (if present) TSA, but no asymmetric layer was produced. Distinct from `false` which means "we ran an asymmetric check and it FAILED".
+  - `null` — malformed evidence (shape-guard path).
+- **`delta_chain` continuity caveat**: when a chain spans multiple snapshots, the verifier flags rotation in the future via the same `keyId` field — if two consecutive snapshots in a delta chain have different `seal.signature.keyId`, the custodian rotated. The chain is structurally still valid (each snapshot signs its own bytes), but custodial continuity is interpretive: a human reviewer should decide whether the rotation was authorized.
+- **Why "Ed25519 over canonical bytes" is what we ship and not something else**: the canonical pre-image is the same `_serializeForHmac(payload)` string the HMAC signs. Byte-identity is the equivalence argument with C2PA `c2pa.hash.data` + claim signature (Commit 3 builds the C2PA sidecar on top of this exact same signature material). Single source of truth for "what got signed" across all layers.
+
+### 1.5 Revocation (OCSP) — opt-in, surfacing-only (v0.8 Commit 3)
+- Default: `revocationChecked: false`, `revocationStatus: null` — the verifier does **not** go online. This preserves the offline-verify guarantee that's load-bearing for archive scenarios.
+- With `checkRevocation: true` (opt-in): query the TSA signer cert's AIA-extension OCSP responder; return `revocationStatus: "good" | "revoked" | "unknown"`. Fails open to `"unknown"` on network / timeout / parse error — never turns a valid offline verify into a hard fail.
+- **v0.8 policy**: `revocationStatus: "revoked"` does **not** auto-flip `tsaSignatureValid:false`. Surfacing-only — the operator decides what to do. "Strict revoked = hard-fail flag" is a follow-up.
 
 ### 1.2 Model confidence is NOT part of the seal (AI-2)
 - The cryptographic seal proves the *evidence bytes existed*; it does not say anything about the classifier's confidence. Classifier output (severity, summary, signals) is advisory — the PDF disclaimers in `src/prove/pdf-report.js` state this on the rendered page.
