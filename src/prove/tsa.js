@@ -16,6 +16,7 @@ import * as asn1js from "asn1js";
 import { Buffer } from "node:buffer";
 import { webcrypto, createHash } from "node:crypto";
 import { loadAnchors } from "./tsa-anchors.js";
+import { checkRevocation } from "./ocsp.js";
 
 const DEFAULT_TSA_URL = "http://timestamp.digicert.com";
 const SHA256_OID = "2.16.840.1.101.3.4.2.1";
@@ -161,7 +162,7 @@ async function verifyCmsSigned(signed, trustedCerts, genTime = null) {
   const signerCert = cmsCerts.find(
     (c) => Buffer.from(c.serialNumber.valueBlock.valueHexView).toString("hex") === sidSerial,
   );
-  if (!signerCert) return { ok: false, reason: "chain-incomplete" };
+  if (!signerCert) return { ok: false, reason: "chain-incomplete", signerCert: null, issuerCert: null };
 
   // 1. messageDigest attribute == sha256(eContent VALUE bytes).
   const eContent = signed.encapContentInfo?.eContent;
@@ -218,40 +219,42 @@ async function verifyCmsSigned(signed, trustedCerts, genTime = null) {
 
   // 5. Chain: walk signer → issuer (CMS ∪ anchors) hasta llegar a un anchor.
   if (!trustedCerts || trustedCerts.length === 0) {
-    return { ok: false, reason: "untrusted-anchor" };
+    return { ok: false, reason: "untrusted-anchor", signerCert, issuerCert: null };
   }
   const anchorFps = new Set(trustedCerts.map(certDerFingerprint));
 
   let current = signerCert;
+  let directIssuer = null; // immediate issuer of the signer (needed for OCSP)
   const seenFps = new Set();
   for (let depth = 0; depth < 10; depth++) {
     const currentFp = certDerFingerprint(current);
-    if (anchorFps.has(currentFp)) return { ok: true, reason: null };
-    if (seenFps.has(currentFp)) return { ok: false, reason: "chain-incomplete" };
+    if (anchorFps.has(currentFp)) return { ok: true, reason: null, signerCert, issuerCert: directIssuer };
+    if (seenFps.has(currentFp)) return { ok: false, reason: "chain-incomplete", signerCert, issuerCert: directIssuer };
     seenFps.add(currentFp);
 
     const issuerDer = dnDer(current.issuer);
     const candidates = [...cmsCerts, ...trustedCerts].filter((c) =>
       dnDer(c.subject).equals(issuerDer),
     );
-    if (candidates.length === 0) return { ok: false, reason: "untrusted-anchor" };
+    if (candidates.length === 0) return { ok: false, reason: "untrusted-anchor", signerCert, issuerCert: directIssuer };
 
     let nextIssuer = null;
     for (const cand of candidates) {
       if (await verifyCertSignature(current, cand)) { nextIssuer = cand; break; }
     }
-    if (!nextIssuer) return { ok: false, reason: "chain-incomplete" };
+    if (!nextIssuer) return { ok: false, reason: "chain-incomplete", signerCert, issuerCert: directIssuer };
 
     // Issuer validity check (after we know it actually signed the child cert
     // we just walked from). genTime-anchored, same rationale as the signer.
     if (genTime instanceof Date) {
       const issuerValidity = certValidityReason(nextIssuer, genTime, "issuer");
-      if (issuerValidity) return { ok: false, reason: issuerValidity };
+      if (issuerValidity) return { ok: false, reason: issuerValidity, signerCert, issuerCert: directIssuer };
     }
 
+    if (depth === 0) directIssuer = nextIssuer; // capture the signer's direct issuer for OCSP
     current = nextIssuer;
   }
-  return { ok: false, reason: "chain-incomplete" };
+  return { ok: false, reason: "chain-incomplete", signerCert, issuerCert: directIssuer };
 }
 
 /**
@@ -363,7 +366,24 @@ export async function verifyTimestamp(respDer, hashBytes, opts = {}) {
   // Pass genTime so cert validity / EKU checks are anchored to when the token
   // was stamped (NOT Date.now()) — tokens stay verifiable after cert expiry.
   const trustedCerts = opts.trustedCerts ?? loadAnchors();
-  const { ok, reason } = await verifyCmsSigned(signed, trustedCerts, tstInfo.genTime?.value ?? null);
+  const { ok, reason, signerCert, issuerCert } = await verifyCmsSigned(
+    signed, trustedCerts, tstInfo.genTime?.value ?? null,
+  );
+
+  // OCSP opt-in (v0.8 §1.5) — only attempted when CMS verifies AND we have the
+  // signer + direct issuer. Surfacing-only: revoked NOT auto-flip signatureValid.
+  let revocationChecked = false;
+  let revocationStatus = null;
+  let revocationReason = null;
+  if (opts.checkRevocation && ok && signerCert && issuerCert) {
+    revocationChecked = true;
+    const r = await checkRevocation(signerCert, issuerCert, {
+      timeoutMs: opts.ocspTimeoutMs ?? 5000,
+      fetchImpl: opts.ocspFetchImpl,
+    });
+    revocationStatus = r.status;
+    revocationReason = r.reason ?? null;
+  }
 
   return {
     granted: true,
@@ -373,5 +393,8 @@ export async function verifyTimestamp(respDer, hashBytes, opts = {}) {
     policy: String(tstInfo.policy ?? ""),
     signatureValid: ok,
     signatureValidReason: reason,
+    revocationChecked,
+    revocationStatus,
+    revocationReason,
   };
 }

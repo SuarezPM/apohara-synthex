@@ -135,6 +135,58 @@ test("pipeline: DJL layer bloquea vector prompt-level antes de prefilter (Commit
   assert.equal(ev.payload.findings[0].url, "ok");
 });
 
+test("pipeline: injection-guard wire — REVIEW kept con decision row, BLOCK quitado del findings", async () => {
+  // Fake screen impl: marca BLOCK al doc "danger", REVIEW al "borderline", ALLOW al resto.
+  const fakeScreen = async (text) => {
+    if (text.includes("BLOCK_ME")) return { verdict: "block", score: 0.98, label: "INJECTION", source: "prompt-guard", model_hash: "sha256:test", degraded: false, policy_bundle_version: "guard-v1-test" };
+    if (text.includes("REVIEW_ME")) return { verdict: "review", score: 0.7, label: "INJECTION", source: "prompt-guard", model_hash: "sha256:test", degraded: false, policy_bundle_version: "guard-v1-test" };
+    return { verdict: "allow", score: 0.05, label: null, source: "prompt-guard", model_hash: "sha256:test", degraded: false, policy_bundle_version: "guard-v1-test" };
+  };
+  // Markers que solo el fakeScreen reconoce — texto neutro para que DJL/prefilter no
+  // bloqueen antes (probarían DJL/prefilter primero, no llegaría al injection-guard).
+  const fetcher = async () => [
+    { url: "ok", content: "neutral content xyz123 nothing flaggy" },
+    { url: "borderline", content: "REVIEW_ME marker plus benign analysis text" },
+    { url: "danger", content: "BLOCK_ME marker plus benign analysis text" },
+  ];
+  const classifier = async (text, lens) => ({ lens, severity: 4, summary: "ok", signals: [] });
+  const ev = await runPipeline("test-guard", {
+    lens: "security",
+    fetcher,
+    classifier,
+    requestTsa: false,
+    injectionGuard: { screen: fakeScreen },
+  });
+
+  // BLOCK_ME apareció en blocked con layer "injection-guard"
+  const guardBlocked = ev.payload.blocked.filter((b) => b.layer === "injection-guard");
+  assert.equal(guardBlocked.length, 1);
+  assert.equal(guardBlocked[0].url, "danger");
+
+  // REVIEW_ME SIGUE en findings (no dropped)
+  assert.ok(ev.payload.findings.some((f) => f.url === "borderline"));
+
+  // decisions[] tiene REVIEW row para borderline
+  const reviewRows = (ev.payload.decisions ?? []).filter((d) => d.outcome === "REVIEW");
+  assert.equal(reviewRows.length, 1);
+  assert.equal(reviewRows[0].layer, "injection-guard");
+  assert.equal(reviewRows[0].guard_mode, "prompt-guard");
+  assert.equal(reviewRows[0].guard_score, 0.7);
+  assert.equal(reviewRows[0].model_hash, "sha256:test");
+
+  // policy_bundle_version incluye injectionGuard cuando el guard corrió
+  assert.ok(ev.payload.policy_bundle_version.injectionGuard);
+});
+
+test("pipeline: injection-guard OFF por default (SYNTHEX_GUARD_URL unset) — back-compat preservado", async () => {
+  // Sin opts.injectionGuard ni env var, el guard NO corre → payload idéntico a v0.7.
+  const fetcher = async () => [{ url: "ok", content: "benign" }];
+  const classifier = async (text, lens) => ({ lens, severity: 4, summary: "ok", signals: [] });
+  const ev = await runPipeline("t", { lens: "security", fetcher, classifier, requestTsa: false });
+  assert.equal(ev.payload.policy_bundle_version.injectionGuard, undefined);
+  assert.equal((ev.payload.decisions ?? []).filter((d) => d.layer === "injection-guard").length, 0);
+});
+
 test("pipeline: multi-fuente (array de targets) consolida en un Evidence Report", async () => {
   // fetcher devuelve 1 doc por fuente (usa el target recibido)
   const fetcher = async (t) => [{ url: `${t}/page`, content: `contenido de ${t}` }];

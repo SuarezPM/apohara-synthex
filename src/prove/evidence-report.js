@@ -149,7 +149,14 @@ export async function buildEvidence(payload, { hmacKey, requestTsa = true, signi
  *
  *   error?                     'malformed evidence' (shape-guard path only)
  */
-export async function verifyEvidence(evidence, { hmacKey, trustedCerts, expectedKeyId } = {}) {
+export async function verifyEvidence(evidence, {
+  hmacKey,
+  trustedCerts,
+  expectedKeyId,
+  checkRevocation = false,
+  ocspTimeoutMs,
+  ocspFetchImpl,
+} = {}) {
   if (!evidence || typeof evidence !== "object" || !evidence.payload || typeof evidence.contentHash !== "string") {
     return {
       hashOk: false, hmacOk: null,
@@ -197,22 +204,29 @@ export async function verifyEvidence(evidence, { hmacKey, trustedCerts, expected
   }
 
   // TSA layer — old signatureValid meaning preserved under tsaSignatureValid*.
+  // Revocation (OCSP) — opt-in via opts.checkRevocation; surfacing-only per
+  // HONESTY §1.5 (revoked does NOT auto-flip tsaSignatureValid:false in v0.8).
   let tsaOk = null;
   let tsaSignatureValid = null;
   let tsaSignatureValidReason = null;
+  let revocationChecked = false;
+  let revocationStatus = null;
   const token = evidence.seal?.rfc3161Tsa?.token;
   if (token) {
     const der = new Uint8Array(Buffer.from(token, "base64"));
-    const opts = trustedCerts !== undefined ? { trustedCerts } : {};
-    const v = await verifyTimestamp(der, new Uint8Array(hash), opts);
+    const tsaOpts = {
+      ...(trustedCerts !== undefined ? { trustedCerts } : {}),
+      checkRevocation,
+      ...(ocspTimeoutMs !== undefined ? { ocspTimeoutMs } : {}),
+      ...(ocspFetchImpl !== undefined ? { ocspFetchImpl } : {}),
+    };
+    const v = await verifyTimestamp(der, new Uint8Array(hash), tsaOpts);
     tsaOk = v.granted && v.match;
     tsaSignatureValid = v.signatureValid;
     tsaSignatureValidReason = v.signatureValidReason;
+    revocationChecked = v.revocationChecked === true;
+    revocationStatus = v.revocationStatus ?? null;
   }
-
-  // Revocation surface — default off, no network. Commit 3 wires the OCSP opt-in.
-  const revocationChecked = false;
-  const revocationStatus = null;
 
   return {
     hashOk, hmacOk,

@@ -15,16 +15,21 @@ import { verifyEvidence } from "../src/prove/evidence-report.js";
 
 const USAGE = `decode-evidence — inspeccioná un Evidence Report sellado.
 
-  node bin/decode-evidence.js <path-to-evidence.json> [--expected-keyid=<hex>]
+  node bin/decode-evidence.js <path-to-evidence.json> [--expected-keyid=<hex>] [--check-revocation]
 
 Env:
-  SYNTHEX_HMAC_KEY      clave HMAC para verificar (default: "synthex-demo")
+  SYNTHEX_HMAC_KEY        clave HMAC para verificar (default: "synthex-demo")
   SYNTHEX_EXPECTED_KEYID  pin para el Ed25519 keyId (alternativa a --expected-keyid)
 
 Identity (v0.8): --expected-keyid pins the asymmetric signer's keyId. Without it,
 the verifier reports identityVerified:null (signature math is good, identity is not
 pinned). The keyId must come from out-of-band publication — DNS TXT or .well-known
 JSON — not from the report itself. See docs/HONESTY.md §1.4.
+
+Revocation (v0.8): --check-revocation OPT-IN queries the TSA signer's OCSP responder
+(AIA → id-ad-ocsp). Default OFF (zero network). Fail-open: any OCSP error reports
+status:'unknown' instead of failing the verification. A 'revoked' status is REPORTED
+but does NOT auto-fail tsaSignatureValid:false in v0.8 — surfacing-only per HONESTY §1.5.
 `;
 
 function printDecisionsTable(decisions) {
@@ -78,8 +83,8 @@ function printSummary(ev) {
   console.log(`  sealedAt       : ${ev.sealedAt ?? "—"}`);
 }
 
-async function printVerify(ev, hmacKey, expectedKeyId) {
-  const v = await verifyEvidence(ev, { hmacKey, expectedKeyId });
+async function printVerify(ev, hmacKey, expectedKeyId, checkRevocation) {
+  const v = await verifyEvidence(ev, { hmacKey, expectedKeyId, checkRevocation });
   console.log("\n── Verification ──");
   console.log(`  hash    : ${v.hashOk ? "OK" : "FAIL"}`);
   console.log(`  HMAC    : ${v.hmacOk === true ? "OK" : v.hmacOk === false ? "FAIL" : "skipped (no key)"}`);
@@ -108,6 +113,15 @@ async function printVerify(ev, hmacKey, expectedKeyId) {
       ? "FAIL (embedded keyId does not match --expected-keyid)"
       : "n/a (no --expected-keyid; signature is integrity-not-identity per HONESTY §1.4)";
   console.log(`  identity: ${identityLabel}`);
+  // v0.8: OCSP revocation (opt-in via --check-revocation).
+  const revLabel = v.revocationChecked === false
+    ? "skipped (opt-in via --check-revocation; default OFF, no network)"
+    : v.revocationStatus === "good"
+      ? "OK (OCSP responded good)"
+      : v.revocationStatus === "revoked"
+        ? "REVOKED (surfacing-only in v0.8 — see HONESTY §1.5)"
+        : `unknown (${v.revocationStatus ?? "no-status"})`;
+  console.log(`  revoke  : ${revLabel}`);
   return v;
 }
 
@@ -130,11 +144,12 @@ export async function main(argv) {
   const ev = JSON.parse(raw);
   const hmacKey = process.env.SYNTHEX_HMAC_KEY || "synthex-demo";
   const expectedKeyId = parseExpectedKeyId(argv, process.env);
+  const checkRevocation = argv.includes("--check-revocation");
 
   printSummary(ev);
   if (ev.payload?.schema_version >= 2) printDecisionsTable(ev.payload.decisions ?? []);
   if (ev.payload?.delta_chain) printDeltaChain(ev.payload.delta_chain);
-  const v = await printVerify(ev, hmacKey, expectedKeyId);
+  const v = await printVerify(ev, hmacKey, expectedKeyId, checkRevocation);
   // Fail when hash/HMAC fail, OR when an explicit --expected-keyid was provided and identity mismatched.
   const identityFail = expectedKeyId && v.identityVerified === false;
   return v.hashOk && v.hmacOk !== false && !identityFail ? 0 : 1;

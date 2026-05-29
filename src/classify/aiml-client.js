@@ -2,6 +2,7 @@
 // AI/ML API es OpenAI-compatible (/chat/completions). Key: process.env.AIML_API_KEY.
 // El parseo está separado de la llamada de red para poder testear la lógica sin gastar API.
 import { pickModel, MODEL_TIERS, DEFAULT_TIER } from "./tiers.js";
+import { validateClassification } from "./schema.js";
 
 const DEFAULT_BASE = process.env.AIML_BASE_URL || "https://api.aimlapi.com/v1";
 // AIML_MODEL env conserva back-compat: si está set, gana sobre tier.
@@ -118,13 +119,28 @@ export async function classify(text, lens = "security", opts = {}) {
   if (opts.onUsage && data.usage) opts.onUsage(data.usage); // telemetría de tokens (sin contaminar el finding)
   const content = data.choices?.[0]?.message?.content ?? "{}";
   const parsed = parseClassification(content, lens);
+  // 3E — strict schema validation (orthogonal to injection detection). Catches
+  // drift in classifier output (smuggled keys, bad types, out-of-range severity)
+  // AFTER the whitelist in parseClassification. Failure → neutral fallback +
+  // onSchemaViolation callback so the pipeline records a SCHEMA_VIOLATION
+  // decision row. Runs BEFORE emit-metadata is attached (truncated/charsSeen/
+  // lowConfidenceTier intentionally fail .strict() — they live in
+  // HMAC_EXCLUDED_KEYS and are added below for UI/PDF only).
+  const v = validateClassification(parsed);
+  const safe = v.ok
+    ? v.value
+    : { lens, severity: 0, summary: "model output failed schema validation", signals: [] };
+  if (!v.ok && opts.onSchemaViolation) {
+    try { opts.onSchemaViolation({ lens, reason: v.error, raw: parsed }); }
+    catch { /* best-effort */ }
+  }
   // Free tier: flag visible "low confidence" — calibration mostró 50% Δseverity > 1.5 vs
   // DeepSeek. Solo si el caller eligió tier free explícitamente (no se infiere del model id).
-  if (tier === "free") parsed.lowConfidenceTier = "free-low-quality";
+  if (tier === "free") safe.lowConfidenceTier = "free-low-quality";
   // Emit-metadata: routed a HMAC_EXCLUDED_KEYS en evidence-report.js — NO entra al seal.
-  parsed.truncated = truncated;
-  parsed.charsSeen = charsSeen;
-  return parsed;
+  safe.truncated = truncated;
+  safe.charsSeen = charsSeen;
+  return safe;
 }
 
 /**

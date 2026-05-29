@@ -55,9 +55,21 @@ The product pitches *verifiable honesty over polished claims*. That rule applies
 - **Why "Ed25519 over canonical bytes" is what we ship and not something else**: the canonical pre-image is the same `_serializeForHmac(payload)` string the HMAC signs. Byte-identity is the equivalence argument with C2PA `c2pa.hash.data` + claim signature (Commit 3 builds the C2PA sidecar on top of this exact same signature material). Single source of truth for "what got signed" across all layers.
 
 ### 1.5 Revocation (OCSP) — opt-in, surfacing-only (v0.8 Commit 3)
-- Default: `revocationChecked: false`, `revocationStatus: null` — the verifier does **not** go online. This preserves the offline-verify guarantee that's load-bearing for archive scenarios.
-- With `checkRevocation: true` (opt-in): query the TSA signer cert's AIA-extension OCSP responder; return `revocationStatus: "good" | "revoked" | "unknown"`. Fails open to `"unknown"` on network / timeout / parse error — never turns a valid offline verify into a hard fail.
-- **v0.8 policy**: `revocationStatus: "revoked"` does **not** auto-flip `tsaSignatureValid:false`. Surfacing-only — the operator decides what to do. "Strict revoked = hard-fail flag" is a follow-up.
+- **Default off, ZERO network**: `revocationChecked: false`, `revocationStatus: null`. The verifier behaves identically to v0.7 unless an operator explicitly opts in. This preserves the offline-verify guarantee that's load-bearing for archive scenarios where the TSA's OCSP responder may not exist forever.
+- **Opt-in via `--check-revocation`** (CLI) or `checkRevocation: true` (programmatic): the verifier parses the TSA signer cert's Authority Information Access (AIA) extension, extracts the `id-ad-ocsp` URL, builds an `OCSPRequest` with a SHA-1 `CertID` (per RFC 6960 §4.1.1), POSTs it, decodes the `BasicOCSPResponse`, and returns `revocationStatus: "good" | "revoked" | "unknown"`.
+- **Fail-open contract**: ANY failure path (no AIA, network down, non-200 HTTP, parse error, non-success `responseStatus`, missing `singleResponse`) returns `{status:'unknown', reason:<short-token>}` — NEVER throws. A valid offline verify never becomes a hard fail because OCSP went down.
+- **v0.8 policy — surfacing-only, NOT auto-fail**: `revocationStatus: "revoked"` does NOT flip `tsaSignatureValid:false`. The operator decides what a revoked timestamp means for their threat model (a revoked TSA cert may still produce verifiable historical timestamps in archive contexts). "Strict revoked = hard-fail flag" is a v0.9 knob.
+- **Zero new dependencies**: hand-rolled on the existing `pkijs` (`src/prove/ocsp.js`). Same dep discipline as the v0.7 custom CMS verifier in `tsa.js`. The pkijs `OCSPRequest` / `OCSPResponse` / `BasicOCSPResponse` classes were already imported transitively; we just expose them at the right layer.
+- **Implementation**: `src/prove/ocsp.js extractOcspUrl` + `checkRevocation`. Wired through `src/prove/tsa.js verifyTimestamp(opts.checkRevocation)` and `src/prove/evidence-report.js verifyEvidence(opts.checkRevocation)`. Tests in [`test/prove/ocsp.test.js`](../test/prove/ocsp.test.js) cover the full fail-open contract.
+
+### 1.6 C2PA sidecar — what `synthex c2pa-emit` ships and what's deferred (v0.8 Commit 3)
+- **What we ship**: `src/prove/c2pa.js buildC2paManifest` emits a **structurally C2PA-spec-shaped sidecar** binding `evidence.contentHash` via a `c2pa.hash.data` assertion. The claim is encoded as Core-Deterministic CBOR (cbor-x, the only new dep in v0.8), signed with the same Ed25519 key as `seal.signature` but wrapped in a self-signed X.509 cert (10y default, generated automatically by `synthex keygen`) and emitted as a COSE_Sign1 with the cert in the `x5chain` protected header (COSE alg `-8` EdDSA per RFC 8152 §8.1).
+- **What we DON'T claim yet (A2 partial)**: `c2patool verify` of our sidecar does NOT succeed in v0.8. Two real obstacles, both honest:
+  1. c2patool's primary input is a **JUMBF-wrapped manifest store embedded in a media container** (PNG, JPEG, MP4, etc.). Our sidecar is a JSON wrapper with base64-encoded CBOR/COSE inside — c2patool returns `Error: Unsupported file type` when handed it directly.
+  2. Even via c2patool's own `--manifest` flow with our cert, c2patool rejects our self-signed cert as `the certificate is invalid` because it lacks the **C2PA-specific EKU OIDs** (e.g., `1.3.6.1.5.5.7.3.36`-family per C2PA v2 §14.10). Adding those EKUs requires cert engineering we deferred.
+- **v0.9 paths to full interop**: either (a) emit JUMBF binary directly (more cbor work + JUMBF box structure), OR (b) drive c2patool externally via `--signer-path` with our Ed25519 key + a properly-EKU'd self-signed cert. Either path is doable; neither is load-bearing for the 2026-05-29 audit's main finding (which Ed25519 in §1.4 addresses).
+- **Our own verifier round-trips**: `synthex c2pa-verify` re-runs the COSE_Sign1 math + hash binding check end-to-end and passes (9/9 tests in [`test/prove/c2pa.test.js`](../test/prove/c2pa.test.js)). The v0.8 emitter is provenance-shaped material that downstream C2PA-aware tools CAN inspect; full c2patool interop is the v0.9 commitment.
+- **Status script**: [`scripts/c2pa-interop-test.sh`](../scripts/c2pa-interop-test.sh) prints the current state (own round-trip OK, c2patool verify "not yet") so the gap is visible in CI.
 
 ### 1.2 Model confidence is NOT part of the seal (AI-2)
 - The cryptographic seal proves the *evidence bytes existed*; it does not say anything about the classifier's confidence. Classifier output (severity, summary, signals) is advisory — the PDF disclaimers in `src/prove/pdf-report.js` state this on the rendered page.
@@ -143,3 +155,78 @@ The honest summary: the guard's hostname check is *defense-in-depth* against lit
 - **Decoder CLI**: `node bin/decode-evidence.js <path>` prints `hash`, `HMAC`, `TSA`, and `sig` (post-v0.7.0) per evidence.
 - **HMAC determinism**: [`test/prove/hmac-excluded-keys.test.js`](../test/prove/hmac-excluded-keys.test.js) — proves emit-metadata never enters the seal.
 - **Audit response**: [`docs/v070-audit-response.md`](v070-audit-response.md) records the 4 drops from the Kiro security audit with per-drop empirical evidence.
+
+---
+
+## §8 · Layer-2 injection-guard, CaMeL-style flow gate, and schema enforcement (v0.8 Commit 3)
+
+The 2026-05-29 audit framed three orthogonal concerns the regex layers (DJL/prefilter) alone don't address. v0.8 ships each as a separately-auditable mechanism, with framing the reviewer's binding correction A3 made non-negotiable: **a detector is not a CaMeL replacement; we ship the detector AND apply CaMeL-style gating where it matters, and we say so in docs.**
+
+### 8.A Layer-2 detector (`src/forge/injection-guard.js`) — what it is and isn't
+
+**What it is** — a stronger Layer-2 prompt-injection detector than regex, opt-in via `SYNTHEX_GUARD_URL`. When the env var points at a self-hosted Prompt-Guard endpoint (Meta Prompt-Guard 86M / mDeBERTa multilingual, served via vLLM / HF Inference Server / TEI), each doc that survived DJL + prefilter is screened by the model. The verdict is calibrated as REVIEW-by-default with a high-confidence BLOCK threshold:
+- `score ≥ 0.95` → BLOCK (doc removed from the pipeline)
+- `0.5 ≤ score < 0.95` → REVIEW (doc KEPT, annotated in `decisions[]` with `outcome:"REVIEW"`)
+- `score < 0.5` → ALLOW
+
+**What it is NOT, and what we DO NOT claim**:
+- ✗ "Resolves injection." It doesn't. It's a detector. An adaptive adversary can evade detectors. We do not claim defeat.
+- ✗ "CaMeL replacement." It isn't. CaMeL is an architectural pattern (flow-data separation that makes detection unnecessary). What we ship here is a detector. The CaMeL-style discipline is applied separately in §8.B where it belongs.
+- ✗ "Zero false positives on technical content." Prompt-Guard was trained on **prompts**; we feed it scraped **documents** (security blogs, CVE write-ups, prompt-injection tutorials, vendor security pages). Domain mismatch → false positives are expected. The REVIEW band (0.5–0.95) exists exactly for this: surface the decision in `decisions[]` without dropping the doc.
+- ✗ "More confidence than 0.95 via heuristics alone." When the model endpoint is unreachable, `screen()` fails open to `heuristicScreen()` — a zero-dep deterministic fallback whose top-line confidence is capped at 0.97 (stacking ≥2 distinct labels). The heuristic catches the obvious + multilingual prompt-injection vectors the regex layer also catches; it is NOT a substitute for the model.
+
+**Auditable mode + model hash in the seal (A3 binding)** — when two runs over identical content can diverge (GPU drops → fallback to heuristic), the divergence must be visible, not silent. Every guard-derived row in `payload.decisions[]` carries:
+- `guard_mode: "prompt-guard" | "heuristic"` — which path produced the verdict
+- `guard_score: 0..1` — the calibrated score
+- `model_hash: <sha of model weights when source=prompt-guard>` — pins the exact model version
+
+The pure operational `guard_endpoint_status` (a run-dependent ops surface) is intentionally NOT sealed — it would be different on every run and would break `contentHash` determinism. The `guard_mode` per-decision IS sealed because it is content-policy-relevant.
+
+**Threshold rationale**: 0.95 BLOCK is intentionally high. The audit's binding framing: in a hackathon-scale OSS demo with scraped content from arbitrary domains, a model trained on prompts will false-positive enough on technical content that a 0.85 BLOCK would burn legitimate scrapes silently. REVIEW (0.5–0.95) keeps the doc + records the suspicion; a human can audit the trail via [`bin/decode-evidence.js`](../bin/decode-evidence.js).
+
+### 8.B CaMeL-style flow-data gate — applied to `react → webhook` and `Cognee ingest`, NOT to classify
+
+The reviewer's real architectural point in A3: detector ≠ architecture. CaMeL discipline belongs where verdicts trigger **actions** or **persist state**, not on label-only paths. Two paths in v0.8 get the gate:
+
+1. **`watch → react → webhook`** (`src/sinks.js webhookSink`). When an alert would fire AND any contributing doc was marked `REVIEW` by the Layer-2 guard, the webhook is **suppressed** unless the operator explicitly opted in via `SYNTHEX_REACT_TRUST_REVIEWED=1`. Reason: a webhook is a *real action* — it pages oncall, fires a Slack alert, opens a SIEM ticket. Triggering one on REVIEW'd content (model said "this looks like injection but isn't certain") rather than ALLOW'd content propagates uncertainty into someone's pager.
+
+2. **Cognee ingest** (`src/sinks.js cogneeSink`). When any source for a sealed evidence was REVIEW'd, the ingest is **suppressed** unless `SYNTHEX_COGNEE_TRUST_REVIEWED=1`. Reason: knowledge-graph ingest is **memory persistence** — REVIEW'd content that survives into Cognee can poison future recall. Better default: don't persist what the detector flagged for review.
+
+**Why NOT classify**: classification is label-only. The classifier output never triggers a downstream action (no webhook, no persistence, no exfiltration). It just attaches `{lens, severity, summary, signals}` to the doc. A REVIEW verdict on a doc still gets classified — the operator sees both the classification AND the REVIEW flag in `decisions[]`. CaMeL discipline applied to classify would be cargo-cult; we don't do it.
+
+**Surfacing**: when a gate suppresses, the suppression is logged via `console.warn` when `SYNTHEX_DEBUG` is set. The REVIEW decision itself is already sealed in `evidence.payload.decisions[]` — an operator can replay any run from the sealed record to see which docs were REVIEW'd and inferred-suppressed.
+
+**Tests**: [`test/sinks.test.js`](../test/sinks.test.js) covers the 7-test matrix (REVIEW'd + no opt-in → suppress; REVIEW'd + opt-in → fire; clean → fire; REVIEW in another layer like DJL → NOT suppressed because the gate is specific to `injection-guard`).
+
+### 8.C Schema enforcement via `zod.strict()` on classifier output (orthogonal hardening)
+
+Independent from injection detection, the classifier output gets strict-mode schema validation (`src/classify/schema.js`):
+```js
+ClassificationSchema = z.object({
+  lens:     z.string().min(1),
+  severity: z.number().int().min(0).max(10),
+  summary:  z.string().max(400),
+  signals:  z.array(z.string()).max(32),
+}).strict();   // additionalProperties:false — rejects smuggled keys
+```
+
+**Why this is non-trivial despite `parseClassification` already whitelisting**: whitelisting drops unexpected keys **silently**. Strict-mode validation **announces** the rejection so the pipeline can record a `SCHEMA_VIOLATION` event. The threat model is drift: a future change to `parseClassification` (or a new code path that bypasses it) might let a smuggled key through. Strict mode catches that drift in test instead of in prod.
+
+**Wire** (`src/classify/aiml-client.js`): validation runs AFTER `parseClassification` and BEFORE emit-metadata (`truncated` / `charsSeen` / `lowConfidenceTier`) is attached — those three keys intentionally fail strict mode by design (they live in `HMAC_EXCLUDED_KEYS`, never sealed, only for UI/PDF). On validation failure, the safe fallback `{lens, severity:0, summary:"model output failed schema validation", signals:[]}` substitutes; `opts.onSchemaViolation` fires so the pipeline can record the violation.
+
+**Orthogonal to injection detection** — this handles a different threat: the model returning a structurally-wrong shape (e.g., severity=15 / an extra `system_prompt` key / a `signals` entry that's a number not a string). It does NOT detect prompt-injection content; that's §8.A's job.
+
+**Tests**: [`test/classify/schema.test.js`](../test/classify/schema.test.js) — 13 tests covering smuggled keys, out-of-range severity, non-integer severity, oversized summary, oversized signals array, emit-metadata rejection, garbage input no-throw, stable `SCHEMA_POLICY_BUNDLE_VERSION`.
+
+---
+
+## §9 · Two `guard`s in the tree — naming-collision note
+
+Per A3, the v0.8 module is named `src/forge/injection-guard.js`, NOT `src/guard.js`. There are now two unrelated `guard` modules and the distinction is load-bearing:
+
+| File | Role | Layer |
+|---|---|---|
+| [`src/guard.js`](../src/guard.js) | Network-edge guard for the public live endpoint — SSRF block-list + in-memory rate-limit. See §2.1, §2.2. | Pre-pipeline (HTTP request entry). |
+| [`src/forge/injection-guard.js`](../src/forge/injection-guard.js) | Layer-2 prompt-injection detector — Prompt-Guard 86M + heuristic fallback. See §8.A. | Pre-LLM (Forge step, after DJL + prefilter). |
+
+They share a word in their name and nothing else. The first protects the **HTTP boundary** of the public endpoint from abuse; the second hardens the **content path** of every pipeline run. Tests live in different directories (`test/guard.test.js` vs `test/forge/injection-guard.test.js`).

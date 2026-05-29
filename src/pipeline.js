@@ -5,6 +5,7 @@ import { BrightDataClient } from "./fetch/bright-data-client.js";
 import { dedupe, prefilter } from "./forge/index.js";
 import { evaluate as djlScreen, POLICY_BUNDLE_VERSION as DJL_POLICY_BUNDLE_VERSION } from "./forge/djl.js";
 import { POLICY_BUNDLE_VERSION as PREFILTER_POLICY_BUNDLE_VERSION } from "./forge/prefilter.js";
+import { screen as injectionGuardScreen, POLICY_BUNDLE_VERSION as GUARD_POLICY_BUNDLE_VERSION } from "./forge/injection-guard.js";
 import { classify as defaultClassify } from "./classify/aiml-client.js";
 import { buildEvidence } from "./prove/evidence-report.js";
 import { sha256 } from "./prove/hmac.js";
@@ -89,41 +90,74 @@ export async function runPipeline(target, opts = {}) {
     return out;
   });
 
-  // 2. FORGE: dedup + DJL (78 reglas harm/PII/jailbreak) + prefilter (28 reglas web-injection)
-  // Orden: dedupe baja N → DJL filtra prompt-level → prefilter actúa sobre lo que DJL no bloqueó.
-  // `blocked` es UNIÓN de ambas capas (no doble conteo); `reason` siempre set, `layer` distingue origen.
-  // tokensSaved: estimación honesta de tokens NO gastados en LLM gracias a las 3 capas pre-LLM.
-  const { blocked, safe, dedup, tokensSaved } = await timed("FORGE", async ({ record }) => {
+  // 2. FORGE: dedup + DJL (78 reglas) + prefilter (32 reglas) + Layer-2 injection-guard (opt-in v0.8).
+  // Orden: dedupe baja N → DJL prompt-level → prefilter web-injection → guard semantic detector.
+  // `blocked` es UNIÓN 3-way (DJL ∪ prefilter ∪ injection-guard); `reason` siempre set, `layer` distingue origen.
+  // tokensSaved: estimación honesta de tokens NO gastados en LLM gracias a las capas pre-LLM.
+  //
+  // Layer-2 (injection-guard) — opt-in via SYNTHEX_GUARD_URL (or opts.injectionGuard). When unset,
+  // step is SKIPPED entirely → blocked/safe identical to v0.7. When set, screen() each doc via
+  // Prompt-Guard 86M (or heuristic fallback if endpoint down); BLOCK drops the doc, REVIEW keeps
+  // it but annotates decisions[] with outcome:"REVIEW" + guard_mode + model_hash. See HONESTY §8.A
+  // — this is a detector (REVIEW-by-default), NOT a CaMeL replacement. CaMeL-style gating lives in
+  // watch+sinks (HONESTY §8.B) where verdicts trigger real actions.
+  const guardEnabled = opts.injectionGuard === true
+    || (typeof opts.injectionGuard === "object" && opts.injectionGuard !== null)
+    || (opts.injectionGuard !== false && !!process.env.SYNTHEX_GUARD_URL);
+  const guardScreenImpl = (typeof opts.injectionGuard === "object" && typeof opts.injectionGuard?.screen === "function")
+    ? opts.injectionGuard.screen
+    : injectionGuardScreen;
+
+  const { blocked, safe, dedup, tokensSaved, guardReviewed } = await timed("FORGE", async ({ record }) => {
     // Default exact (SHA-256, lossless, sync). Semántico = opt-in: import() DINÁMICO para que el
     // grafo de deps de api/** nunca alcance @xenova/transformers (bundle serverless limpio).
     const { unique, stats } = dedupMode === "semantic"
       ? await (await import("./forge/dedup-semantic.js")).dedupeSemantic(docs)
       : dedupe(docs);
 
-    // DJL screen — 78 reglas regex deterministas pre-LLM. Bloquea harm/jailbreak/PII antes de
-    // prefilter (que solo cubre content-injection web).
+    // Layer 1a — DJL screen (78 reglas regex deterministas pre-LLM).
     const djled = unique.map((d) => ({ ...d, djl: djlScreen(d.content) }));
     const djlBlocked = djled
       .filter((d) => d.djl.decision === "BLOCK")
       .map((d) => ({ ...d, reason: d.djl.matched_rules[0], layer: "djl" }));
     const passDjl = djled.filter((d) => d.djl.decision !== "BLOCK");
 
-    // PREFILTER — 28 reglas web-injection sobre lo que DJL dejó pasar (ALLOW + REVIEW).
+    // Layer 1b — PREFILTER (32 reglas web-injection sobre lo que DJL dejó pasar).
     const screened = passDjl.map((d) => ({ ...d, screen: prefilter(d.content) }));
     const prefBlocked = screened
       .filter((d) => d.screen.action === "BLOCK")
       .map((d) => ({ ...d, reason: d.screen.category, layer: "prefilter" }));
-    const safe = screened.filter((d) => d.screen.action !== "BLOCK");
+    const safe1 = screened.filter((d) => d.screen.action !== "BLOCK");
 
-    // Unión sin doble conteo: DJL y prefilter atacan vectores distintos sobre conjuntos disjuntos.
-    const blocked = [...djlBlocked, ...prefBlocked];
+    // Layer 2 — INJECTION_GUARD (opt-in, calibrated REVIEW-by-default).
+    let guardBlocked = [];
+    let guardReviewed = [];
+    let safe = safe1;
+    if (guardEnabled) {
+      const verdicts = await Promise.all(
+        safe1.map(async (d) => ({ ...d, guard: await guardScreenImpl(d.content) })),
+      );
+      guardBlocked = verdicts
+        .filter((d) => d.guard?.verdict === "block")
+        .map((d) => ({ ...d, reason: d.guard.label ?? "INJECTION_GUARD", layer: "injection-guard" }));
+      guardReviewed = verdicts.filter((d) => d.guard?.verdict === "review");
+      safe = verdicts.filter((d) => d.guard?.verdict !== "block");
+    }
+
+    // Unión 3-way sin doble conteo: cada capa actúa sobre un subconjunto disjunto del anterior.
+    const blocked = [...djlBlocked, ...prefBlocked, ...guardBlocked];
     const tokensSaved = computeTokensSaved({ original: docs, unique, blocked });
     record("dedup", stats.duplicateBlocks);
     record("djl_blocked", djlBlocked.length);
+    record("prefilter_blocked", prefBlocked.length);
+    if (guardEnabled) {
+      record("guard_blocked", guardBlocked.length);
+      record("guard_reviewed", guardReviewed.length);
+    }
     record("blocked", blocked.length);
     record("tokens_saved_est", tokensSaved.estimated_tokens);
     recordBlocked(blocked.length);
-    return { blocked, safe, dedup: stats, tokensSaved };
+    return { blocked, safe, dedup: stats, tokensSaved, guardReviewed };
   });
 
   // 3. CLASSIFY (cada doc seguro). lens="all" → las 4 lentes (GTM+Finance+Security+SupplyChain)
@@ -161,6 +195,16 @@ export async function runPipeline(target, opts = {}) {
   // 2026 SDK, not to be confused with the v3 schema version).
   const fetchedAt = new Date().toISOString();
   const blockedForPayload = blocked.map((d) => ({ url: d.url, reason: d.reason, layer: d.layer }));
+  // Resolve per-layer policy + decision-row stage/bundle in a single map (DRY).
+  const _layerMeta = {
+    djl: { stage: "DJL", bundle: DJL_POLICY_BUNDLE_VERSION },
+    prefilter: { stage: "PREFILTER", bundle: PREFILTER_POLICY_BUNDLE_VERSION },
+    "injection-guard": { stage: "INJECTION_GUARD", bundle: GUARD_POLICY_BUNDLE_VERSION },
+  };
+  const _guardDecisionExtras = (d) => d.guard
+    ? { guard_mode: d.guard.source, guard_score: d.guard.score, model_hash: d.guard.model_hash }
+    : {};
+
   const payload = _SCHEMA_V2
     ? {
         schema_version: 3,
@@ -175,17 +219,34 @@ export async function runPipeline(target, opts = {}) {
         policy_bundle_version: {
           djl: DJL_POLICY_BUNDLE_VERSION,
           prefilter: PREFILTER_POLICY_BUNDLE_VERSION,
+          ...(guardEnabled ? { injectionGuard: GUARD_POLICY_BUNDLE_VERSION } : {}),
         },
-        decisions: blocked.map((d) => ({
-          stage: d.layer === "djl" ? "DJL" : "PREFILTER",
-          url: d.url,
-          contentHash: sha256(String(d.content ?? "")).toString("hex"),
-          rule_matched: [d.reason],
-          outcome: "BLOCK",
-          layer: d.layer,
-          policy_bundle_version: d.layer === "djl" ? DJL_POLICY_BUNDLE_VERSION : PREFILTER_POLICY_BUNDLE_VERSION,
-          at: fetchedAt,
-        })),
+        decisions: [
+          // 3-way BLOCK union (DJL ∪ PREFILTER ∪ INJECTION_GUARD)
+          ...blocked.map((d) => ({
+            stage: _layerMeta[d.layer].stage,
+            url: d.url,
+            contentHash: sha256(String(d.content ?? "")).toString("hex"),
+            rule_matched: [d.reason],
+            outcome: "BLOCK",
+            layer: d.layer,
+            policy_bundle_version: _layerMeta[d.layer].bundle,
+            at: fetchedAt,
+            ..._guardDecisionExtras(d),
+          })),
+          // REVIEW rows from injection-guard (kept but annotated; HONESTY §8.A)
+          ...guardReviewed.map((d) => ({
+            stage: "INJECTION_GUARD",
+            url: d.url,
+            contentHash: sha256(String(d.content ?? "")).toString("hex"),
+            rule_matched: [d.guard.label ?? "INJECTION_GUARD_REVIEW"],
+            outcome: "REVIEW",
+            layer: "injection-guard",
+            policy_bundle_version: GUARD_POLICY_BUNDLE_VERSION,
+            at: fetchedAt,
+            ..._guardDecisionExtras(d),
+          })),
+        ],
       }
     : {
         target,
