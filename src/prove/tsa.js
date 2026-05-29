@@ -32,7 +32,8 @@ function toArrayBuffer(bytes) {
  * Mapea (sigAlgo OID, optional digestAlgo OID) → spec webcrypto.subtle.
  * Cubre los algos de DigiCert TSA actuales (RSA PKCS#1 v1.5 con SHA-256/384/512).
  * Para SignerInfo.signatureAlgorithm == rsaEncryption (1.2.840.113549.1.1.1),
- * se requiere digestAlgo del SignerInfo para resolver el hash.
+ * se requiere digestAlgo del SignerInfo para resolver el hash; sin él se asume
+ * SHA-256 (ver fallback defensivo abajo).
  */
 function resolveWebCryptoAlgo(sigAlgo, digestAlgo) {
   if (sigAlgo === "1.2.840.113549.1.1.11") return { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" };
@@ -47,6 +48,13 @@ function resolveWebCryptoAlgo(sigAlgo, digestAlgo) {
   if (sigAlgo === "1.2.840.113549.1.1.1" && digestAlgo === "2.16.840.1.101.3.4.2.3") {
     return { name: "RSASSA-PKCS1-v1_5", hash: "SHA-512" };
   }
+  // Certificate.signatureAlgorithm no almacena el digest aparte (a diferencia de
+  // SignerInfo.digestAlgorithm). Si un futuro issuer firma un cert con bare
+  // rsaEncryption, sin digestAlgo no podemos inferir el hash → default a SHA-256
+  // (mínimo moderno) para darle chance de verificar en vez de mislabel como
+  // "chain-incomplete". Fails closed igual: si el hash real no es SHA-256, la
+  // verificación crypto simplemente devuelve false.
+  if (sigAlgo === "1.2.840.113549.1.1.1") return { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" };
   return null;
 }
 

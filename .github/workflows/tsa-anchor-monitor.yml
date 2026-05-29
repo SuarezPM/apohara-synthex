@@ -1,0 +1,103 @@
+name: tsa-anchor-monitor
+
+# Defensive watchdog for DigiCert TSA anchor drift.
+# Synthex pins DigiCert's TSA roots (src/prove/tsa-anchors.js); if DigiCert
+# rotates them, every fresh RFC 3161 token stops verifying against our bundle.
+# This probes for that once a week so we learn about rotation from a failing
+# run + an auto-filed issue instead of from a user whose `prove` suddenly
+# breaks. See the F4 runbook: docs/F4-tsa-anchor-rotation.md
+
+on:
+  schedule:
+    # Mondays 09:00 UTC: a quiet slot at the start of the work week, so a fresh
+    # rotation alert lands when someone is around to action the F4 runbook.
+    - cron: '0 9 * * 1'
+  workflow_dispatch: {}
+
+# contents:read to checkout; issues:write so `gh issue create` can page us.
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  anchor-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24 (current LTS, Krypton)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install deps (clean)
+        run: npm ci
+
+      - name: Probe DigiCert anchors
+        id: monitor
+        # The script owns exit-code semantics (0 ok / 2 stale / 1 flake). We
+        # capture them here without aborting the step, so later steps can branch
+        # on status. `set +e` keeps a non-zero exit from killing the run before
+        # we have recorded it.
+        run: |
+          set +e
+          json="$(node scripts/monitor-tsa-anchors.mjs)"
+          code=$?
+          set -e
+          echo "$json"
+          {
+            echo "code=$code"
+            echo "json<<JSON_EOF"
+            echo "$json"
+            echo "JSON_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Note transient flake (do not page)
+        if: steps.monitor.outputs.code == '1'
+        # Network/DNS/timeout -- not an anchor problem. Surface it but let the
+        # run stay green so we don't page an operator for flaky CI networking.
+        run: echo "::warning title=TSA monitor flake::Transient failure, not anchor rotation. ${{ steps.monitor.outputs.json }}"
+
+      - name: Open anchor-rotation issue
+        if: steps.monitor.outputs.code == '2'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MONITOR_JSON: ${{ steps.monitor.outputs.json }}
+        # Page the operator via a labeled GitHub Issue (standard GH email/web
+        # notifications). "synthex-anchor-monitor" is the greppable marker.
+        run: |
+          serial="$(printf '%s' "$MONITOR_JSON" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s.trim()).serial||"unknown")}catch{console.log("unknown")}})')"
+          body="$(cat <<EOF
+          The Synthex anchor monitor (\`scripts/monitor-tsa-anchors.mjs\`) detected that a freshly minted DigiCert RFC 3161 timestamp no longer verifies against our pinned anchors (\`src/prove/tsa-anchors.js\`).
+
+          This is the F4 trigger: DigiCert has rotated its TSA root, so \`signatureValidReason\` came back as \`untrusted-anchor\` on a brand-new token.
+
+          **Structured check output (synthex-anchor-monitor):**
+
+          \`\`\`json
+          $MONITOR_JSON
+          \`\`\`
+
+          - Triggering token serial: \`$serial\`
+          - Runbook: [docs/F4-tsa-anchor-rotation.md](docs/F4-tsa-anchor-rotation.md)
+          - Why this is expected behaviour, not a forgery: [docs/HONESTY.md §1.1 -- what \`signatureValid:true\` means](docs/HONESTY.md)
+
+          Follow the F4 runbook to validate the new root and refresh the pinned bundle.
+
+          _Filed automatically by the tsa-anchor-monitor workflow._
+          EOF
+          )"
+          gh issue create \
+            --title "[F4] DigiCert TSA anchor rotation detected" \
+            --body "$body" \
+            --label "security" \
+            --label "f4-anchor-rotation"
+
+      - name: Fail run on anchor rotation
+        if: steps.monitor.outputs.code == '2'
+        # Make the dashboard go red (and trigger GH's failed-run notification)
+        # AFTER the issue is filed, so the alert exists even though the job fails.
+        run: |
+          echo "::error title=DigiCert TSA anchor rotation::Pinned anchors no longer trust fresh tokens. See the filed [F4] issue and docs/F4-tsa-anchor-rotation.md"
+          exit 1
