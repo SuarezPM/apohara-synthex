@@ -436,7 +436,7 @@ h2.head em {
 /* accessible-only text */
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
-/* ── Live Pipeline Console · v0.9.1 centerpiece — the orchestrator calling the MCP.
+/* ── Live Pipeline Console · v1.0.0 centerpiece — the orchestrator calling the MCP.
  *    Not fake terminal chrome (no traffic-light dots, no title bar): a real decision
  *    feed. SSR-complete (every row in the HTML); the stagger is progressive enhancement. ── */
 .pipeline { background: linear-gradient(180deg, var(--black) 0%, var(--void) 100%); position: relative; overflow: hidden; }
@@ -531,7 +531,7 @@ h2.head em {
     <div class="tag">for <b>AI agents</b> that scrape the live web</div>
     <div class="sub">Scrape it. Screen it. Classify it. <em>Prove it.</em></div>
     <div class="pills">
-      <span class="pill lime">RFC 3161 · DigiCert · CMS chain verify (v0.7)</span>
+      <span class="pill lime">RFC 3161 · DigiCert · CMS chain verify (v1.0.0)</span>
       <span class="pill amber">6-page signed PDF</span>
       <span class="pill teal">6 / 6 Bright Data surfaces · live</span>
       <span class="pill">SLSA L3 · npm provenance</span>
@@ -561,7 +561,7 @@ h2.head em {
   </div>
 </section>
 
-<!-- LIVE PIPELINE CONSOLE · the orchestrator calling the Synthex MCP (v0.9.1 centerpiece) -->
+<!-- LIVE PIPELINE CONSOLE · the orchestrator calling the Synthex MCP (v1.0.0 centerpiece) -->
 <section class="pipeline divline" aria-labelledby="pipeline-h">
   <div class="wrap">
     <div class="kicker"><span class="dot"></span> SEE THE MCP WORK · ORCHESTRATOR → SYNTHEX</div>
@@ -591,7 +591,7 @@ h2.head em {
       </div>
       <div class="pcon-foot">
         <span class="tally">12 pages · <b>9 allow</b> · <b style="color:var(--amber)">2 review</b> · <b style="color:var(--red)">1 block</b> · 0 LLM tokens on the blocked payload</span>
-        <span class="sealed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> sealed · HMAC-SHA256 + Ed25519 + RFC 3161 TSA</span>
+        <span class="sealed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> sealed · Ed25519 + RFC 3161 TSA + C2PA</span>
       </div>
     </div>
     <div class="pcon-dl">
@@ -600,7 +600,7 @@ h2.head em {
         Download the signed Evidence Report
       </a>
     </div>
-    <p class="dl-note">6-page court-grade PDF · HMAC-SHA256 + RFC 3161 timestamp · verify offline with <span class="mono">openssl ts</span></p>
+    <p class="dl-note">6-page verifiable Evidence Report · Ed25519 + RFC 3161 timestamp · verify offline with <span class="mono">openssl ts</span></p>
   </div>
 </section>
 
@@ -642,7 +642,7 @@ h2.head em {
         <div class="xrow"><span class="x">✕</span> Unsigned logs</div>
         <div class="xrow"><span class="x">✕</span> No timestamping</div>
         <div class="xrow"><span class="x">✕</span> A PDF nobody can verify</div>
-        <div class="solve"><b>SYNTHEX SOLVES WITH</b>HMAC-SHA256 + RFC 3161 timestamp (DigiCert) → a 6-page Evidence Report anyone verifies offline with <em>openssl</em>.</div>
+        <div class="solve"><b>SYNTHEX SOLVES WITH</b>Ed25519 signature + RFC 3161 timestamp (DigiCert) + C2PA Content Credentials → a 6-page Evidence Report anyone verifies offline with <em>openssl</em> or <em>c2patool</em>.</div>
       </div>
     </div>
   </div>
@@ -665,13 +665,13 @@ h2.head em {
       <div class="pillar s-teal"><div class="step">01 · FETCH</div><div class="name">Bright Data</div><ul><li>· Web Unlocker (MCP+REST)</li><li>· SERP API · structured</li><li>· Browser API · CDP</li><li>· Datasets · Crawl</li><li>· smart router</li></ul></div>
       <div class="pillar s-violet"><div class="step">02 · FORGE</div><div class="name">2-layer screen</div><ul><li>· SHA-256 dedup</li><li>· 78 prompt-level rules</li><li>· 32 web-injection rules</li><li>· jailbreak + harm + PII</li><li>· BLOCK before LLM</li></ul></div>
       <div class="pillar s-amber"><div class="step">03 · CLASSIFY</div><div class="name">4 lenses</div><ul><li>· GTM · Finance</li><li>· Security · Supply-chain</li><li>· AI/ML API</li><li>· in parallel</li><li>· severity + signals</li></ul></div>
-      <div class="pillar s-lime"><div class="step">04 · PROVE</div><div class="name">Seal</div><ul><li>· HMAC-SHA256</li><li>· RFC 3161 · DigiCert</li><li>· 6-page PDF</li><li>· Risk Score 0–100</li><li>· openssl-verifiable</li></ul></div>
+      <div class="pillar s-lime"><div class="step">04 · PROVE</div><div class="name">Seal</div><ul><li>· Ed25519 signature</li><li>· RFC 3161 · DigiCert</li><li>· C2PA · Rekor v2</li><li>· Risk Score 0–100</li><li>· openssl/c2patool-verifiable</li></ul></div>
     </div>
-    <div class="substrate"><span>● EVERY BYTE SCREENED · EVERY REPORT SIGNED</span><span>SHA-256 · HMAC-SHA256 · RFC 3161</span></div>
+    <div class="substrate"><span>● EVERY BYTE SCREENED · EVERY REPORT SIGNED</span><span>Ed25519 · RFC 3161 · C2PA</span></div>
     <div class="stats">
       <div class="stat s-lime"><div class="v">421</div><div class="l">tests · 411 pass · 0 fail · 10 skip</div></div>
       <div class="stat s-teal"><div class="v">6/6</div><div class="l">Bright Data surfaces · live</div></div>
-      <div class="stat s-amber"><div class="v">110</div><div class="l">rules · 3 layers · pre-LLM</div></div>
+      <div class="stat s-amber"><div class="v">110</div><div class="l">pre-LLM rules · 2 layers · 78 DJL + 32 prefilter</div></div>
       <div class="stat s-violet"><div class="v">500</div><div class="l">URLs · 99.6% · $0.75 · live stress</div></div>
     </div>
   </div>
@@ -696,7 +696,7 @@ h2.head em {
 { id:<span class="s">"DJL-HARM-011"</span>, re:<span class="n">/(?:kill myself|suicidarme)/i</span>, sev:<span class="n">10</span> },
 { id:<span class="s">"SSRF-1"</span>, re:<span class="n">/169\.254\.169\.254/</span>, severity:<span class="n">9</span> },
 <span class="c">// 78 DJL + 32 web · ≥ 8 → BLOCK pre-LLM</span></pre>
-        <div class="ft"><span class="m">110 rules · 2 layers · 78/78 fixture coverage</span><span class="l">SkillFortify-aligned</span></div></div>
+        <div class="ft"><span class="m">110 pre-LLM rules (78 DJL + 32 prefilter) · 78/78 fixture coverage</span><span class="l">deterministic regex</span></div></div>
 
       <div class="codecard s-amber"><div class="hd"><span class="name">CLASSIFY</span><span class="tag">src/pipeline.js</span></div>
         <pre><span class="c">// lens="all" → 4 lenses in parallel on one scrape</span>
@@ -710,7 +710,7 @@ h2.head em {
 $ openssl ts -reply -in synthex.tsr -text
 <span class="c"># messageImprint must equal the report SHA-256</span>
 <span class="s">→ TSA: DigiCert · OK</span></pre>
-        <div class="ft"><span class="m">HMAC + RFC 3161 · openssl-verifiable</span><span class="l">DigiCert</span></div></div>
+        <div class="ft"><span class="m">Ed25519 + RFC 3161 · openssl-verifiable</span><span class="l">DigiCert</span></div></div>
     </div>
   </div>
 </section>
@@ -730,7 +730,7 @@ $ openssl ts -reply -in synthex.tsr -text
     <div class="kicker center"><span class="dot"></span> SEE IT LIVE · RUN IT YOURSELF</div>
     <h2 class="head s-lime" style="text-align:center">Don't trust the claims. <em>Run the pipeline.</em></h2>
     <p class="lede" style="text-align:center;margin:0 auto">Paste a URL or term, pick a lens, watch the four stages execute against real Bright Data — then download the signed Evidence Report. This runs the actual pipeline, not a recording.</p>
-    <p class="lede" style="text-align:center;margin:10px auto 0;font-size:13px">Rather not run it? <a href="https://github.com/SuarezPM/apohara-synthex/blob/main/samples/synthex-evidence-report.pdf" target="_blank" rel="noopener" style="text-decoration:underline">See a real 6-7 page Evidence Report (7th page when delta_chain present) — sample PDF</a> — sealed with HMAC-SHA256 + RFC&nbsp;3161.</p>
+    <p class="lede" style="text-align:center;margin:10px auto 0;font-size:13px">Rather not run it? <a href="https://github.com/SuarezPM/apohara-synthex/blob/main/samples/synthex-evidence-report.pdf" target="_blank" rel="noopener" style="text-decoration:underline">See a real 6-7 page Evidence Report (7th page when delta_chain present) — sample PDF</a> — sealed with Ed25519 + RFC&nbsp;3161 TSA.</p>
     <div class="console">
       <label class="flabel" for="target">Target — URL or term</label>
       <input id="target" type="text" value="https://en.wikipedia.org/wiki/Bright_Data" autocomplete="off" spellcheck="false" placeholder="https://example.com/ or search term" required />
@@ -753,9 +753,9 @@ $ openssl ts -reply -in synthex.tsr -text
         <div style="display:flex;justify-content:space-between;align-items:center;margin:24px 0 0"><span class="flabel" style="margin:0">Pipeline</span><span id="mode" aria-live="polite"></span></div>
         <div class="lane" id="lane">
           <div class="stage" data-st="FETCH"><span class="fill"></span><div class="row"><span class="nm">FETCH</span><span class="meta">Bright Data — Unlocker · SERP · Browser · Crawl</span><span class="ms"></span><span class="dot"></span></div></div>
-          <div class="stage" data-st="FORGE"><span class="fill"></span><div class="row"><span class="nm">FORGE</span><span class="meta">dedup + 78 DJL + 32 prefilter + 25 PII · 3 layers</span><span class="ms"></span><span class="dot"></span></div></div>
+          <div class="stage" data-st="FORGE"><span class="fill"></span><div class="row"><span class="nm">FORGE</span><span class="meta">dedup + 78 DJL + 32 prefilter · 110 pre-LLM rules · 2 layers</span><span class="ms"></span><span class="dot"></span></div></div>
           <div class="stage" data-st="CLASSIFY"><span class="fill"></span><div class="row"><span class="nm">CLASSIFY</span><span class="meta">AI/ML API · up to 4 lenses ‖</span><span class="ms"></span><span class="dot"></span></div></div>
-          <div class="stage" data-st="PROVE"><span class="fill"></span><div class="row"><span class="nm">PROVE</span><span class="meta">HMAC-SHA256 + RFC 3161 TSA + delta_chain (v0.6)</span><span class="ms"></span><span class="dot"></span></div></div>
+          <div class="stage" data-st="PROVE"><span class="fill"></span><div class="row"><span class="nm">PROVE</span><span class="meta">Ed25519 + RFC 3161 TSA + C2PA + delta_chain · internal HMAC integrity checksum</span><span class="ms"></span><span class="dot"></span></div></div>
         </div>
         <div class="evidence hidden" id="evidence">
           <h3>EVIDENCE REPORT</h3>
@@ -775,7 +775,7 @@ $ openssl ts -reply -in synthex.tsr -text
   <div class="wrap">
     <div class="kicker"><span class="dot" style="background:var(--lime);box-shadow:0 0 10px var(--lime)"></span> EMPIRICAL · 2026-05-28 · VERIFIABLE</div>
     <h2 class="head s-lime">Numbers that survive scrutiny. <em>500 URLs · 9 minutes · $0.75.</em></h2>
-    <p class="lede">We ran the v0.6 stress test live against Bright Data on 2026-05-28 with a 60-URL allowlist (pricing pages, gov sources, GitHub releases, dev docs, market news), multiplied to 500 inputs across 8 parallel workers. Every input passed through the full pipeline — fetch → 3-layer pre-LLM screen → 4-lens classify → HMAC + RFC 3161 seal. Every number below comes from a real corrida; the per-URL evidence is in <span class="mono">out/stress-500-2026-05-28/</span>.</p>
+    <p class="lede">We ran the v0.6 stress test live against Bright Data on 2026-05-28 with a 60-URL allowlist (pricing pages, gov sources, GitHub releases, dev docs, market news), multiplied to 500 inputs across 8 parallel workers. Every input passed through the full pipeline — fetch → 2-layer pre-LLM screen (110 rules) → 4-lens classify → Ed25519 + RFC 3161 seal. Every number below comes from a real corrida; the per-URL evidence is in <span class="mono">out/stress-500-2026-05-28/</span>.</p>
     <div class="proof-grid">
       <div class="proof-tile l"><div class="proof-num" data-count="500" data-suffix="">500</div><div class="proof-lbl">URLs processed</div><div class="proof-meta">60 unique · ×8.3 multiplier · concurrency 8</div></div>
       <div class="proof-tile l"><div class="proof-num" data-count="99.6" data-decimals="1" data-suffix="<span class='u'>%</span>">99.6<span class="u">%</span></div><div class="proof-lbl">Success rate</div><div class="proof-meta">498 / 500 OK · 2 fail server-side</div></div>
@@ -826,7 +826,7 @@ $ openssl ts -reply -in synthex.tsr -text
     <h2 class="head s-violet">One pipeline. <em>Four people can act on it today.</em></h2>
     <div class="grid4">
       <div class="buyer s-teal"><div class="who">AI Ops / Sec Eng</div><div class="pain">"What did my agent just scrape — and was it safe?"</div><div class="art"><b>ARTIFACT</b>FORGE blocked-content log · 2-layer (32+78) defense · sealed <code>decisions[]</code> audit trail · per-stage latencies (OTel)</div></div>
-      <div class="buyer s-violet"><div class="who">CISO</div><div class="pain">"Prove what the agent saw, and that the bytes are unchanged."</div><div class="art"><b>ARTIFACT</b>RFC 3161-sealed Evidence Report · SHA-256 + HMAC · openssl-verifiable</div></div>
+      <div class="buyer s-violet"><div class="who">CISO</div><div class="pain">"Prove what the agent saw, and that the bytes are unchanged."</div><div class="art"><b>ARTIFACT</b>RFC 3161-sealed Evidence Report · Ed25519 + SHA-256 · openssl-verifiable</div></div>
       <div class="buyer s-amber"><div class="who">General Counsel</div><div class="pain">"EU AI Act Art. 12 logging for AI data sources."</div><div class="art"><b>ARTIFACT</b>6-page signed PDF · audit trace page · timestamped provenance</div></div>
       <div class="buyer s-red"><div class="who">Risk / Underwriter</div><div class="pain">"Can I price the risk of this agent fleet?"</div><div class="art"><b>ARTIFACT</b>Risk Score 0–100 · formula on the PDF · <em>internal estimate, not a quote</em></div></div>
     </div>
@@ -840,12 +840,12 @@ $ openssl ts -reply -in synthex.tsr -text
     <h2 class="head s-red">The pitch is honesty — <em>so it applies to us too</em>.</h2>
     <div class="honest-list">
       <div><span class="x">✕</span><span><b>RFC 3161 proves <em>when</em>, not truth.</b> The timestamp proves the bytes existed and are unchanged — not that the content is correct.</span></div>
-      <div><span class="x">✕</span><span><b>Both pre-LLM layers cover text/HTML + prompt-level, not visual VPI.</b> 32 web-injection rules + 78 prompt-level rules (jailbreak, harm/PII, sector policy) with 78/78 fixture coverage — aligned with SkillFortify, not a formal proof, not screenshot-based attacks.</span></div>
+      <div><span class="x">✕</span><span><b>Both pre-LLM layers cover text/HTML + prompt-level, not visual VPI.</b> 32 web-injection rules + 78 prompt-level rules (jailbreak, harm/PII, sector policy) with 78/78 fixture coverage — deterministic regex, not a formal proof, not screenshot-based attacks.</span></div>
       <div><span class="x">✕</span><span><b>Crawl is a multi-page crawl over Web Unlocker — not Bright Data's native Crawl product.</b> All 6 surfaces are verified live; we name the crawl honestly for what it is.</span></div>
       <div><span class="x">✕</span><span><b>The Risk Score is an internal estimate.</b> A deterministic heuristic with its formula printed on the PDF — not a Munich Re rating or a broker quote.</span></div>
       <div><span class="x">✕</span><span><b>OTel export and Cognee memory are opt-in.</b> The public endpoint keeps Cognee off to control cost; the rate-limit is best-effort.</span></div>
     </div>
-    <p class="lede" style="margin-top:28px">Prior art, cited not claimed: the <a href="https://doi.org/10.5281/zenodo.20277875" target="_blank" rel="noopener">INV-15 formal-safety paper</a> (Apohara Context_Forge) and KVCOMM · MemArt · SkillFortify ground the design — they are <em>not</em> part of this scraping pipeline.</p>
+    <p class="lede" style="margin-top:28px">Prior art, cited not claimed: the <a href="https://doi.org/10.5281/zenodo.20277875" target="_blank" rel="noopener">INV-15 formal-safety paper</a> (Apohara Context_Forge) and KVCOMM · MemArt ground the design — they are <em>not</em> part of this scraping pipeline.</p>
   </div>
 </section>
 
@@ -884,6 +884,11 @@ $ openssl ts -reply -in synthex.tsr -text
       <div class="zero">0 / N</div>
       <h2 class="head" style="margin:0">submissions ship <span style="color:var(--lime)">all of these together.</span></h2>
     </div>
+    <p class="lede" style="margin-top:28px"><b style="color:var(--lime)">The uniqueness:</b> Synthex is the only Web Data UNLOCKED submission that cryptographically seals scraped content with third-party-verifiable, C2PA-standard provenance and a public transparency-log anchor. Two axes no one else ships:</p>
+    <div style="margin-top:18px">
+      <div class="winrow"><span class="c">✓</span> <b>Verify with the industry's own tool.</b> The Evidence Card is a real C2PA Content Credential — validate it with <span class="mono">c2patool</span>, the standard, no Synthex code required.</div>
+      <div class="winrow"><span class="c">✓</span> <b>Transparency log shipped, not roadmap.</b> The seal keyId is anchored in a Sigstore Rekor v2 transparency log, with the inclusion proof verifiable fully offline.</div>
+    </div>
     <div style="margin-top:36px">
       <div class="winrow"><span class="c">✓</span> Bright Data as runtime substrate — all 6 surfaces with real code (Unlocker/SERP/Browser/Datasets/Crawl/MCP)</div>
       <div class="winrow"><span class="c">✓</span> RFC 3161 TSA (DigiCert) — verifiable offline with <span class="mono">openssl ts</span></div>
@@ -909,7 +914,7 @@ $ openssl ts -reply -in synthex.tsr -text
       <p class="final-sub">
         Apohara Synthex is the only OSS layer that screens, classifies, and <em>cryptographically signs</em>
         what your agents touched — RFC 3161 timestamps verified link-by-link against pinned DigiCert anchors,
-        delta-chained across re-scrapes, sealed inside a 6-page court-grade PDF. Live on npm, MIT, zero lock-in.
+        delta-chained across re-scrapes, sealed inside a 6-page verifiable Evidence Report. Live on npm, MIT, zero lock-in.
       </p>
     </div>
     <div class="final-actions">
@@ -917,7 +922,7 @@ $ openssl ts -reply -in synthex.tsr -text
       <a class="cta-mono" href="https://www.npmjs.com/package/@apohara/synthex" target="_blank" rel="noopener"><span class="hash">$</span> npm i @apohara/synthex</a>
       <a class="cta-ghost" href="https://github.com/SuarezPM/apohara-synthex/blob/main/docs/HONESTY.md" target="_blank" rel="noopener">Read HONESTY →</a>
     </div>
-    <p class="final-meta">v0.9.0 · Ed25519 seal · C2PA Content Credentials · Rekor v2 · SLSA L3 · npm provenance · Web Data UNLOCKED · Bright Data × lablab.ai · MIT</p>
+    <p class="final-meta">v1.0.0 · Ed25519 seal · C2PA Content Credentials · Rekor v2 · SLSA L3 · npm provenance · Web Data UNLOCKED · Bright Data × lablab.ai · MIT</p>
   </div>
 </section>
 
