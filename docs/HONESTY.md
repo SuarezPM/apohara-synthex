@@ -95,7 +95,7 @@ The honest summary: the guard's hostname check is *defense-in-depth* against lit
 
 - We don't bypass any Terms of Service — we use Bright Data's compliant infrastructure.
 - v0.5 verified 6 Bright Data surfaces live; v0.6 stress exercised 2 (Web Unlocker + SERP) over 500 URLs (src: `out/stress-500-2026-05-28/report.json`).
-- The 3 pre-LLM layers are **heuristic regex deterministic** (aligned with SkillFortify, arXiv 2603.00195) — **not** a formal proof.
+- The 3 pre-LLM layers are **heuristic regex deterministic** (inspired by adversarial-resilient guard patterns referenced in SkillFortify, arXiv 2603.00195; the paper itself argues *against* purely heuristic approaches in favor of formal methods — we use the paper for its threat taxonomy, not as endorsement of regex) — **not** a formal proof.
 - "78/78 fixtures pass identically" for DJL means measured coverage on 156 curated positive+negative pairs, NOT every possible adversarial input.
 - v0.6 FREE tier (`nvidia/nemotron-nano-9b-v2`) is labeled `free-low-quality` because 50% of fixtures had Δseverity > 1.5 vs DeepSeek (src: [`docs/v060-calibration.md`](v060-calibration.md)).
 - The Delta Engine combines scrape + diff + HMAC + RFC 3161 + KG — a directed search at 2026-05-28 found no open-source combination of the five, but we make no "first in world" claim (see [`docs/PRIOR_ART.md`](PRIOR_ART.md) for reproducible queries).

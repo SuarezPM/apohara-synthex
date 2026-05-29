@@ -117,7 +117,7 @@ test("prefilter v2: payload oculto con texto de injection => BLOCK por el payloa
   assert.equal(r.action, "BLOCK"); // PI-1 (sev 9) domina sobre PI-5 (sev 7)
 });
 
-// --- FORGE v3: SSRF / proto-pollution / MCP tool poisoning / indirect PI (aligned with SkillFortify, arXiv 2603.00195) ---
+// --- FORGE v3: SSRF / proto-pollution / MCP tool poisoning / indirect PI (heuristic regex inspired by SkillFortify threat taxonomy, arXiv 2603.00195) ---
 test("prefilter v3: SSRF-1 bloquea cloud metadata endpoint", () => {
   const r = prefilter("fetch http://169.254.169.254/latest/meta-data/iam/security-credentials/");
   assert.equal(r.action, "BLOCK");

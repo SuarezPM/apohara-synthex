@@ -9,7 +9,7 @@
 ### The evidence layer that lives inside Bright Data
 
 **Scrape it · Classify it · Prove it.**
-Turn the web your AI agents touch into classified intelligence, sealed with court-grade, verifiable evidence.
+Turn the web your AI agents touch into classified intelligence, sealed with **timestamped, third-party-verifiable evidence** (RFC 3161 + HMAC, with Ed25519 asymmetric signature coming in v0.8).
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Tests](https://img.shields.io/badge/tests-suite%20green-brightgreen)
@@ -161,7 +161,7 @@ Every tier below is a **proposed** go-to-market model. Synthex has **no paying c
 | Category | What they watch | What they can't ship |
 |---|---|---|
 | SIEM / log tools | the agent's *infrastructure* | proof of the web *content* the agent saw |
-| Agent-observability | traces, tokens, latency | a cryptographically sealed, court-grade report |
+| Agent-observability | traces, tokens, latency | a cryptographically sealed, third-party-verifiable report |
 | Scraping APIs | raw bytes | classification + screening + RFC 3161 evidence |
 | **Synthex** | the web content itself | — *the signed Evidence Report is the moat* |
 
@@ -208,7 +208,7 @@ The pitch *is* honesty — so it applies to us too. **Canonical caveats live in 
 - **Crawl is multi-page over Web Unlocker, not the native Crawl product.** All 6 Bright Data surfaces are verified live; we name the crawl honestly — the native Crawl API stays opt-in via a Crawl `dataset_id`.
 - **Risk Score is an internal estimate:** the PDF's Synthex Risk Score (0–100) is a deterministic heuristic computed from the report's own data, with the formula printed on the page. It is **NOT** a Munich Re rating or any third-party underwriting score.
 - **Opt-in (cost/credentials):** Cognee memory is default in the local/CLI path but **off** on the public endpoint; its `remember` ingest uses an LLM → behind `COGNEE_LIVE`. OTel OTLP export only runs if `OTEL_EXPORTER_OTLP_ENDPOINT` is set (otherwise spans are no-op / console-only). Network tests are env-gated so the suite never fabricates a pass.
-- **Two-layer defense scope:** Synthex runs **32 web-injection rules** (`src/forge/prefilter.js` — SSRF, prototype-pollution, MCP tool poisoning, indirect prompt-injection, BrowseSafe / VPI-Bench text vectors, Spanish-voseo jailbreaks added in v0.7) **plus 78 prompt-level rules** (`src/forge/djl.js` — jailbreak, harm/PII bilingual EN+ES, SQLi/XSS, exfiltration, tool misuse, sector policy). Both layers are **heuristic regex deterministic** — *aligned with* the SkillFortify benchmark (arXiv 2603.00195), not a formal guarantee. They do **not** stop *visual* prompt injection (VPI in rendered screenshots/images) — a different threat model.
+- **Two-layer defense scope:** Synthex runs **32 web-injection rules** (`src/forge/prefilter.js` — SSRF, prototype-pollution, MCP tool poisoning, indirect prompt-injection, BrowseSafe / VPI-Bench text vectors, Spanish-voseo jailbreaks added in v0.7) **plus 78 prompt-level rules** (`src/forge/djl.js` — jailbreak, harm/PII bilingual EN+ES, SQLi/XSS, exfiltration, tool misuse, sector policy). Both layers are **heuristic regex deterministic** — *inspired by adversarial-resilient guard patterns referenced in* the SkillFortify benchmark (arXiv 2603.00195). Note: SkillFortify itself argues *against* purely heuristic approaches in favor of formal methods; we use the paper for the threat taxonomy, not as an endorsement of our regex approach. They do **not** stop *visual* prompt injection (VPI in rendered screenshots/images) — a different threat model.
 - **Coverage on curated fixtures:** `test/djl.test.js` validates **78/78 fixtures pass identically** (78 positive + 78 negative = 156 assertions). This is measured coverage on curated examples, NOT a formal guarantee against every adversarial input. Divergences would land in [`docs/djl-parity-divergence.md`](docs/djl-parity-divergence.md) (currently empty).
 - **Effective coverage on synthetic corpora** (SC-11, `node scripts/measure-coverage.mjs` — two corpora because each was designed for a different layer):
   - **Aegis corpus** (156 fixtures = 78 positive + 78 negative, targets DJL): **DJL → 100% of 78 rules** fire at least once, on 50% of docs; **prefilter → 34.4% of 32 rules** fire (only the SQLi/XSS/EN-injection vectors that naturally overlap with DJL).
@@ -218,15 +218,15 @@ The pitch *is* honesty — so it applies to us too. **Canonical caveats live in 
 - **Tokens saved (estimated, in the sealed payload):** Synthex emits `tokens_saved: {dedup_bytes, blocked_bytes, total_bytes, estimated_tokens, chars_per_token, note}` inside the v2 payload. The estimate uses **4 chars/token** as a conservative approximation — actual depends on the tokenizer (GPT-4 `cl100k_base` ~4.2, Claude ~3.8, multilingual CJK worse). The 3 mechanisms that contribute: (1) SHA-256 dedupe drops N-1 copies of identical content, (2) the 78-rule DJL blocks prompt-level attacks before classify, (3) the 32-rule prefilter blocks web-injection on top. Verify on any sealed report with `node bin/decode-evidence.js <evidence.json>` — the "tokens saved" line is right there in the summary.
 - **Endpoint guard is best-effort:** the public rate-limit is in-memory per warm instance (a hard multi-instance limit would need Vercel KV). The SSRF block filters the hostname (literal + obfuscated/IPv6 private ranges) but does **not** resolve DNS — see [`docs/HONESTY.md` §2.1](docs/HONESTY.md#21-ssrf-guard-scope-h1) for the full DNS-rebinding threat model. Short version: the scrape runs on Bright Data's remote proxy, not the function's network, so a rebind to `127.0.0.1` would loop back on a Bright Data proxy node, not on our function — there is no internal endpoint of ours to reach.
 - **Research grounding (cited, not implemented):** the parallel multi-lens design is grounded in **KVCOMM** (NeurIPS 2025); KV-cache memory is a stated future direction per **MemArt** (ICLR 2026). These are foundations we cite — not features Synthex ships.
-- **Prior art, not pipeline:** the **INV-15** invariant ([Context_Forge paper](https://doi.org/10.5281/zenodo.20277875)) ships as a module and is cited as prior art — it is *not* part of this scraping pipeline.
+- **Prior art, not pipeline:** the **INV-15** invariant is documented in [self-published prior work on Zenodo](https://doi.org/10.5281/zenodo.20277875) (DOI 10.5281/zenodo.20277875, **not peer-reviewed** — our own deposit) and ships as a module here cited for traceability — it is *not* part of this scraping pipeline.
 - **Not claimed:** Synthex doesn't bypass any site's ToS — it uses Bright Data's compliant infrastructure. The timestamp proves *when* evidence existed, not the truth of its content.
 
 ---
 
 <div align="center">
 
-**We didn't just use Bright Data — we improved it.**
-Upstream contribution: [`brightdata-mcp` PR #140](https://github.com/brightdata/brightdata-mcp/pull/140) (dedup + field filtering). See [`docs/CONTRIBUTION.md`](docs/CONTRIBUTION.md).
+**We proposed an upstream improvement to Bright Data.**
+[`brightdata-mcp` PR #140](https://github.com/brightdata/brightdata-mcp/pull/140) (dedup + field filtering) — **open, awaiting review**, not yet merged. See [`docs/CONTRIBUTION.md`](docs/CONTRIBUTION.md).
 
 MIT © 2026 Pablo M. Suárez · [Apohara]
 

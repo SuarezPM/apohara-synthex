@@ -21,6 +21,7 @@
 // en este header sin re-correr el benchmark.
 
 import { createHash } from "node:crypto";
+import { luhnValid } from "./luhn.js";
 
 // ---------------------------------------------------------------------------
 // PI — Prompt Injection (20 rules)
@@ -77,7 +78,7 @@ const _RULES_XSS = [
 // ---------------------------------------------------------------------------
 const _RULES_PII = [
   { id: "DJL-PII-001", re: /\b(?!000|666|9\d{2})\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b/, category: "pii", severity: 8, description: "US Social Security Number (XXX-XX-XXXX format)." },
-  { id: "DJL-PII-002", re: /\b(?:\d[ \-]?){12,18}\d\b/, category: "pii", severity: 7, description: "Credit card number candidate (13-19 digit run)." },
+  { id: "DJL-PII-002", re: /\b(?:\d[ \-]?){12,18}\d\b/, category: "pii", severity: 7, description: "Credit card number candidate (13-19 digit run, Luhn-validated v0.8).", validate: (m) => luhnValid(m) },
   { id: "DJL-PII-003", re: /\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b/, category: "pii", severity: 7, description: "IBAN bank account number." },
   { id: "DJL-PII-004", re: /\b[A-Z]\d{8}\b/, category: "pii", severity: 6, description: "US passport number candidate." },
   { id: "DJL-PII-005", re: /\+\d{1,3}[\s\-]?\(?\d{1,4}\)?[\s\-]?\d{3,4}[\s\-]?\d{3,4}/, category: "pii", severity: 5, description: "International phone number (E.164)." },
@@ -171,7 +172,11 @@ export const RULES = Object.freeze([
 // ---------------------------------------------------------------------------
 const _canonicalCorpus = JSON.stringify(
   RULES
-    .map((r) => [r.id, r.re.source, r.severity, r.category])
+    // The 5th element (Boolean(r.validate)) is added v0.8 so the bundle sha
+    // visibly flips when a rule gains/loses a checksum predicate (DJL-PII-002
+    // gained Luhn in v0.8). Without it the regex source is unchanged so the
+    // sha would NOT move, hiding a semantically-real change.
+    .map((r) => [r.id, r.re.source, r.severity, r.category, Boolean(r.validate)])
     .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)),
 );
 const _corpusSha = createHash("sha256").update(_canonicalCorpus).digest("hex").slice(0, 12);
@@ -192,10 +197,16 @@ export function evaluate(text /*, context */) {
   const matched = [];
   let maxSev = 0;
   for (const rule of RULES) {
-    if (rule.re.test(s)) {
-      matched.push(rule.id);
-      if (rule.severity > maxSev) maxSev = rule.severity;
+    if (!rule.re.test(s)) continue;
+    // v0.8 (audit 2026-05-29 F10): optional .validate predicate runs the regex
+    // match through a checksum / shape check (e.g. Luhn for CC candidates).
+    // Rules without .validate behave identically to pre-v0.8.
+    if (rule.validate) {
+      const m = s.match(rule.re);
+      if (!m || !rule.validate(m[0])) continue;
     }
+    matched.push(rule.id);
+    if (rule.severity > maxSev) maxSev = rule.severity;
   }
   const decision = maxSev >= 8 ? "BLOCK" : maxSev >= 5 ? "REVIEW" : "ALLOW";
   const latency_ms = +(performance.now() - t0).toFixed(4);

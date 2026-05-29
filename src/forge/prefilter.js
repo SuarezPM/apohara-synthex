@@ -1,6 +1,7 @@
 // FORGE/prefilter — pre-filtro determinista web-injection (sin LLM), estilo OWASP.
-// 28 reglas regex JS sobre HTML/texto scrapeado. Corre ANTES de la llamada al LLM
-// (AI/ML API) para abaratar/acelerar: bloquea lo obvio sin gastar tokens.
+// 32 reglas regex JS sobre HTML/texto scrapeado (12 base + 8 v2 + 8 v3 + 4 v3.2 Spanish/voseo).
+// Corre ANTES de la llamada al LLM (AI/ML API) para abaratar/acelerar:
+// bloquea lo obvio sin gastar tokens.
 //
 // v2 (auditoría Mayo 2026): +8 reglas que cubren vectores documentados en BrowseSafe
 // (Perplexity, 2026) y VPI-Bench (2026). HONESTIDAD: este filtro cubre injection
@@ -10,8 +11,9 @@
 //
 // v3 (auditoría Mayo 2026): +8 reglas (SSRF, prototype pollution, MCP tool poisoning,
 // indirect PI en datos estructurados). HONESTIDAD: estas son regex HEURÍSTICAS,
-// "aligned with" el benchmark SkillFortify (arXiv 2603.00195) — NO "formally verified".
-// No hay garantía formal de cobertura; cubren los vectores documentados, no su clausura.
+// inspiradas en el threat taxonomy de SkillFortify (arXiv 2603.00195) — NO una
+// implementación de los métodos formales que el propio paper recomienda. No hay
+// garantía formal de cobertura; cubren los vectores documentados, no su clausura.
 //
 // v3.1 (auditoría Deep-Research, Mayo 2026): hardening de regex SIN reglas nuevas (conteo 28
 // intacto). Cerrados 2 huecos reales hallados en el audit: PROTO-1 ahora atrapa proto-pollution
@@ -47,7 +49,7 @@ const RULES = [
   { id: "EXF-2", re: /-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----/, category: "secret-exfil", severity: 10 },
   { id: "EXF-3", re: /\bgh[opsur]_[A-Za-z0-9]{36,}\b/, category: "secret-exfil", severity: 9 }, // GitHub tokens (PAT/OAuth/user/server/refresh)
   { id: "EXF-4", re: /\bxox[baprs]-[0-9A-Za-z-]{10,}\b/, category: "secret-exfil", severity: 9 }, // Slack tokens
-  // v3 — SSRF / prototype pollution / MCP tool poisoning / indirect PI (aligned with SkillFortify, arXiv 2603.00195)
+  // v3 — SSRF / prototype pollution / MCP tool poisoning / indirect PI (heuristic regex inspired by SkillFortify threat taxonomy, arXiv 2603.00195)
   { id: "SSRF-1", re: /\b(?:https?:\/\/)?(?:169\.254\.169\.254|metadata\.google\.internal|100\.100\.100\.200)\b/i, category: "ssrf", severity: 9 }, // cloud metadata endpoint (AWS/GCP/Alibaba)
   { id: "SSRF-2", re: /\b(?:file|gopher|dict):\/\//i, category: "ssrf", severity: 8 }, // esquemas SSRF/exfil clásicos
   { id: "SSRF-3", re: /\bhttps?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|(?:10|127)\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(?:[:/]|\b)/i, category: "ssrf", severity: 8 }, // host interno embebido en URL

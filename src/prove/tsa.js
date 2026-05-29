@@ -21,6 +21,10 @@ const DEFAULT_TSA_URL = "http://timestamp.digicert.com";
 const SHA256_OID = "2.16.840.1.101.3.4.2.1";
 const MESSAGE_DIGEST_OID = "1.2.840.113549.1.9.4";
 
+// Cert validity hardening (v0.8.0, audit 2026-05-29 reviewer F5–F7).
+const EXT_KEY_USAGE_OID = "2.5.29.37";              // X.509 v3 extKeyUsage extension
+const ID_KP_TIMESTAMPING_OID = "1.3.6.1.5.5.7.3.8"; // RFC 3161 §2.3 — required on TSA responder cert
+
 pkijs.setEngine("synthex", new pkijs.CryptoEngine({ name: "synthex", crypto: webcrypto }));
 
 function toArrayBuffer(bytes) {
@@ -67,6 +71,49 @@ function dnDer(dn) {
   return Buffer.from(dn.toSchema().toBER(false));
 }
 
+/**
+ * Cert validity at a specific instant (NOT Date.now() — atDate is the TSTInfo
+ * genTime so a token stays verifiable forever as of when it was stamped, even
+ * if the signer cert eventually expires). Returns null when valid, or a
+ * tsaSignatureValidReason when not.
+ *
+ * Exported for testing the precedence rules in isolation; production callers go
+ * through verifyCmsSigned which folds this into the chain walk.
+ *
+ * @param {pkijs.Certificate} cert
+ * @param {Date} atDate
+ * @param {"signer"|"issuer"} role  — role determines the reason granularity
+ *        (signer uses the more specific "gentime-outside-validity"; issuers
+ *        use the generic "cert-expired" / "cert-not-yet-valid").
+ * @returns {null|"cert-expired"|"cert-not-yet-valid"|"gentime-outside-validity"}
+ */
+export function certValidityReason(cert, atDate, role) {
+  const nb = cert.notBefore?.value;
+  const na = cert.notAfter?.value;
+  if (!(nb instanceof Date) || !(na instanceof Date)) return null; // no validity info — don't block, surface only
+  if (atDate < nb) return role === "signer" ? "gentime-outside-validity" : "cert-not-yet-valid";
+  if (atDate > na) return role === "signer" ? "gentime-outside-validity" : "cert-expired";
+  return null;
+}
+
+/**
+ * Check that the signer cert carries id-kp-timeStamping in its Extended Key Usage
+ * extension (RFC 3161 §2.3 — mandatory for TSA responder certs). Returns true if
+ * the EKU is missing OR if id-kp-timeStamping is absent from it. Intermediate /
+ * root certs do NOT use EKU (they use BasicConstraints + keyUsage) — only the
+ * leaf signer is checked.
+ *
+ * Exported for tests; production callers go through verifyCmsSigned.
+ *
+ * @returns {boolean} true if the cert lacks the required EKU
+ */
+export function certMissingTimestampingEku(cert) {
+  const ekuExt = (cert.extensions ?? []).find((e) => e.extnID === EXT_KEY_USAGE_OID);
+  if (!ekuExt) return true;                // no EKU extension at all
+  const purposes = ekuExt.parsedValue?.keyPurposes ?? [];
+  return !purposes.includes(ID_KP_TIMESTAMPING_OID);
+}
+
 async function verifyCertSignature(child, issuer) {
   const wcAlgo = resolveWebCryptoAlgo(child.signatureAlgorithm.algorithmId);
   if (!wcAlgo) return false;
@@ -88,11 +135,22 @@ async function verifyCertSignature(child, issuer) {
 
 /**
  * Verifica una CMS SignedData (timestamp token) custom: messageDigest match,
- * signature math, y chain verify hasta un trust anchor pinned por fingerprint.
+ * signature math, cert validity (at TSTInfo genTime) + EKU id-kp-timeStamping
+ * on the signer, y chain verify hasta un trust anchor pinned por fingerprint.
  *
- * @returns {Promise<{ok:boolean, reason:("forged"|"untrusted-anchor"|"chain-incomplete"|null)}>}
+ * Precedence of failure reasons (v0.8.0 reviewer F5–F7 hardening):
+ *   chain-incomplete (structural) → forged (math/MD mismatch) →
+ *   cert-missing-eku (signer EKU) → gentime-outside-validity (signer) /
+ *   cert-expired | cert-not-yet-valid (chain issuers) → untrusted-anchor → null.
+ *
+ * @param {pkijs.SignedData} signed
+ * @param {pkijs.Certificate[]} trustedCerts  — pinned anchors
+ * @param {Date|null} [genTime]  — TSTInfo.genTime; cert validity is checked AS-OF this
+ *        instant (NOT Date.now()), so a token stays verifiable forever as of when it was
+ *        stamped. Pass null when called outside the timestamp flow (no validity check).
+ * @returns {Promise<{ok:boolean, reason:string|null}>}
  */
-async function verifyCmsSigned(signed, trustedCerts) {
+async function verifyCmsSigned(signed, trustedCerts, genTime = null) {
   const si = signed.signerInfos?.[0];
   if (!si) return { ok: false, reason: "chain-incomplete" };
 
@@ -144,7 +202,21 @@ async function verifyCmsSigned(signed, trustedCerts) {
     return { ok: false, reason: "forged" };
   }
 
-  // 3. Chain: walk signer → issuer (CMS ∪ anchors) hasta llegar a un anchor.
+  // 3. Signer cert MUST carry id-kp-timeStamping EKU (RFC 3161 §2.3).
+  //    Runs after math/MD checks (so forged tokens still get the forged reason),
+  //    before validity (so an EKU-less cert is rejected even if temporally OK).
+  if (certMissingTimestampingEku(signerCert)) {
+    return { ok: false, reason: "cert-missing-eku" };
+  }
+
+  // 4. Signer cert validity at genTime (more specific reason for the signer).
+  //    Skipped when genTime is null (caller outside the timestamp flow).
+  if (genTime instanceof Date) {
+    const signerValidity = certValidityReason(signerCert, genTime, "signer");
+    if (signerValidity) return { ok: false, reason: signerValidity };
+  }
+
+  // 5. Chain: walk signer → issuer (CMS ∪ anchors) hasta llegar a un anchor.
   if (!trustedCerts || trustedCerts.length === 0) {
     return { ok: false, reason: "untrusted-anchor" };
   }
@@ -169,6 +241,13 @@ async function verifyCmsSigned(signed, trustedCerts) {
       if (await verifyCertSignature(current, cand)) { nextIssuer = cand; break; }
     }
     if (!nextIssuer) return { ok: false, reason: "chain-incomplete" };
+
+    // Issuer validity check (after we know it actually signed the child cert
+    // we just walked from). genTime-anchored, same rationale as the signer.
+    if (genTime instanceof Date) {
+      const issuerValidity = certValidityReason(nextIssuer, genTime, "issuer");
+      if (issuerValidity) return { ok: false, reason: issuerValidity };
+    }
 
     current = nextIssuer;
   }
@@ -240,14 +319,24 @@ export async function requestTimestamp(hashBytes, { tsaUrl = DEFAULT_TSA_URL, ti
  *   serial?:string,
  *   policy?:string,
  *   signatureValid: (boolean|null),
- *   signatureValidReason: ("forged"|"untrusted-anchor"|"chain-incomplete"|null),
+ *   signatureValidReason: (
+ *     "forged" | "untrusted-anchor" | "chain-incomplete" |
+ *     "cert-missing-eku" | "gentime-outside-validity" |
+ *     "cert-expired" | "cert-not-yet-valid" | null
+ *   ),
  * }>}
  *   signatureValid: true = CMS verifies against anchors; false = doesn't verify; null = couldn't check.
- *   signatureValidReason: "forged" = signer crypto fail o messageDigest mismatch;
- *   "untrusted-anchor" = chain doesn't reach pinned anchors (most common cause:
- *   DigiCert rotated anchors y nuestra pin está stale);
- *   "chain-incomplete" = signer cert no está en CMS o chain malformada;
- *   null = success o sin chequeo.
+ *   signatureValidReason (v0.8.0 reviewer F5–F7 hardening — checked at genTime, NOT Date.now()):
+ *     "forged" = signer crypto fail o messageDigest mismatch;
+ *     "untrusted-anchor" = chain doesn't reach pinned anchors (most common cause:
+ *       DigiCert rotated anchors y nuestra pin está stale);
+ *     "chain-incomplete" = signer cert no está en CMS o chain malformada;
+ *     "cert-missing-eku" = signer cert lacks id-kp-timeStamping (RFC 3161 §2.3);
+ *     "gentime-outside-validity" = TSTInfo genTime falls outside signer cert's
+ *       notBefore/notAfter window;
+ *     "cert-expired" / "cert-not-yet-valid" = an intermediate or root cert in the
+ *       chain was expired / not yet valid at the genTime of the token;
+ *     null = success o sin chequeo.
  */
 export async function verifyTimestamp(respDer, hashBytes, opts = {}) {
   const asn1 = asn1js.fromBER(toArrayBuffer(respDer));
@@ -271,8 +360,10 @@ export async function verifyTimestamp(respDer, hashBytes, opts = {}) {
   const match = tokenHash.length === h.length && tokenHash.every((b, i) => b === h[i]);
 
   // CMS signature verify against pinned trust anchors (custom path).
+  // Pass genTime so cert validity / EKU checks are anchored to when the token
+  // was stamped (NOT Date.now()) — tokens stay verifiable after cert expiry.
   const trustedCerts = opts.trustedCerts ?? loadAnchors();
-  const { ok, reason } = await verifyCmsSigned(signed, trustedCerts);
+  const { ok, reason } = await verifyCmsSigned(signed, trustedCerts, tstInfo.genTime?.value ?? null);
 
   return {
     granted: true,
