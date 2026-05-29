@@ -1,6 +1,6 @@
 # v0.7.0 — Audit Response
 
-**Audience:** anyone re-reading `SECURITY_AUDIT_2026-05-28.md` (the Kiro-generated security audit) and wondering why Synthex v0.7.0 drops four of its 22 findings instead of acting on them.
+**Audience:** anyone re-reading [`security-audit-2026-05-28.md`](security-audit-2026-05-28.md) (the Kiro-generated security audit) and wondering why Synthex v0.7.0 drops four of its 22 findings instead of acting on them.
 
 **Posture in one sentence:** the **codebase is healthier than the audit reads** (real grade: B+ / A−), but the **audit's own rigor was middling** (~C+ / 65) — it overstates severity, fabricates threats outside the deployed surface, mis-cites two lines, and recommends three remediations that would actively make the product *worse*. The 18 findings we *did* act on (Sprint 2 + Sprint 3 + doc-only) are recorded in [`.omc/plans/synthex-v0.7.0-security-roadmap.md`](../.omc/plans/synthex-v0.7.0-security-roadmap.md). This file is for the four we **dropped**.
 
@@ -121,7 +121,7 @@ The English-prompt translation (audit's recommended fix for H2) was likewise rej
 
 The verification process is recorded; anyone can re-run it:
 
-1. Re-read [`SECURITY_AUDIT_2026-05-28.md`](../SECURITY_AUDIT_2026-05-28.md).
+1. Re-read [`security-audit-2026-05-28.md`](security-audit-2026-05-28.md).
 2. Walk the 22 findings against `src/`, `api/`, and `bin/` using the line citations.
 3. Compare against the verdicts in the PRD's iteration log: [`.omc/plans/synthex-v0.7.0-security-roadmap.md`](../.omc/plans/synthex-v0.7.0-security-roadmap.md) §11.
 4. Run `npm test`, `npm run lint:slides`, `npm audit` — all green on `feat/v0.7.0-security`.

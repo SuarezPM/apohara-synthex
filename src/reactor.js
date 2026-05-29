@@ -4,6 +4,16 @@
 //
 // Flujo enterprise always-on: Triggerware vigila una query en schedule → cuando aparece algo
 // nuevo, Synthex lo scrapea, clasifica, sella como evidencia y alerta — sin intervención humana.
+//
+// SYSTEM SHAPE — short file by design, not a stub. The WATCH/REACT loop is split across
+// three small files that compose:
+//   - reactor.js  (this file, ~35 LOC) — the spine: poll + per-row dispatch + result aggregation
+//   - watch.js    (~63 LOC)            — runs the pipeline, diffs vs memory store, decides alert
+//   - sinks.js    (~56 LOC)            — fan-out of intel to Cognee/webhook (best-effort)
+// End-to-end coverage of the spine lives in test/reactor.test.js (8 cases: idle poll,
+// per-row dispatch, deriveTarget hook, sink fan-out, delta detection across polls,
+// severity escalation, broken-sink resilience). Each downstream module has its own tests
+// (test/watch.test.js, test/sinks.test.js).
 import { TriggerWareClient } from "./trigger/index.js";
 import { watchTarget } from "./watch.js";
 

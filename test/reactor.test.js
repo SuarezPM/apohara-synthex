@@ -42,3 +42,76 @@ test("react: deriveTarget por defecto toma row[0] de filas array", async () => {
     assert.equal(results[0].target, "https://vendor.com");
   } finally { rmSync(store.path, { force: true }); }
 });
+
+// ── Audit-2026-05-29 expansion: end-to-end loop coverage per finding #2 ──
+// (visibility test of reactor.js + watch.js + sinks.js as one system)
+
+test("react: deriveTarget hook mapea filas objeto a target arbitrario", async () => {
+  const store = tmpStore();
+  try {
+    const tw = { poll: async () => ({
+      added: [{ domain: "acme.com", note: "pricing" }, { domain: "globex.com", note: "careers" }],
+      deleted: [],
+    }) };
+    const runner = async (t) => ev("h_" + t, 4);
+    const { results } = await react("OBJECTS", {
+      tw, store, runner,
+      deriveTarget: (row) => row.domain,
+      sinks: [],
+    });
+    assert.equal(results[0].target, "acme.com");
+    assert.equal(results[1].target, "globex.com");
+  } finally { rmSync(store.path, { force: true }); }
+});
+
+test("react: cada fila nueva invoca los sinks (act side del loop)", async () => {
+  const store = tmpStore();
+  try {
+    const seen = [];
+    const sink = async (ctx) => seen.push({ target: ctx.target, maxSeverity: ctx.maxSeverity });
+    const tw = { poll: async () => ({ added: [["a.com"], ["b.com"], ["c.com"]], deleted: [] }) };
+    const runner = async (t) => ev("h_" + t, 8, ["s-" + t]);
+    await react("FANOUT", { tw, store, runner, sinks: [sink] });
+    assert.equal(seen.length, 3, "sink fired once per added row");
+    assert.deepEqual(seen.map((s) => s.target).sort(), ["a.com", "b.com", "c.com"]);
+  } finally { rmSync(store.path, { force: true }); }
+});
+
+test("react: segunda corrida sobre la misma fila sin cambios => sin alerta nueva (delta detection)", async () => {
+  const store = tmpStore();
+  try {
+    const tw = { poll: async () => ({ added: [["acme.com"]], deleted: [] }) };
+    const runner = async () => ev("h1", 5, ["price-cut"]);
+    const first = await react("DELTAS", { tw, store, runner, sinks: [] });
+    assert.equal(first.alerts.length, 1, "first run on unseen target => alert");
+    const second = await react("DELTAS", { tw, store, runner, sinks: [] });
+    assert.equal(second.alerts.length, 0, "same row + same signals + no escalation => no alert");
+  } finally { rmSync(store.path, { force: true }); }
+});
+
+test("react: escalada de severidad entre polls => alert.escalated true", async () => {
+  const store = tmpStore();
+  try {
+    const tw = { poll: async () => ({ added: [["vendor.io"]], deleted: [] }) };
+    await react("ESC", { tw, store, runner: async () => ev("h1", 3), sinks: [] });
+    const r = await react("ESC", { tw, store, runner: async () => ev("h2", 9), sinks: [] });
+    assert.equal(r.alerts.length, 1);
+    assert.equal(r.alerts[0].escalated, true);
+    assert.equal(r.alerts[0].maxSeverity, 9);
+  } finally { rmSync(store.path, { force: true }); }
+});
+
+test("react: sink roto NO bloquea el loop (best-effort vía watch.js)", async () => {
+  const store = tmpStore();
+  try {
+    const boom = async () => { throw new Error("sink down"); };
+    const tw = { poll: async () => ({ added: [["a.com"], ["b.com"]], deleted: [] }) };
+    const r = await react("RESILIENT", {
+      tw, store,
+      runner: async (t) => ev("h_" + t, 6),
+      sinks: [boom],
+    });
+    assert.equal(r.results.length, 2, "loop completed despite sink throwing");
+    assert.ok(r.alerts.length >= 1, "alerts still fired for the row(s) that warranted them");
+  } finally { rmSync(store.path, { force: true }); }
+});
