@@ -49,22 +49,9 @@ const MAPPING_ROWS = [
     framework: "MITRE ATLAS AML.T0051 LLM Prompt Injection",
     coverage: "full",
   },
-  {
-    signal: "Adversarial robustness measured on the ingest path",
-    framework: "NIST AI RMF MEASURE 2.5 (MS-2.5)",
-    coverage: "partial",
-  },
-  {
-    signal: "Secret/API-key exfiltration vector in the payload",
-    framework: "OWASP LLM02:2025 Sensitive Information Disclosure",
-    coverage: "partial",
-  },
-  {
-    signal: "Robustness & cybersecurity of the AI system",
-    framework: "EU AI Act 2024/1689 Art 15 · Art 9 risk mgmt",
-    coverage: "partial",
-  },
 ];
+// NIST AI RMF + EU AI Act compliance mapping lives on the General Counsel page (Compliance Trace);
+// the CISO page focuses on the THREAT catalogs (OWASP LLM/Agentic + MITRE ATLAS).
 
 export function pageCISO(doc, ev, ctx = {}) {
   const { payload = {} } = ev;
@@ -82,10 +69,9 @@ export function pageCISO(doc, ev, ctx = {}) {
   // ── 1. The 3-tier ledger ──────────────────────────────────────────────────────
   sectionTitle(doc, "Injection defense — 3 layers, from the sealed decision log");
   body(doc,
-    "Reconstructed from the sealed decisions[]. L1 regex is REVIEW-only on ingest (it never drops a " +
-    "scraped doc — it seals a signal). L2 is an opt-in detector (REVIEW-by-default). L3 AlignmentCheck " +
-    "is the only layer with BLOCK authority — it adjudicates describing-vs-executing before classify.");
-  doc.moveDown(0.5);
+    "Reconstructed from the sealed decisions[]. L1 regex is REVIEW-only (it seals a signal, never drops a " +
+    "doc); L2 is an opt-in detector; L3 AlignmentCheck holds the only BLOCK authority.");
+  doc.moveDown(0.35);
 
   const lx = doc.page.margins.left;
   const ledgerTextW = PAGE.textWidth - 152;
@@ -129,27 +115,27 @@ export function pageCISO(doc, ev, ctx = {}) {
       const accent = isBlock ? PAPER.red : PAPER.green;
       const glyph = isBlock ? "✗" : "✓";
       const tag = isBlock ? "EXECUTING → BLOCK (dropped before classify)" : "DESCRIBING → ALLOW (benign control, kept)";
-      const liveTag = String(r.model_id ?? "").includes("(DEMO STUB)") ? "DEMO STUB" : (r.degraded ? "DEGRADED" : "LIVE");
+      const modelId = String(r.model_id ?? "—");
+      const liveTag = modelId.includes("(DEMO STUB)") ? "DEMO STUB" : (r.degraded ? "DEGRADED" : "LIVE");
+      const modelClean = modelId.replace(/\s*\(DEMO STUB\)\s*/i, "").trim() || "—"; // liveTag already says it
 
-      // verdict line — single line, manual y-step.
+      // verdict line — single line; the provenance below is drawn at a fixed offset.
       const y0 = doc.y;
-      doc.font(FONTS.semibold).fontSize(9).fillColor(accent)
+      doc.font(FONTS.semibold).fontSize(9.5).fillColor(accent)
         .text(`${glyph} ${tag}`, lx, y0, { width: PAGE.textWidth, lineBreak: false });
-      doc.y = y0 + TYPE.tableCell.leading + 1;
 
-      // url + verdict provenance on one line — single line, truncated, manual y-step.
+      // url + verdict provenance — WRAPS (long line), so doc.y advances correctly after.
       const conf = r.confidence != null ? `conf ${r.confidence}` : "conf —";
-      const y1 = doc.y;
       doc.font(FONTS.mono).fontSize(7.5).fillColor(PAPER.muted)
-        .text(`${truncMid(r.url, 40, 16)}  ·  ${liveTag} · ${r.model_id ?? "—"} · ${conf}`,
-          lx, y1, { width: PAGE.textWidth, lineBreak: false });
-      doc.y = y1 + 11;
+        .text(`${truncMid(r.url, 38, 14)}  ·  ${liveTag} · ${modelClean} · ${conf}`,
+          lx, y0 + 16, { width: PAGE.textWidth, lineGap: 1.5 });
 
-      // rationale (truncated for the seal) — this block WRAPS, so read doc.y after.
+      // rationale (truncated for the seal) — wraps; read doc.y after.
+      doc.moveDown(0.3);
       doc.font(FONTS.body).fontSize(8.5).fillColor(PAPER.ink)
-        .text(truncMid(r.rationale, 150, 0), lx, doc.y, { width: PAGE.textWidth });
+        .text(truncMid(r.rationale, 160, 0), lx, doc.y, { width: PAGE.textWidth, lineGap: 2 });
       doc.fillColor(PAPER.ink);
-      doc.moveDown(0.45);
+      doc.moveDown(0.75);
       doc.x = lx;
     }
   }
@@ -167,12 +153,9 @@ export function pageCISO(doc, ev, ctx = {}) {
   doc.x = lx;
 
   // ── 4. STIX 2.1 export reference ────────────────────────────────────────────────
-  doc.moveDown(0.4);
   sectionTitle(doc, "Hand this to your SOC — STIX 2.1 export");
-  body(doc,
-    "The sealed decision log exports as STIX 2.1 bundles (indicator + observed-data SDOs) for your " +
-    "SIEM/TIP:");
-  doc.moveDown(0.35);
+  body(doc, "The sealed decision log exports as STIX 2.1 bundles (indicator SDOs) for your SIEM/TIP:", PAPER.muted);
+  doc.moveDown(0.25);
   codeBox(doc, { theme: PAPER, lines: "synthex stix-export <evidence.json> > incident.stix.json" });
   doc.x = lx;
 }

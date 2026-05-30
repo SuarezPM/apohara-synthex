@@ -17,20 +17,21 @@ export function sectionTitle(doc, text) {
   cSectionTitle(doc, { theme: PAPER, text });
 }
 
-// Key/value line (Phase-1 kv, re-themed to PAPER + Inter).
+// Key/value line (Phase-1 kv, re-themed to PAPER + Inter). Breathing room after each row.
 export function kv(doc, label, value, valueColor) {
   const x = doc.page.margins.left;
   doc.font(FONTS.semibold).fontSize(9.5).fillColor(PAPER.muted)
     .text(label, x, doc.y, { continued: true, width: 170 });
-  doc.font(FONTS.body).fillColor(valueColor ?? PAPER.ink).text(`  ${value}`);
+  doc.font(FONTS.body).fillColor(valueColor ?? PAPER.ink).text(`  ${value}`, { lineGap: 1.5 });
   doc.x = x;
+  doc.moveDown(0.15);
 }
 
-// Interior body paragraph at the standard body type.
+// Interior body paragraph at the standard body type. lineGap opens the leading for readability.
 export function body(doc, text, color) {
   doc.x = doc.page.margins.left;
   doc.font(FONTS.body).fontSize(TYPE.body.size).fillColor(color ?? PAPER.ink)
-    .text(text, doc.page.margins.left, doc.y, { width: PAGE.textWidth });
+    .text(text, doc.page.margins.left, doc.y, { width: PAGE.textWidth, lineGap: 2 });
   doc.x = doc.page.margins.left;
 }
 

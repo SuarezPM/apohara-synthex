@@ -62,7 +62,9 @@ export function drawFooters(doc, { theme, registry }) {
   for (let i = 0; i < total; i++) {
     doc.switchToPage(i);
     doc.page.margins.bottom = 0;
-    const meta = byIndex.get(i) ?? { reportId: reportIdOf(""), dark: false };
+    // Spilled/auto-paginated pages are not in the registry; default them to the REPORT's id
+    // (every registered entry shares it) so a spill never shows SYNTHEX-EVR-00000000.
+    const meta = byIndex.get(i) ?? { reportId: registry[0]?.reportId ?? reportIdOf(""), dark: false };
     // Cover: a branded full-bleed dark footer band (wordmark + tagline + id + page).
     if (meta.cover) {
       const fH = 38;
@@ -105,14 +107,15 @@ function setType(doc, t) {
 // ── sectionTitle: interior section heading with a hairline underline ───────────
 export function sectionTitle(doc, { theme, text }) {
   doc.x = doc.page.margins.left;
+  doc.moveDown(0.25); // air ABOVE each section heading separates sections clearly
   setType(doc, TYPE.sectionTitle);
   doc.fillColor(theme.ink).text(text, doc.page.margins.left, doc.y, {
     width: PAGE.textWidth, characterSpacing: TYPE.sectionTitle.tracking,
   });
-  doc.moveTo(doc.page.margins.left, doc.y + 2)
-    .lineTo(doc.page.width - doc.page.margins.right, doc.y + 2)
+  doc.moveTo(doc.page.margins.left, doc.y + 3)
+    .lineTo(doc.page.width - doc.page.margins.right, doc.y + 3)
     .strokeColor(theme.rule).lineWidth(0.5).stroke();
-  doc.moveDown(0.7);
+  doc.moveDown(0.72); // and air BELOW before the body
   doc.x = doc.page.margins.left;
 }
 
@@ -156,7 +159,7 @@ export function table(doc, { theme, columns, rows, onNewPage }) {
     const hy = hy0 + TYPE.tableHeader.leading - 2;
     doc.moveTo(left, hy).lineTo(left + cols.reduce((a, c) => a + c.width, 0), hy)
       .strokeColor(theme.ink).lineWidth(1).stroke();
-    doc.y = hy + 4;
+    doc.y = hy + 5;
     doc.x = left;
   };
 
@@ -174,7 +177,7 @@ export function table(doc, { theme, columns, rows, onNewPage }) {
       const h = doc.heightOfString(cellTexts[i], { width: c.width - cellPadX * 2 });
       rowH = Math.max(rowH, h);
     });
-    rowH = Math.max(rowH, TYPE.tableCell.leading) + 4;
+    rowH = Math.max(rowH, TYPE.tableCell.leading) + 5;
 
     // paginate if this row would cross the footer band.
     if (doc.y + rowH > footerTop) {
@@ -192,8 +195,9 @@ export function table(doc, { theme, columns, rows, onNewPage }) {
     cols.forEach((c, i) => {
       const mono = c.mono || c.align === "right";
       doc.font(mono ? FONTS.mono : FONTS.body).fontSize(TYPE.tableCell.size).fillColor(theme.ink);
-      doc.text(cellTexts[i], cx + cellPadX, rowY + 1, {
+      doc.text(cellTexts[i], cx + cellPadX, rowY + 3, {
         width: c.width - cellPadX * 2, align: c.align === "right" ? "right" : "left",
+        lineGap: 1.5,
       });
       cx += c.width;
     });
@@ -265,6 +269,7 @@ export function sealBlock(doc, { theme, seal, contentHash, c2paSidecar, rekorBun
         .text(value, left + 122, y, { width: width - 122 });
     }
     doc.x = left;
+    doc.y += 2; // breathing room between seal rows
   }
   doc.x = left;
 }
@@ -277,16 +282,25 @@ export function ragRow(doc, { theme, label, status, detail, labelWidth = 200 }) 
   const glyph = RAG_GLYPH[status] ?? "•";
   const statusText = status === "green" ? "OK" : status === "amber" ? "PARTIAL" : "FAIL";
   const y = doc.y;
+  const labelX = left + 92;
+  const detailX = labelX + labelWidth + 10;
   setType(doc, TYPE.tableCell);
+  // status chip (single line, fixed column)
   doc.font(FONTS.monoBold).fillColor(color).text(`${glyph} ${statusText}`, left, y, { width: 86, lineBreak: false });
+  // control label — WRAPS within its column (no clip), drawn from the same top y
   doc.font(FONTS.body).fontSize(TYPE.tableCell.size).fillColor(theme.ink)
-    .text(label, left + 92, y, { width: labelWidth, lineBreak: false });
+    .text(label, labelX, y, { width: labelWidth, lineGap: 1.5 });
+  const labelBottom = doc.y;
+  // citation/detail — WRAPS in the remaining column, drawn from the same top y
+  let detailBottom = y;
   if (detail) {
     doc.font(FONTS.body).fontSize(TYPE.tableCell.size).fillColor(theme.muted)
-      .text(detail, left + 92 + labelWidth, y, { width: PAGE.textWidth - 92 - labelWidth });
+      .text(detail, detailX, y, { width: PAGE.textWidth - (detailX - left), lineGap: 1.5 });
+    detailBottom = doc.y;
   }
   doc.x = left;
-  doc.moveDown(0.4);
+  doc.y = Math.max(labelBottom, detailBottom); // advance past the TALLER of label/detail
+  doc.moveDown(0.42);
 }
 
 // ── codeBox: INTERIOR light tinted box (#f0f0ec) + hairline + Mono ink (printable) ──

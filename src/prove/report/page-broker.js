@@ -85,9 +85,10 @@ export function pageBroker(doc, ev, ctx = {}) {
     .text(`${leadGlyph} CVSS ${Number(r.maxSev).toFixed(1)} / 10 · ${leadBand}`, left, ly, { width: 180, lineBreak: false });
   doc.font(FONTS.body).fontSize(9).fillColor(PAPER.muted)
     .text("CVSS axis is the worst single finding; the 0–100 composite above is a separate blend.",
-      left + 188, ly, { width: PAGE.textWidth - 188 });
+      left + 188, ly, { width: PAGE.textWidth - 188, lineGap: 2 });
+  const capBottom = doc.y; // the caption wraps → advance past whichever is taller
   doc.x = left;
-  doc.y = ly + 18;
+  doc.y = Math.max(ly + 20, capBottom) + 8;
   // Band-matched verdict, rendered verbatim from the SEALED payload (a verifier recomputes it).
   doc.font(FONTS.semibold).fontSize(10).fillColor(leadColor).text(out.verdict, left, doc.y, { width: PAGE.textWidth });
   doc.x = left;
