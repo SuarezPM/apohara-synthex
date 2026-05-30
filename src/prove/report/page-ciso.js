@@ -1,73 +1,178 @@
-// PROVE/report/page-ciso — CISO Security Briefing (interior, light). Phase-1 body MOVED here,
-// re-themed to PAPER + components. Logic unchanged: FORGE pre-LLM blocks (OWASP-mapped) + the
-// 3-tier injection-defense ledger from sealed decisions[] + per-lens classification severity.
-// Phase 2b splits this into Data-BOM + Security Briefing; for now it renders light + printable.
-import { PAPER, FONTS, PAGE } from "./theme.js";
-import { pageOpen, sectionTitle, body, sevColor, owaspOf, allRows } from "./interior.js";
+// PROVE/report/page-ciso — CISO Security Briefing (interior, light paper). Phase-2b rebuild on
+// the PAPER design system + shared components. The page reads ONLY the sealed evidence object —
+// every row is reconstructed from payload.decisions[], so a verifier could recompute it.
+//
+// What it shows, honestly:
+//   1. the 3-tier injection-defense ledger (L1 regex REVIEW-only · L2 injection-guard opt-in ·
+//      L3 alignment-check — the only BLOCK authority post-D5), each row LIVE/DEGRADED/DEMO STUB.
+//   2. the L3 describing-vs-executing adjudication: the flagged content (executing → BLOCK) vs
+//      the benign control (an OWASP doc that DESCRIBES injection → correctly ALLOW). This is the
+//      false-positive killer — describing/teaching an attack is not executing it.
+//   3. a per-signal MAPPING table to OWASP LLM Top 10 2025 + OWASP Agentic ASI + MITRE ATLAS +
+//      NIST AI RMF, with the full/partial/none coverage legend (mapping, not endorsement).
+//   4. a one-line STIX 2.1 export reference for SOC ingestion.
+//
+// PDFKit pitfall honored: single-line draws (lineBreak:false) STEP doc.y manually by a fixed
+// amount; only wrapping blocks (body/table/codeBox) read doc.y afterwards. Tables NEVER overflow
+// (the shared table()/mappingTable() measure → grow → paginate).
+import { PAPER, FONTS, TYPE, PAGE } from "./theme.js";
+import { pageOpen, sectionTitle, body } from "./interior.js";
+import { truncMid, mappingTable, codeBox } from "./components.js";
 import { guardLedger } from "./guard-ledger.js";
+
+// Mode → RAG-ish accent for a ledger row. LIVE green · DEGRADED amber · DEMO STUB violet ·
+// not-run muted. Color is paired with the literal mode text below (a11y: never color alone).
+const modeColor = (m) =>
+  m === "LIVE" ? PAPER.green
+    : m.startsWith("DEGRADED") ? PAPER.amber
+      : m.startsWith("DEMO") ? PAPER.violet
+        : PAPER.muted;
+
+// Per-signal framework mapping for an indirect prompt-injection caught in scraped HTML. EXACT
+// citations from the verified research pack (OWASP LLM Top 10 2025 · OWASP Agentic ASI Top 10 ·
+// MITRE ATLAS · NIST AI RMF · EU AI Act 2024/1689). Coverage uses the honest legend: full =
+// pack-validated AND policy-covered · partial = one signal · none = none. Every mapping is an
+// aid, NOT an endorsement — no body reviewed these.
+const MAPPING_ROWS = [
+  {
+    signal: "Indirect prompt injection in scraped HTML (executing) — L3 BLOCK",
+    framework: "OWASP LLM01:2025 Prompt Injection (Indirect)",
+    coverage: "full",
+  },
+  {
+    signal: "Agent instructed to exfiltrate secrets via a tool call",
+    framework: "OWASP ASI01 Agent Goal Hijack · ASI02 Tool Misuse",
+    coverage: "full",
+  },
+  {
+    signal: "LLM-targeted injection technique (adversarial input)",
+    framework: "MITRE ATLAS AML.T0051 LLM Prompt Injection",
+    coverage: "full",
+  },
+  {
+    signal: "Adversarial robustness measured on the ingest path",
+    framework: "NIST AI RMF MEASURE 2.5 (MS-2.5)",
+    coverage: "partial",
+  },
+  {
+    signal: "Secret/API-key exfiltration vector in the payload",
+    framework: "OWASP LLM02:2025 Sensitive Information Disclosure",
+    coverage: "partial",
+  },
+  {
+    signal: "Robustness & cybersecurity of the AI system",
+    framework: "EU AI Act 2024/1689 Art 15 · Art 9 risk mgmt",
+    coverage: "partial",
+  },
+];
 
 export function pageCISO(doc, ev, ctx = {}) {
   const { payload = {} } = ev;
-  const blocked = payload.blocked ?? [];
-  pageOpen(doc, { persona: "● Security Briefing · for CISO", title: "Threats screened before the model", reportId: ctx.reportId, registry: ctx.registry });
-  sectionTitle(doc, "Threats blocked by FORGE (pre-LLM)");
+  const decisions = Array.isArray(payload.decisions) ? payload.decisions : [];
+  const ledger = guardLedger(decisions);
+  const l3 = decisions.filter((d) => d.stage === "ALIGNMENT_CHECK");
 
+  pageOpen(doc, {
+    persona: "● Security Briefing · for CISO",
+    title: "Three layers screen what your agents ingest",
+    reportId: ctx.reportId,
+    registry: ctx.registry,
+  });
+
+  // ── 1. The 3-tier ledger ──────────────────────────────────────────────────────
+  sectionTitle(doc, "Injection defense — 3 layers, from the sealed decision log");
   body(doc,
-    "FORGE flags injection and exfiltration vectors before the LLM; high-confidence hits are BLOCKED, " +
-    "the rest are REVIEW-flagged (fail-safe: scraped docs are not silently dropped). It is a " +
-    "deterministic regex pre-filter that runs BEFORE any LLM call; categories are mapped to their " +
-    "OWASP reference class. The pre-filter is heuristic, not formally verified.");
-  doc.moveDown(0.7);
-
-  if (!blocked.length) {
-    doc.font(FONTS.semibold).fontSize(11).fillColor(PAPER.green).text("No malicious content detected in this batch.");
-    doc.font(FONTS.body).fontSize(9).fillColor(PAPER.muted).moveDown(0.3)
-      .text("All fetched sources passed the FORGE pre-filter and were forwarded to classification.");
-    doc.fillColor(PAPER.ink);
-  } else {
-    const x = doc.page.margins.left;
-    doc.font(FONTS.mono).fontSize(8).fillColor(PAPER.muted);
-    doc.text("OWASP", x, doc.y, { continued: true, width: 90 });
-    doc.text("CATEGORY", { continued: true, width: 230 });
-    doc.text("SEVERITY", { continued: false });
-    doc.moveTo(x, doc.y + 1).lineTo(doc.page.width - doc.page.margins.right, doc.y + 1).strokeColor(PAPER.rule).lineWidth(0.5).stroke();
-    doc.moveDown(0.4);
-    for (const b of blocked) {
-      const o = owaspOf(b.reason);
-      doc.font(FONTS.semibold).fontSize(9).fillColor(PAPER.ink).text(o.code, x, doc.y, { continued: true, width: 90 });
-      doc.font(FONTS.body).text(o.name, { continued: true, width: 230 });
-      doc.font(FONTS.semibold).fillColor(sevColor(o.sev)).text(`${o.sev}/10  BLOCKED`, { continued: false });
-      doc.fillColor(PAPER.muted).font(FONTS.body).fontSize(7.5).text(b.url ?? "—").fillColor(PAPER.ink).moveDown(0.4);
-    }
-  }
-
-  // 3-tier defense ledger — honestly labeled per row from the SEALED payload.decisions[].
+    "Reconstructed from the sealed decisions[]. L1 regex is REVIEW-only on ingest (it never drops a " +
+    "scraped doc — it seals a signal). L2 is an opt-in detector (REVIEW-by-default). L3 AlignmentCheck " +
+    "is the only layer with BLOCK authority — it adjudicates describing-vs-executing before classify.");
   doc.moveDown(0.5);
-  sectionTitle(doc, "3-tier injection defense (from sealed decisions)");
-  const modeColor = (m) => m === "LIVE" ? PAPER.green : m.startsWith("DEGRADED") ? PAPER.amber : m.startsWith("DEMO") ? PAPER.violet : PAPER.muted;
+
   const lx = doc.page.margins.left;
-  for (const led of guardLedger(payload.decisions)) {
+  const ledgerTextW = PAGE.textWidth - 152;
+  for (const led of ledger) {
     const rowY = doc.y;
-    doc.font(FONTS.semibold).fontSize(9).fillColor(modeColor(led.mode)).text(led.mode, lx, rowY, { width: 140, lineBreak: false });
-    doc.fillColor(PAPER.ink).text(led.tier, lx + 150, rowY, { width: 150, lineBreak: false });
-    doc.font(FONTS.body).fillColor(PAPER.muted).fontSize(8).text(led.detail, lx + 150, rowY + 11, { width: PAGE.textWidth - 150 });
-    doc.fillColor(PAPER.ink).moveDown(0.5);
+    // mode badge + tier: single-line draws at the PINNED rowY (PDFKit advances doc.y after a
+    // lineBreak:false draw, so never read doc.y between these — draw both at rowY).
+    doc.font(FONTS.semibold).fontSize(9).fillColor(modeColor(led.mode))
+      .text(led.mode, lx, rowY, { width: 148, lineBreak: false });
+    doc.font(FONTS.semibold).fontSize(9).fillColor(PAPER.ink)
+      .text(led.tier, lx + 152, rowY, { width: ledgerTextW, lineBreak: false });
+    // detail wraps under the tier label; this is the only block that reads doc.y for height.
+    const detailY = rowY + 12;
+    doc.font(FONTS.body).fontSize(8).fillColor(PAPER.muted)
+      .text(led.detail, lx + 152, detailY, { width: ledgerTextW, lineGap: 1 });
+    doc.fillColor(PAPER.ink);
+    // doc.y now sits below the wrapped detail; clear, fixed air before the next row so the
+    // mode badge of the next tier can never collide with this detail.
+    doc.y = Math.max(doc.y, detailY + 10) + 6;
+    doc.x = lx;
   }
   doc.x = lx;
 
-  doc.moveDown(0.5);
-  sectionTitle(doc, "Classification severity (per lens)");
-  const rows = allRows(payload.findings ?? []);
-  if (!rows.length) {
-    doc.font(FONTS.body).fontSize(9).fillColor(PAPER.muted).text("No findings classified.").fillColor(PAPER.ink);
+  // ── 2. L3 describing-vs-executing — catch + benign control ──────────────────────
+  doc.moveDown(0.2);
+  sectionTitle(doc, "L3 verdict — describing vs executing (the false-positive killer)");
+
+  if (!l3.length) {
+    body(doc,
+      "No document entered the REVIEW band carrying an injection signal in this batch, so L3 had " +
+      "nothing to adjudicate. Describing-vs-executing only runs on the bounded injection subset — " +
+      "never in bulk.", PAPER.muted);
+  } else {
+    body(doc,
+      "L3 answers one question — does the scraped text DESCRIBE an attack (documentation) or INSTRUCT " +
+      "the reading agent to EXECUTE one? Executing is dropped before classify; describing is kept:");
+    doc.moveDown(0.45);
+
+    for (const r of l3) {
+      const isBlock = r.outcome === "BLOCK";
+      const accent = isBlock ? PAPER.red : PAPER.green;
+      const glyph = isBlock ? "✗" : "✓";
+      const tag = isBlock ? "EXECUTING → BLOCK (dropped before classify)" : "DESCRIBING → ALLOW (benign control, kept)";
+      const liveTag = String(r.model_id ?? "").includes("(DEMO STUB)") ? "DEMO STUB" : (r.degraded ? "DEGRADED" : "LIVE");
+
+      // verdict line — single line, manual y-step.
+      const y0 = doc.y;
+      doc.font(FONTS.semibold).fontSize(9).fillColor(accent)
+        .text(`${glyph} ${tag}`, lx, y0, { width: PAGE.textWidth, lineBreak: false });
+      doc.y = y0 + TYPE.tableCell.leading + 1;
+
+      // url + verdict provenance on one line — single line, truncated, manual y-step.
+      const conf = r.confidence != null ? `conf ${r.confidence}` : "conf —";
+      const y1 = doc.y;
+      doc.font(FONTS.mono).fontSize(7.5).fillColor(PAPER.muted)
+        .text(`${truncMid(r.url, 40, 16)}  ·  ${liveTag} · ${r.model_id ?? "—"} · ${conf}`,
+          lx, y1, { width: PAGE.textWidth, lineBreak: false });
+      doc.y = y1 + 11;
+
+      // rationale (truncated for the seal) — this block WRAPS, so read doc.y after.
+      doc.font(FONTS.body).fontSize(8.5).fillColor(PAPER.ink)
+        .text(truncMid(r.rationale, 150, 0), lx, doc.y, { width: PAGE.textWidth });
+      doc.fillColor(PAPER.ink);
+      doc.moveDown(0.45);
+      doc.x = lx;
+    }
   }
-  for (const r of rows) {
-    doc.x = doc.page.margins.left;
-    doc.font(FONTS.semibold).fontSize(9.5).fillColor(sevColor(r.severity ?? 0))
-      .text(`[${String(r.lens ?? "").toUpperCase()}]  severity ${r.severity ?? 0}/10`);
-    doc.font(FONTS.body).fontSize(9).fillColor(PAPER.ink).text(r.summary ?? "");
-    if (r.signals?.length) doc.fontSize(7.5).fillColor(PAPER.muted).text(`signals: ${r.signals.join(" · ")}`).fillColor(PAPER.ink);
-    doc.moveDown(0.4);
-  }
-  doc.x = doc.page.margins.left;
+  doc.x = lx;
+
+  // ── 3. Per-signal framework mapping ─────────────────────────────────────────────
+  doc.moveDown(0.2);
+  sectionTitle(doc, "Signal → framework mapping (mapping aid, not endorsement)");
+  body(doc,
+    "An indirect injection caught in scraped HTML maps across the LLM/agentic threat catalogs. " +
+    "No standards body reviewed these mappings — they are a good-faith aid for your control matrix.",
+    PAPER.muted);
+  doc.moveDown(0.4);
+  mappingTable(doc, { theme: PAPER, rows: MAPPING_ROWS });
+  doc.x = lx;
+
+  // ── 4. STIX 2.1 export reference ────────────────────────────────────────────────
+  doc.moveDown(0.4);
+  sectionTitle(doc, "Hand this to your SOC — STIX 2.1 export");
+  body(doc,
+    "The sealed decision log exports as STIX 2.1 bundles (indicator + observed-data SDOs) for your " +
+    "SIEM/TIP:");
+  doc.moveDown(0.35);
+  codeBox(doc, { theme: PAPER, lines: "synthex stix-export <evidence.json> > incident.stix.json" });
+  doc.x = lx;
 }
