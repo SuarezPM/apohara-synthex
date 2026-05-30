@@ -80,9 +80,12 @@ export function riskScoreWeighted(evidence, epssMap) {
   const base = riskScore(evidence);
   if (!(epssMap instanceof Map) || epssMap.size === 0) return { ...base, weighted: false };
   const rows = allRows(evidence?.payload?.findings ?? []);
-  // The row that produced maxSev drives the base score; weight by ITS CVEs' EPSS.
-  const top = rows.filter((r) => (Number(r.severity) || 0) === base.maxSev)[0] ?? null;
-  const { factor, epss, cve } = epssWeight(epssMap, top ? cveIdsFromFinding(top) : []);
+  // The maxSev band drives the base score; weight by the CVEs of ALL findings tied at maxSev
+  // (not just the first) so the most-exploitable CVE wins per the epss.js contract.
+  const topCves = rows
+    .filter((r) => (Number(r.severity) || 0) === base.maxSev)
+    .flatMap((r) => cveIdsFromFinding(r));
+  const { factor, epss, cve } = epssWeight(epssMap, topCves);
   if (epss === null) return { ...base, weighted: false }; // maxSev finding names no in-map CVE
   const weightedMaxSev = Math.min(10, base.maxSev * factor);
   const blockTerm = (Math.min(base.blocked, 5) / 5) * 10;
@@ -162,7 +165,7 @@ function pageExecutiveSummary(doc, ev, qrPng) {
     .text(`HMAC-SHA256  : ${seal.hmacSha256 ?? "—"}`, { width: 360 })
     .text(`Seal method  : ${seal.method ?? "—"}`);
   if (tsa) {
-    doc.text(`RFC 3161 TSA : ${tsa.authority} (${tsa.standard})`)
+    doc.text(`RFC 3161 TSA : ${tsa.authority ?? "DigiCert"} (${tsa.standard})`)
       .text(`  genTime    : ${tsa.genTime ?? "—"}`)
       .text(`  serial     : ${tsa.serial ?? "—"}`);
   } else {
@@ -296,7 +299,7 @@ function pageCounsel(doc, ev) {
     ["Pre-processing log", `${(payload.blocked ?? []).length} block(s) by FORGE pre-filter, with category`, true],
     ["Classification output", `${(payload.findings ?? []).length} finding record(s) retained`, (payload.findings ?? []).length > 0],
     ["Integrity of records", `HMAC-SHA256 over canonical payload (${seal.hmacSha256 ? "present" : "absent"})`, !!seal.hmacSha256],
-    ["Timekeeping (independent)", tsa ? `RFC 3161 TSA — ${tsa.authority}, ${tsa.genTime ?? "—"}` : "HMAC-only (no third-party time source)", !!tsa],
+    ["Timekeeping (independent)", tsa ? `RFC 3161 TSA — ${tsa.authority ?? "DigiCert"}, ${tsa.genTime ?? "—"}` : "HMAC-only (no third-party time source)", !!tsa],
     ["Tamper-evidence", `SHA-256 content hash: ${(contentHash ?? "").slice(0, 24)}…`, !!contentHash],
     ["Record timestamp", sealedAt ?? "—", !!sealedAt],
   ];

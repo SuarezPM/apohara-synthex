@@ -157,3 +157,14 @@ test("pdf: render con opts.epssMap sigue produciendo un PDF válido (la línea e
   const buf = await buildPDFReport(ev, { epssMap: new Map([["CVE-2021-44228", { epss: 0.94 }]]) });
   assertIsPdf(buf);
 });
+
+test("riskScoreWeighted: CVE en un finding empatado en maxSev (NO el primero) igual pondera (fix tied-maxSev)", () => {
+  const ev = baseEvidence();
+  ev.payload.findings = [
+    { url: "a", lens: "security", severity: 9, summary: "generic breach", signals: ["breach"] },
+    { url: "b", lens: "security", severity: 9, summary: "Log4Shell CVE-2021-44228", signals: ["CVE-2021-44228"] },
+  ];
+  const w = riskScoreWeighted(ev, new Map([["CVE-2021-44228", { epss: 0.94 }]]));
+  assert.equal(w.weighted, true, "el CVE del 2do finding empatado en maxSev debe ponderar (most-exploitable wins)");
+  assert.equal(w.cve, "CVE-2021-44228");
+});
