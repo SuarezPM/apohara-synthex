@@ -423,6 +423,9 @@ function pageCounsel(doc, ev) {
     doc.fillColor(COLORS.ink).moveDown(0.4);
   }
 
+  // The trace-row loop left doc.x at the detail column (cx+198); reset to the left margin so the
+  // closing disclaimer renders at full text width instead of overflowing off the right page edge.
+  doc.x = doc.page.margins.left;
   doc.moveDown(0.5);
   doc.font("Helvetica-Oblique").fontSize(8).fillColor(COLORS.muted).text(
     "This is an evidentiary record, not legal advice. Mapping to Article 12 is provided as a " +
