@@ -227,9 +227,10 @@ function pageCISO(doc, ev) {
   sectionTitle(doc, "Threats blocked by FORGE (pre-LLM)");
 
   doc.font("Helvetica").fontSize(10).fillColor(COLORS.ink).text(
-    "FORGE is a deterministic regex pre-filter that runs BEFORE any LLM call. It blocks injection " +
-    "and exfiltration vectors so they never reach (or poison) the model. Categories are mapped to " +
-    "their OWASP reference class. The pre-filter is heuristic, not formally verified.",
+    "FORGE flags injection and exfiltration vectors before the LLM; high-confidence hits are BLOCKED, " +
+    "the rest are REVIEW-flagged (fail-safe: scraped docs are not silently dropped). It is a " +
+    "deterministic regex pre-filter that runs BEFORE any LLM call; categories are mapped to their " +
+    "OWASP reference class. The pre-filter is heuristic, not formally verified.",
     { width: doc.page.width - 100 }).moveDown(0.8);
 
   if (!blocked.length) {
