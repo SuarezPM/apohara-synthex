@@ -246,7 +246,7 @@ The pitch *is* honesty — so it applies to us too. **Canonical caveats live in 
 <div align="center">
 
 **We proposed an upstream improvement to Bright Data.**
-[`brightdata-mcp` PR #140](https://github.com/brightdata/brightdata-mcp/pull/140) (dedup + field filtering) — **open, awaiting review**, not yet merged. See [`docs/CONTRIBUTION.md`](docs/CONTRIBUTION.md).
+[`brightdata-mcp` PR #140](https://github.com/brightdata/brightdata-mcp/pull/140) (dedup + field filtering) — an **open PR, not merged** (awaiting review; framed as PR-shaped, not as a landed feature). See [`docs/CONTRIBUTION.md`](docs/CONTRIBUTION.md).
 
 MIT © 2026 Pablo M. Suárez · [Apohara]
 
