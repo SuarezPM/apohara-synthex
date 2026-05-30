@@ -41,7 +41,11 @@
     "bench:djl": "node test/djl-latency.bench.js",
     "start": "node server.js",
     "lint:slides": "node scripts/lint-slides-citations.mjs",
-    "lint:spotlight": "node scripts/lint-spotlight.mjs"
+    "lint:spotlight": "node scripts/lint-spotlight.mjs",
+    "gen:hero": "node scripts/gen-hero-report.mjs",
+    "guard:fp": "node scripts/measure-guard-fp.mjs",
+    "guard:recall": "node scripts/measure-guard-recall.mjs",
+    "l3:recall": "node scripts/measure-l3-recall.mjs"
   },
   "keywords": [
     "mcp",
