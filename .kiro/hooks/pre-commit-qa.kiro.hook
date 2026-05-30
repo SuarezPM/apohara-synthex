@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Pre-commit QA",
+  "description": "When the agent stops, re-run the full suite (npm test = node --test) before a commit. agentStop is the ONLY honest approximation of 'pre-commit' — Kiro has NO native gitCommit/onCommit event, so this hook does NOT claim a git trigger (R8.4). For a true git pre-commit gate, install an external .git/hooks/pre-commit outside Kiro; the headless CLI QA-buddy (.kiro/agents/synthex-qa.json) is the complementary CLI path.",
+  "version": 1,
+  "when": {
+    "type": "agentStop",
+    "patterns": []
+  },
+  "then": {
+    "type": "shellCommand",
+    "command": "npm test"
+  }
+}

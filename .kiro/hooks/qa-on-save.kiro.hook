@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "QA on save",
+  "description": "When a non-test source file under src/ is saved, run the built-in test suite (node --test) and the dependency audit (npm audit) so a regression or a new advisory is flagged at save time. shellCommand (free + deterministic) per R8.5; the fp-gate step is added once P1.2 ships its measure script (R8.1).",
+  "version": 1,
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.js",
+      "!**/*.test.js"
+    ]
+  },
+  "then": {
+    "type": "shellCommand",
+    "command": "node --test && npm audit"
+  }
+}

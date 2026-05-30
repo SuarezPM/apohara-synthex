@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Report integrity",
+  "description": "When report source under src/prove/report/ is saved, reproducibly regenerate the HERO Evidence Report from the committed sidecars. scripts/gen-hero-report.mjs exits non-zero if the Ed25519 seal is absent, or if the Rekor logIndex / C2PA sidecar row would render DARK (a seal row going dark = empty theatre). Catches a report-source edit that silently drops a seal field (R8.2).",
+  "version": 1,
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/prove/report/**/*.js"
+    ]
+  },
+  "then": {
+    "type": "shellCommand",
+    "command": "node scripts/gen-hero-report.mjs"
+  }
+}

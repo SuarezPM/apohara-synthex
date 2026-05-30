@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Seal verify smoke",
+  "description": "When the seal engine (src/prove/**) or an emitted evidence artifact is saved, run the offline verifier on a committed sample. node bin/decode-evidence.js re-checks hash + HMAC + RFC 3161 TSA (CMS chain vs pinned DigiCert) and the Ed25519 layer when present, exiting non-zero on a broken seal. NOTE (honest scope): this is the in-repo offline verifier; the external 3-way (openssl ts / c2patool / rekor) of design R8.3 is a roadmap binary not wired into this repo's command set yet.",
+  "version": 1,
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/prove/**/*.js",
+      "samples/*-evidence*.json"
+    ]
+  },
+  "then": {
+    "type": "shellCommand",
+    "command": "node bin/decode-evidence.js samples/synthex-evidence-report.json"
+  }
+}
