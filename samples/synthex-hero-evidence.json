@@ -1,0 +1,292 @@
+{
+  "payload": {
+    "schema_version": 3,
+    "target": "https://globalretail-intel.example/q3-briefing",
+    "lens": "all",
+    "fetchedAt": "2026-05-30T21:45:53.315Z",
+    "sources": [
+      "https://globalretail-intel.example/q3-briefing",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Prompt_Injection_Prevention.html",
+      "https://meridian-logistics.example/investors/q3"
+    ],
+    "dedup": {
+      "uniqueBlocks": 3,
+      "duplicateBlocks": 0,
+      "bytesSaved": 0,
+      "dedupRatio": 0
+    },
+    "blocked": [],
+    "findings": [
+      {
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Prompt_Injection_Prevention.html",
+        "contentHash": "36ebe72544facca98d126909eefb76f3b2ef8867f23b6c94dcbc009e27261797",
+        "trilens": {
+          "gtm": {
+            "lens": "gtm",
+            "severity": 1,
+            "summary": "OWASP published a cheat sheet on prompt injection prevention, highlighting the technique for defensive awareness but not providing attack instructions.",
+            "signals": [
+              "Security community focus on prompt injection risks",
+              "Potential for increased demand for secure AI/LLM implementations"
+            ],
+            "truncated": false,
+            "charsSeen": 310
+          },
+          "finance": {
+            "lens": "finance",
+            "severity": 0,
+            "summary": "Content discusses prompt injection prevention and is unrelated to finance or market intelligence.",
+            "signals": [],
+            "truncated": false,
+            "charsSeen": 310
+          },
+          "security": {
+            "lens": "security",
+            "severity": 4,
+            "summary": "OWASP's cheat sheet describes prompt injection risks and defensive measures for awareness. It documents an example payload found in the wild.",
+            "signals": [
+              "Prompt injection",
+              "Security awareness",
+              "OWASP cheat sheet"
+            ],
+            "truncated": false,
+            "charsSeen": 310
+          },
+          "supply-chain": {
+            "lens": "supply-chain",
+            "severity": 0,
+            "summary": "The content discusses prompt injection prevention in cybersecurity, which is unrelated to supply chain disruptions such as supplier failures or logistics issues.",
+            "signals": [],
+            "truncated": false,
+            "charsSeen": 310
+          }
+        }
+      },
+      {
+        "url": "https://meridian-logistics.example/investors/q3",
+        "contentHash": "841296d14334f5eef55eed1dc0cf64681f53787b22a4b8f2009ddfd71811ad06",
+        "trilens": {
+          "gtm": {
+            "lens": "gtm",
+            "severity": 6,
+            "summary": "Meridian Logistics raised Q3 revenue guidance to $480M and announced a new EU distribution hub in Rotterdam, but flagged vendor concentration risk with a single APAC freight partner under review.",
+            "signals": [
+              "Revenue guidance raised to $480M",
+              "New EU distribution hub opening in Rotterdam in November",
+              "Vendor concentration risk with APAC freight partner under review"
+            ],
+            "truncated": false,
+            "charsSeen": 218
+          },
+          "finance": {
+            "lens": "finance",
+            "severity": 4,
+            "summary": "Meridian Logistics raised Q3 revenue guidance to $480M and announced a new EU distribution hub in Rotterdam, but a vendor concentration risk with a single APAC freight partner is under review.",
+            "signals": [
+              "Revenue guidance raised to $480M",
+              "New EU distribution hub opens in Rotterdam",
+              "Vendor concentration risk with single APAC freight partner"
+            ],
+            "truncated": false,
+            "charsSeen": 218
+          },
+          "security": {
+            "lens": "security",
+            "severity": 3,
+            "summary": "CFO highlights vendor concentration risk with a single APAC freight partner under review, potentially impacting supply chain security.",
+            "signals": [
+              "Vendor concentration risk",
+              "APAC freight partner under review"
+            ],
+            "truncated": false,
+            "charsSeen": 218
+          },
+          "supply-chain": {
+            "lens": "supply-chain",
+            "severity": 5,
+            "summary": "Meridian Logistics raises Q3 revenue guidance but CFO flags vendor concentration risk with a single APAC freight partner under review.",
+            "signals": [
+              "Vendor concentration risk with single APAC freight partner under review"
+            ],
+            "truncated": false,
+            "charsSeen": 218
+          }
+        }
+      }
+    ],
+    "questions": [
+      "Which of the 2 classified source(s) most changes our all exposure, and who owns the response?",
+      "Do the surfaced signals cross our escalation threshold under the all policy?",
+      "Is the sealed evidence (hash + timestamp + signature) sufficient to defend the highest-severity finding in an audit?"
+    ],
+    "verdict": "MEDIUM RISK — max severity 6/10 across 2 classified source(s); lead signal: Revenue guidance raised to $480M.",
+    "tokens_saved": {
+      "dedup_bytes": 0,
+      "blocked_bytes": 0,
+      "total_bytes": 0,
+      "estimated_tokens": 0,
+      "chars_per_token": 4,
+      "note": "Estimated assuming 4 chars/token; actual depends on tokenizer (GPT-4 cl100k ~4.2, Claude ~3.8)"
+    },
+    "policy_bundle_version": {
+      "djl": "djl-v1-7c28e3783f10",
+      "prefilter": "prefilter-v3-9c2c9b3d8c7e",
+      "injectionGuard": "guard-v1-dd7c7e8b1d4c"
+    },
+    "decisions": [
+      {
+        "stage": "DJL",
+        "url": "https://globalretail-intel.example/q3-briefing",
+        "contentHash": "2b94c19edbf98dcdb4d6697feebd290a2b76ed57dd634a3f8d0487c09a1fc3ab",
+        "rule_matched": [
+          "DJL-PI-001"
+        ],
+        "outcome": "REVIEW",
+        "layer": "djl",
+        "severity": 9,
+        "policy_bundle_version": "djl-v1-7c28e3783f10",
+        "at": "2026-05-30T21:45:53.315Z"
+      },
+      {
+        "stage": "DJL",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Prompt_Injection_Prevention.html",
+        "contentHash": "36ebe72544facca98d126909eefb76f3b2ef8867f23b6c94dcbc009e27261797",
+        "rule_matched": [
+          "DJL-PI-001"
+        ],
+        "outcome": "REVIEW",
+        "layer": "djl",
+        "severity": 9,
+        "policy_bundle_version": "djl-v1-7c28e3783f10",
+        "at": "2026-05-30T21:45:53.315Z"
+      },
+      {
+        "stage": "PREFILTER",
+        "url": "https://globalretail-intel.example/q3-briefing",
+        "contentHash": "2b94c19edbf98dcdb4d6697feebd290a2b76ed57dd634a3f8d0487c09a1fc3ab",
+        "rule_matched": [
+          "prompt-injection"
+        ],
+        "outcome": "REVIEW",
+        "layer": "prefilter",
+        "severity": 9,
+        "policy_bundle_version": "prefilter-v3-9c2c9b3d8c7e",
+        "at": "2026-05-30T21:45:53.315Z"
+      },
+      {
+        "stage": "PREFILTER",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Prompt_Injection_Prevention.html",
+        "contentHash": "36ebe72544facca98d126909eefb76f3b2ef8867f23b6c94dcbc009e27261797",
+        "rule_matched": [
+          "prompt-injection"
+        ],
+        "outcome": "REVIEW",
+        "layer": "prefilter",
+        "severity": 9,
+        "policy_bundle_version": "prefilter-v3-9c2c9b3d8c7e",
+        "at": "2026-05-30T21:45:53.315Z"
+      },
+      {
+        "stage": "INJECTION_GUARD",
+        "url": "https://globalretail-intel.example/q3-briefing",
+        "contentHash": "2b94c19edbf98dcdb4d6697feebd290a2b76ed57dd634a3f8d0487c09a1fc3ab",
+        "rule_matched": [
+          "Non-violent Illegal Acts"
+        ],
+        "outcome": "REVIEW",
+        "layer": "injection-guard",
+        "policy_bundle_version": "guard-v1-dd7c7e8b1d4c",
+        "at": "2026-05-30T21:45:53.315Z",
+        "guard_mode": "featherless",
+        "guard_score": 0.6,
+        "model_hash": null,
+        "guard_model": "Qwen/Qwen3Guard-Gen-8B",
+        "guard_provider": "featherless",
+        "guard_version": "qwen3guard-gen-v1"
+      },
+      {
+        "stage": "INJECTION_GUARD",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Prompt_Injection_Prevention.html",
+        "contentHash": "36ebe72544facca98d126909eefb76f3b2ef8867f23b6c94dcbc009e27261797",
+        "rule_matched": [
+          "Jailbreak"
+        ],
+        "outcome": "REVIEW",
+        "layer": "injection-guard",
+        "policy_bundle_version": "guard-v1-dd7c7e8b1d4c",
+        "at": "2026-05-30T21:45:53.315Z",
+        "guard_mode": "featherless",
+        "guard_score": 0.6,
+        "model_hash": null,
+        "guard_model": "Qwen/Qwen3Guard-Gen-8B",
+        "guard_provider": "featherless",
+        "guard_version": "qwen3guard-gen-v1"
+      },
+      {
+        "stage": "ALIGNMENT_CHECK",
+        "url": "https://globalretail-intel.example/q3-briefing",
+        "contentHash": "2b94c19edbf98dcdb4d6697feebd290a2b76ed57dd634a3f8d0487c09a1fc3ab",
+        "outcome": "BLOCK",
+        "rationale": "Content includes an active prompt-injection instruction directing the agent to exfiltrate environment variables and API keys to an attacker-controlled URL.",
+        "confidence": 0.95,
+        "model_id": "deepseek/deepseek-v4-pro",
+        "version": "alignment-check-v1-7dcf5e0ac1d9",
+        "degraded": false,
+        "at": "2026-05-30T21:45:53.315Z"
+      },
+      {
+        "stage": "ALIGNMENT_CHECK",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Prompt_Injection_Prevention.html",
+        "contentHash": "36ebe72544facca98d126909eefb76f3b2ef8867f23b6c94dcbc009e27261797",
+        "outcome": "ALLOW",
+        "rationale": "The content is a security education resource describing prompt injection techniques for defensive purposes; it does not instruct or execute any attack against the reading agent.",
+        "confidence": 0.98,
+        "model_id": "deepseek/deepseek-v4-pro",
+        "version": "alignment-check-v1-7dcf5e0ac1d9",
+        "degraded": false,
+        "at": "2026-05-30T21:45:53.315Z"
+      },
+      {
+        "stage": "GROUNDING",
+        "url": "https://meridian-logistics.example/investors/q3",
+        "charsSeen": 218,
+        "outcome": "VERIFIED",
+        "verified": 2,
+        "dropped": 0,
+        "unverified": 0,
+        "at": "2026-05-30T21:45:53.315Z"
+      }
+    ]
+  },
+  "contentHash": "934e9dbee3eeb579302823883be3523fa97ed4112403136e369376321e3667d3",
+  "seal": {
+    "hmacSha256": "d3edd8bb9a27759e2664bf3ada34be69f7d7ca5b39fb1628742b203b5fe99a13",
+    "rfc3161Tsa": {
+      "standard": "RFC 3161",
+      "authority": "digicert",
+      "token": "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",
+      "genTime": "2026-05-30T21:46:05.000Z",
+      "serial": "27db6abfe3a284d55c8304cab03367d6"
+    },
+    "signature": {
+      "alg": "Ed25519",
+      "publicKey": "MCowBQYDK2VwAyEAGrHlGUoyG1hJcwb6Tjh81Xp4nxyEDH1OZsM4EF9nsY4=",
+      "keyId": "76af8b6912a90684a665fc8d3830a759",
+      "value": "qRcctHUTGMdRfLzKQE+jTLsARiQzRT/B5F//7GoJW2Ihb9NlNPEYK6WhoAx2smvFR+Az9nfLzWhToGn+sooOAw==",
+      "signedAt": "2026-05-30T21:46:05.016Z"
+    },
+    "signerIdentity": {
+      "channel": "dns",
+      "url": "_synthex-keyid.synthex.apohara.dev"
+    },
+    "method": "HMAC-SHA256 + Ed25519 + RFC 3161 TSA"
+  },
+  "sealedAt": "2026-05-30T21:46:05.464Z",
+  "timings": {
+    "FETCH": 0.5,
+    "FORGE": 3939.1,
+    "ALIGNMENT_CHECK": 8044.5,
+    "CLASSIFY": 3649.6,
+    "PROVE": 452.3
+  }
+}
