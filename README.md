@@ -8,7 +8,7 @@
 
 ### The evidence layer that lives inside Bright Data
 
-**Scrape it · Classify it · Prove it.**
+**Screen it · Seal it.**
 Turn the web your AI agents touch into classified intelligence, sealed with **timestamped, integrity-sealed evidence** — RFC 3161 third-party timestamp + **Ed25519 asymmetric signature** (v0.8, publishable keyId for third-party identity) + HMAC content-bind, all over a deterministic canonical pre-image.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
