@@ -12,6 +12,7 @@
   "files": [
     "bin/",
     "src/",
+    "adapters/",
     "demo/",
     "scripts/gen-sample-report.mjs",
     "scripts/measure-coverage.mjs",
