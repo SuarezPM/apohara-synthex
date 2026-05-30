@@ -1,16 +1,21 @@
-// PROVE/report/page-executive-summary — the COVER (page 1). FULL-BLEED DARK (--void), edge-to
-// -edge: the brand moment + at-a-glance verdict/seal. Rebuilt per docs/internal/
-// EVIDENCE_REPORT_DESIGN.md §0/§5/§8. A single thin lime "fold" rule sits at the base as the
-// transition signal to the light interior. NO "court-grade", no invented metric.
-import { COVER, FONTS, TYPE, PAGE, VOICE } from "./theme.js";
+// PROVE/report/page-executive-summary — the COVER (page 1). WHITE letterhead cover: a full-bleed
+// branded header banner (the Apohara artwork — public/hero-apohara-landscape.jpg) over a clean
+// white body (verdict + real seal stack + QR + metadata), closed by a branded dark footer band
+// (drawn in the buffered pass). Brand-faithful to synthex.apohara.dev; no "court-grade".
+//
+// Vertical flow uses MANUAL y-stepping for single-line headings: PDFKit does NOT advance doc.y
+// after a `lineBreak:false` draw, so reading doc.y there overlaps the next element (the Phase-2a
+// cover bug). Single lines step y by a fixed amount; only wrapping blocks read doc.y.
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { COVER, PAPER, FONTS, TYPE, PAGE, VOICE } from "./theme.js";
 import { sealBlock } from "./components.js";
 import { riskScore } from "./risk-score.js";
 
-// Resolve the cover wordmark font: Pixel if the Press Start 2P TTF registered, else Mono (spec §2).
-function wordmarkFont(doc) {
-  // PDFKit throws on an unknown font name; probe by checking the registered set via a try.
-  try { doc.font(FONTS.pixel); return FONTS.pixel; } catch { return FONTS.mono; }
-}
+const here = dirname(fileURLToPath(import.meta.url));
+// Canonical brand artwork (shield logo + APOHARA wordmark + neon waves). Committed asset.
+const BANNER = resolve(here, "../../../public/hero-apohara-landscape.jpg");
 
 export function pageExecutiveSummary(doc, ev, ctx = {}) {
   const { payload = {}, contentHash, seal = {}, sealedAt } = ev;
@@ -20,77 +25,87 @@ export function pageExecutiveSummary(doc, ev, ctx = {}) {
   const L = PAGE.margins.left;
   const R = W - PAGE.margins.right;
   const colW = R - L;
+  const pal = PAPER; // white cover uses the interior (light) palette for body text
 
-  // ── full-bleed void ────────────────────────────────────────────────────────
-  doc.save().rect(0, 0, W, H).fill(COVER.bg).restore();
+  // single-line heading at an explicit y, no wrap; caller steps y by a fixed amount.
+  const lineAt = (yy, font, size, color, text, extra = {}) => {
+    doc.font(font).fontSize(size).fillColor(color)
+      .text(text, L, yy, { lineBreak: false, ...extra });
+  };
 
-  // ── wordmark + kicker ────────────────────────────────────────────────────────
-  let y = PAGE.margins.top;
-  const wmFont = wordmarkFont(doc);
-  doc.font(wmFont).fontSize(TYPE.coverWordmark.size).fillColor(COVER.ink)
-    .text("APOHARA SYNTHEX", L, y, { characterSpacing: TYPE.coverWordmark.tracking, lineBreak: false });
-  y = doc.y + 6;
-  doc.font(FONTS.mono).fontSize(TYPE.kicker.size).fillColor(COVER.violet)
-    .text("EVIDENCE REPORT · SEALED", L, y, { characterSpacing: TYPE.kicker.tracking, lineBreak: false });
-  y = doc.y + 18;
+  // ── white page ──────────────────────────────────────────────────────────────
+  doc.save().rect(0, 0, W, H).fill("#FFFFFF").restore();
 
-  // ── value couplet (the one-line value) ──────────────────────────────────────
-  doc.font(FONTS.semibold).fontSize(13).fillColor(COVER.ink)
-    .text(VOICE.coverCouplet, L, y, { width: colW });
-  y = doc.y + 22;
+  // ── branded header banner (full-bleed) — the Apohara artwork clipped to a band ──
+  const bandH = 178;
+  if (existsSync(BANNER)) {
+    doc.save();
+    doc.rect(0, 0, W, bandH).clip();
+    // Cover the band width-wise; the artwork extends below and is clipped to bandH,
+    // showing the logo + wordmark + the upper neon waves + stars.
+    doc.image(BANNER, 0, 0, { width: W });
+    doc.restore();
+  } else {
+    // Fallback brand band (artwork absent): dark void with the wordmark.
+    doc.save().rect(0, 0, W, bandH).fill(COVER.bg).restore();
+    doc.font(FONTS.bold).fontSize(30).fillColor(COVER.ink)
+      .text("APOHARA", 0, bandH / 2 - 18, { width: W, align: "center", lineBreak: false });
+  }
+  // thin lime transition rule under the banner (brand → white).
+  doc.rect(0, bandH, W, 2.5).fill(PAPER.green);
 
-  // ── VERDICT (band-matched, distinct-axis labeled so it never contradicts) ────
+  // ── document title block ───────────────────────────────────────────────────────
+  let y = bandH + 30;
+  lineAt(y, FONTS.bold, 25, pal.ink, "Evidence Report");
+  y += 34;
+  lineAt(y, FONTS.body, 10, pal.muted, "Sealed · tamper-evident · independently verifiable.");
+  y += 15;
+  lineAt(y, FONTS.body, 9.5, pal.muted, VOICE.coverCouplet);
+  y += 28;
+
+  // ── VERDICT (band-matched, distinct-axis labeled so it never contradicts) ──────
   const r = riskScore(ev);
-  // The headline verdict uses the LEAD-FINDING CVSS-severity axis (maxSev ≥7 HIGH / ≥4 MEDIUM /
-  // else LOW) — a DIFFERENT scale from the composite 0–100 gauge on the Underwriter page. Caption
-  // the lead severity so the two bands can never read as a contradiction.
   const leadBand = r.maxSev >= 7 ? "HIGH" : r.maxSev >= 4 ? "MEDIUM" : "LOW";
-  const bandColor = leadBand === "HIGH" ? COVER.red : leadBand === "MEDIUM" ? COVER.amber : COVER.lime;
+  const bandColor = leadBand === "HIGH" ? pal.red : leadBand === "MEDIUM" ? pal.amber : pal.green;
   const verdictText = (payload.verdict && typeof payload.verdict === "string") ? payload.verdict : `${leadBand} RISK`;
 
-  doc.font(FONTS.mono).fontSize(TYPE.kicker.size).fillColor(COVER.muted)
-    .text("VERDICT · LEAD FINDING (CVSS SEVERITY)", L, y, { characterSpacing: TYPE.kicker.tracking, lineBreak: false });
-  y = doc.y + 6;
-  doc.font(FONTS.bold).fontSize(TYPE.coverVerdict.size).fillColor(bandColor)
-    .text(`${leadBand} · CVSS ${Number(r.maxSev).toFixed(1)}`, L, y, { width: colW });
-  y = doc.y + 4;
-  // the sealed verdict string, rendered verbatim (we never edit its bytes).
-  doc.font(FONTS.body).fontSize(9.5).fillColor(COVER.ink)
-    .text(verdictText, L, y, { width: colW });
-  y = doc.y + 20;
+  lineAt(y, FONTS.mono, TYPE.kicker.size, pal.violet, "VERDICT · LEAD FINDING (CVSS SEVERITY)", { characterSpacing: TYPE.kicker.tracking });
+  y += 17;
+  lineAt(y, FONTS.bold, 28, bandColor, `${leadBand} · CVSS ${Number(r.maxSev).toFixed(1)}`);
+  y += 37;
+  // sealed verdict sentence — WRAPS, so doc.y advances correctly here.
+  doc.font(FONTS.body).fontSize(9.5).fillColor(pal.ink).text(verdictText, L, y, { width: colW });
+  y = doc.y + 26;
 
-  // ── seal stack (Ed25519 leads) + QR side-by-side ────────────────────────────
-  doc.font(FONTS.mono).fontSize(TYPE.kicker.size).fillColor(COVER.violet)
-    .text("CRYPTOGRAPHIC SEAL", L, y, { characterSpacing: TYPE.kicker.tracking, lineBreak: false });
-  y = doc.y + 8;
+  // ── cryptographic seal (Ed25519 leads) + QR side-by-side ───────────────────────
+  lineAt(y, FONTS.mono, TYPE.kicker.size, pal.violet, "CRYPTOGRAPHIC SEAL", { characterSpacing: TYPE.kicker.tracking });
+  y += 16;
 
   const sealTop = y;
-  const qrSize = 118;
+  const qrSize = 110;
   doc.x = L;
   doc.y = sealTop;
-  // sealBlock leads with Ed25519 (violet accent on void) per the design system.
   sealBlock(doc, {
-    theme: COVER, seal, contentHash, c2paSidecar, rekorBundle,
-    width: colW - qrSize - 24, accentColor: COVER.violet,
+    theme: pal, seal, contentHash, c2paSidecar, rekorBundle,
+    width: colW - qrSize - 28, accentColor: pal.violet,
   });
-  // seal method line.
-  doc.font(FONTS.mono).fontSize(TYPE.code.size).fillColor(COVER.muted)
-    .text(`method · ${seal.method ?? "—"}`, L, doc.y + 2, { width: colW - qrSize - 24 });
+  doc.font(FONTS.mono).fontSize(TYPE.code.size).fillColor(pal.muted)
+    .text(`method · ${seal.method ?? "—"}`, L, doc.y + 3, { width: colW - qrSize - 28 });
   const sealBottom = doc.y;
 
-  // QR — lime on void, top-right of the seal block, encoding the verifiable-bundle pointer.
+  // QR — dark-on-white, top-right of the seal block, encoding the verifiable-bundle pointer.
   if (qrPng) {
     try {
       doc.image(qrPng, R - qrSize, sealTop, { width: qrSize });
-      doc.font(FONTS.mono).fontSize(7).fillColor(COVER.lime)
+      doc.font(FONTS.mono).fontSize(7).fillColor(pal.muted)
         .text("scan to verify", R - qrSize, sealTop + qrSize + 4, { width: qrSize, align: "center", lineBreak: false });
     } catch { /* layout best-effort */ }
   }
 
-  // ── metadata strip: target / lens / fetched / sealed / sources / blocked ─────
+  // ── metadata strip: target / lens / fetched / sealed / sources / blocked ────────
   let my = Math.max(sealBottom, sealTop + qrSize + 22) + 18;
-  doc.moveTo(L, my).lineTo(R, my).strokeColor(COVER.muted).lineWidth(0.5).opacity(0.4).stroke().opacity(1);
-  my += 12;
+  doc.moveTo(L, my).lineTo(R, my).strokeColor(pal.rule).lineWidth(0.5).stroke();
+  my += 14;
 
   const blockedN = (payload.blocked ?? []).length;
   const meta = [
@@ -106,20 +121,15 @@ export function pageExecutiveSummary(doc, ev, ctx = {}) {
     const col = i % 3;
     const rowIdx = Math.floor(i / 3);
     const cx = L + col * cellW;
-    const cy = my + rowIdx * 38;
-    doc.font(FONTS.mono).fontSize(7).fillColor(COVER.muted)
+    const cy = my + rowIdx * 40;
+    doc.font(FONTS.mono).fontSize(7).fillColor(pal.muted)
       .text(label, cx, cy, { width: cellW - 10, characterSpacing: 1, lineBreak: false });
-    const valColor = label === "BLOCKED PRE-LLM" ? (blockedN ? COVER.amber : COVER.lime) : COVER.ink;
+    const valColor = label === "BLOCKED PRE-LLM" ? (blockedN ? pal.amber : pal.green) : pal.ink;
     doc.font(FONTS.medium).fontSize(10).fillColor(valColor)
-      .text(value, cx, cy + 11, { width: cellW - 10, ellipsis: true, lineBreak: false, height: 14 });
+      .text(value, cx, cy + 12, { width: cellW - 10, ellipsis: true, lineBreak: false, height: 14 });
   });
 
-  // ── cover signature + the single thin lime "fold" rule at the base ──────────
-  doc.font(FONTS.body).fontSize(8).fillColor(COVER.muted)
-    .text(VOICE.coverSignature, L, H - 78, { width: colW, lineBreak: false });
-  // the fold rule — full bleed, thin, lime.
-  doc.rect(0, H - 3, W, 3).fill(COVER.lime);
-
-  // register the cover footer (dark variant) for the buffered pass.
-  if (registry) registry.push({ pageIndex: doc.bufferedPageRange().count - 1, reportId, dark: true });
+  // The branded dark footer band is drawn in the buffered pass (drawFooters, cover variant),
+  // where the total page count is known. Register this page as the cover.
+  if (registry) registry.push({ pageIndex: doc.bufferedPageRange().count - 1, reportId, cover: true });
 }

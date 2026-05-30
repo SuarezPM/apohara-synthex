@@ -8,16 +8,22 @@
 > This is a **redesign within the existing PDFKit generator**, not a rebuild. Honesty-doc bound: every
 > claim measured (`docs/HONESTY.md`); no "court-grade"; "mapping, not endorsement" on any score.
 
-## 0. Paper model — Option C (dark cover · light interior)
+## 0. Paper model — white letterhead cover · light interior (revised 2026-05-30)
 
-- **Page 1 (cover / executive summary)** — full-bleed **dark** (`--void`), brand-faithful, screen-native.
-  It is the brand moment + the at-a-glance verdict/seal. Print assumption: **may not be printed**.
-- **Pages 2–N (interior)** — full **light paper** `#FAFAF8`, dark ink. ALL content — tables, hashes,
-  the verify commands — **light and printable** (buyer prints the interior only). No dark code blocks
-  in the interior (toner + Pablo's directive): command/hash boxes are a light tinted box with a hairline.
-- **Transition is intentional, not a jump**: the cover is full-bleed dark edge-to-edge; the first
-  interior page opens full light edge-to-edge. No half-dark page, no dark band bleeding into interior.
-  The cover carries a single thin lime rule at its base as the "fold" signal.
+> Revised from the original "dark cover" per Pablo's directive: the cover is **white**, with a
+> **branded header banner** (the Apohara artwork `public/hero-apohara-landscape.jpg`) and a **dark
+> branded footer band**. The whole report is now light/printable.
+
+- **Page 1 (cover / executive summary)** — **white** body with a full-bleed **branded header banner**
+  (the Apohara shield + wordmark + neon waves, the artwork clipped to a ~178pt band) over the verdict +
+  real seal stack (Ed25519-led) + dark-on-white QR + metadata grid, closed by a **dark branded footer
+  band** (wordmark + "everything signed, nothing trusted." + report ID + page). Fully printable.
+- **Pages 2–N (interior)** — **light paper** `#FAFAF8`, dark ink. ALL content — tables, hashes,
+  the verify commands — light and printable. No dark code blocks (toner): command/hash boxes are a
+  light tinted box with a hairline.
+- **Vertical flow uses MANUAL y-stepping for single-line headings** — PDFKit does NOT advance `doc.y`
+  after a `lineBreak:false` draw, so reading `doc.y` there overlaps the next element. Single lines step
+  `y` by a fixed amount; only wrapping blocks read `doc.y`. (This was the Phase-2a cover-overlap bug.)
 
 ## 1. Locked color tokens (PDFKit RGB hex) — contrast VERIFIED
 

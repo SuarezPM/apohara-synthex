@@ -63,11 +63,12 @@ export async function buildPDFReport(evidence, opts = {}) {
   const rekorBundle = opts.rekorBundle ?? null;
   const reportId = reportIdOf(contentHash);
 
-  // QR de verificación (hash + sello + momento) — escaneás y verificás. Lime-on-void en la cover.
+  // QR de verificación (hash + sello + momento) — escaneás y verificás. Dark-on-white para la
+  // cover blanca (estándar, escaneable e imprimible).
   const qrPayload = JSON.stringify({ hash: contentHash, method: seal.method, sealedAt, tsaSerial: tsa?.serial ?? null });
   const qrPng = await QRCode.toBuffer(qrPayload, {
     errorCorrectionLevel: "M", margin: 1, width: 140,
-    color: { dark: THEME.COVER.lime, light: THEME.COVER.bg },
+    color: { dark: THEME.PAPER.ink, light: "#FFFFFF" },
   });
 
   // bufferPages:true → footers en pasada final sin auto-paginado. autoFirstPage:false → control

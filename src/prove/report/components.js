@@ -63,6 +63,23 @@ export function drawFooters(doc, { theme, registry }) {
     doc.switchToPage(i);
     doc.page.margins.bottom = 0;
     const meta = byIndex.get(i) ?? { reportId: reportIdOf(""), dark: false };
+    // Cover: a branded full-bleed dark footer band (wordmark + tagline + id + page).
+    if (meta.cover) {
+      const fH = 38;
+      const by = doc.page.height - fH;
+      const left2 = doc.page.margins.left;
+      const rx = doc.page.width - doc.page.margins.right - 220;
+      doc.save().rect(0, by, doc.page.width, fH).fill(theme.COVER.bg).restore();
+      doc.font(FONTS.semibold).fontSize(8.5).fillColor(theme.COVER.ink)
+        .text("APOHARA SYNTHEX", left2, by + 9, { characterSpacing: 0.5, lineBreak: false });
+      doc.font(FONTS.body).fontSize(7.5).fillColor(theme.COVER.muted)
+        .text("everything signed, nothing trusted.", left2, by + 21, { lineBreak: false });
+      doc.font(FONTS.mono).fontSize(7).fillColor(theme.COVER.muted)
+        .text(meta.reportId, rx, by + 9, { width: 220, align: "right", lineBreak: false });
+      doc.font(FONTS.mono).fontSize(7).fillColor(theme.COVER.muted)
+        .text(`p. ${i + 1} / ${total}`, rx, by + 21, { width: 220, align: "right", lineBreak: false });
+      continue;
+    }
     const pal = meta.dark ? theme.COVER : theme.PAPER;
     const y = doc.page.height - 44;
     const left = doc.page.margins.left;
