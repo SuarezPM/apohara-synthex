@@ -25,6 +25,7 @@
 // endpoint — a completely separate concern. HONESTY §2.1 documents the
 // two-guards distinction.
 import { createHash } from "node:crypto";
+import { spotlight } from "../classify/spotlight.js";
 
 // ─── Featherless / Qwen3Guard-Gen-8B (L2 detector, opt-in) ─────────────────
 //
@@ -115,17 +116,16 @@ Provide your safety assessment for ONLY THE LAST **USER's query** in the above c
  * the LAST USER turn so the template's "ONLY THE LAST USER's query" assessment
  * targets it.
  *
- * NOTE (Spotlighting 1.6, coming next): the doc is wrapped in simple nonce-free
- * sentinels for now. Item 1.6 will swap these for per-request nonce sentinels.
+ * Spotlighting (1.6): the doc is wrapped in per-request nonce sentinels
+ * (`../classify/spotlight.js`) — unguessable, so a hostile doc can't forge the
+ * closing delimiter to escape the data block. Kept INSIDE the USER turn so the
+ * moderation template still assesses "the LAST USER's query".
  *
  * @param {string} text  — scraped content (untrusted)
  * @returns {string} the rendered ChatML moderation prompt
  */
 export function renderQwen3GuardPrompt(text) {
-  const doc = String(text ?? "");
-  // Minimal sentinel wrap (1.6 will make this nonce-tagged). Kept INSIDE the
-  // USER turn so the template still classifies "the LAST USER's query".
-  const wrapped = `=== BEGIN UNTRUSTED WEB CONTENT ===\n${doc}\n=== END UNTRUSTED WEB CONTENT ===`;
+  const { wrapped } = spotlight(text);
   return `${_QWEN_TEMPLATE_HEAD}USER: ${wrapped}${_QWEN_TEMPLATE_TAIL}`;
 }
 

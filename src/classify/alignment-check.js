@@ -30,7 +30,8 @@
 // (gap-8, scripts/measure-l3-falseblock.mjs), not asserted. If the model is
 // unreachable (probe FAIL), L3 fails SAFE to REVIEW-keep (never BLOCK) and seals
 // `degraded:true` so the divergence is auditable, never silent.
-import { randomUUID, createHash } from "node:crypto";
+import { createHash } from "node:crypto";
+import { spotlight } from "./spotlight.js";
 
 // L3 model: deepseek-v4-pro (spot/council/L3 tier only, NEVER bulk — tiers.js).
 // Pinned here as the L3 reasoner so the sealed decision row carries a stable id.
@@ -79,24 +80,6 @@ const SYSTEM_PROMPT =
 
 // Sealed bundle version (stable string, no Date.now).
 export const ALIGNMENT_CHECK_VERSION = _versionOf(SYSTEM_PROMPT + JSON.stringify([...VALID_DECISIONS]));
-
-/**
- * Wrap an untrusted block in per-request nonce sentinels (simple Spotlighting).
- * The nonce makes the delimiter unguessable so a hostile doc can't close it.
- * Runtime-only — the nonce NEVER enters the sealed payload. Item 1.6 replaces
- * this with the shared spotlight helper + CI lint.
- *
- * Envuelve un bloque untrusted en sentinels nonce-tagged por request (Spotlight
- * simple). El nonce hace el delimitador no-adivinable. Solo runtime — el nonce
- * NUNCA entra al payload sellado. El ítem 1.6 lo reemplaza por el helper común.
- *
- * @param {string} text
- * @returns {string} the wrapped block
- */
-function wrapUntrusted(text) {
-  const nonce = randomUUID();
-  return `<<<UNTRUSTED:${nonce}>>>\n${String(text ?? "")}\n<<<END:${nonce}>>>`;
-}
 
 /**
  * Normalize a model response into the L3 verdict shape. Defensive: tolerates a
@@ -165,8 +148,8 @@ export async function alignmentCheck(text, opts = {}) {
   // Injectable runner: tests/pipeline pass a stub; default hits the real model.
   const run = opts.classifier ?? _defaultRunner;
 
-  // Untrusted block wrapped in per-request nonce sentinels (runtime-only).
-  const wrapped = wrapUntrusted(slice);
+  // Untrusted block wrapped in per-request nonce sentinels (shared Spotlighting helper, 1.6).
+  const { wrapped } = spotlight(slice);
 
   let content;
   try {

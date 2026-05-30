@@ -253,6 +253,16 @@ ClassificationSchema = z.object({
 
 **Tests**: [`test/classify/grounding.test.js`](../test/classify/grounding.test.js) — figure in window → VERIFIED; fabricated → DROPPED; beyond-window (M3) → UNVERIFIED; `$1,500,000` == `1.5M` normalization; non-figure signals pass-through; charsSeen frontier sealed.
 
+### 8.F Spotlighting — per-request nonce envelope + CI lint (v1.0.0 item 1.6)
+
+**What changed** (`src/classify/spotlight.js`). Every untrusted block sent to an LLM is wrapped in a **per-request nonce sentinel** — `<<<UNTRUSTED:{uuid}>>> … <<<END:{uuid}>>>` — and the system prompt references that exact nonce (Spotlighting, Hines et al., [arXiv:2403.14720](https://arxiv.org/abs/2403.14720)). The v0.9 delimiter was a STATIC string (`=== UNTRUSTED WEB CONTENT ===`): a hostile scraped doc could emit the closing marker itself and "escape" the data block back into instruction context. A fresh random nonce per request is **unforgeable** — the attacker cannot predict the delimiter. // ES: sentinels con nonce por-request (no el delimitador estático adivinable); el doc hostil no puede forjar un delimitador que no puede predecir.
+
+- **Single source of truth + CI gate.** All untrusted→LLM call-sites use the one shared helper: `classify` + `classifyBatched` (`aiml-client.js`), L3 `alignmentCheck` (`alignment-check.js`), and the Qwen3Guard moderation prompt (`renderQwen3GuardPrompt`, `injection-guard.js`). `scripts/lint-spotlight.mjs` (`npm run lint:spotlight`, exit 1 on violation) scans `src/` and fails if any file that POSTs to a completions endpoint with a request body does so without the nonce envelope — so a future call-site can't silently regress. Current state: **3 LLM call-sites, all compliant.**
+- **Runtime-only.** The nonce NEVER enters the sealed payload — the seal carries no markers (it is a property of the request, not the evidence). Two runs of the same doc seal byte-identically despite different nonces.
+- ✗ **Not a guarantee.** Spotlighting is a *defense-in-depth instruction layer*, documented as additive to the real pre-LLM defenses (DJL + prefilter + L2/L3), not a replacement. A sufficiently capable model can still be talked around; this raises the bar, it does not close the door.
+
+**Tests**: [`test/classify/spotlight.test.js`](../test/classify/spotlight.test.js) — nonce differs per request (not static); wrap shape; `spotlightInstruction` binds the nonce; CI-lint positive (enveloped call-site passes) + **negative** (un-enveloped call-site is flagged) + comment-only mention is not egress (no false positive).
+
 ---
 
 ## §9 · Two `guard`s in the tree — naming-collision note
