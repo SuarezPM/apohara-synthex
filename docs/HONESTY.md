@@ -300,6 +300,13 @@ They share a word in their name and nothing else. The first protects the **HTTP 
 - ✓ **Red-team FP / control discipline + fail-safe.** A lens that the reasoner cannot answer (no key / timeout / non-200) **degrades to risk 0** — a dead lens can NEVER inflate the verdict (verified by test). The **control-doc FP** (how many lenses scream high-risk on a NEUTRAL document — should be low) is the red-team analogue of the L2/L3 FP gate; the `--offline` path is a **deterministic stub** (labelled `OFFLINE STUB`, like the demo) for reproducible Scene 4 with no secrets, while the live path runs the real `deepseek-v4-pro`. Measured live on the S-1 fixture: 4–5 lenses return high risk → verdict `DO NOT PROCEED` (a going-concern S-1 should score high); a benign control document should NOT.
 - ✗ Not financial advice or an underwriting decision. It is a structured adversarial reading to surface board-level questions, sealed for audit — a human makes the call.
 
+### 10.7 Phase 3 hardening (items 3.1–3.4)
+
+- **Rekor log-key monitor (3.1).** `scripts/monitor-rekor-anchors.mjs` validates each pinned Rekor v2 log key (`src/prove/rekor-anchors.js`) parses as an Ed25519 SPKI + probes shard reachability — the analog of the TSA-anchor monitor, so the ~6-month shard rotation is caught on a schedule, not at verify time. It DETECTS drift; auto-refresh from TUF is roadmap (see `docs/ROADMAP.md`).
+- **PR #140 (3.2) — honest framing.** Bright Data PR [#140](https://github.com/brightdata/brightdata-mcp/pull/140) is an **open PR, NOT merged** (verified `state:OPEN`). The landing + README frame it as PR-shaped, never as a landed feature.
+- **LangChain / CrewAI adapters (3.3).** `adapters/langchain.js` + `adapters/crewai.js` are thin, framework-SHAPED tool wrappers over the pipeline (you bring the framework — **zero new deps**). They return the sealed evidence summary (contentHash + verdict + seal method) so an agent cites verifiable provenance.
+- **Roadmap (3.4).** `docs/ROADMAP.md` documents CAWG org-identity, eIDAS QTSP (Actalis) qualified timestamps, and the shared `aegis` seal layer as **future work — not shipped, not claimed**.
+
 ### 10.6 Bright Data Web Scraper dataset adapter — async trigger→poll→collect (item 2.7, D8)
 
 `src/fetch/dataset-client.js` gains the **real async flow**: `trigger()` (→ `snapshot_id`), `pollProgress()` (snapshot status), and `collect()` (BOUNDED poll until `ready`, then fetch). `collect()` returns the seal-ready envelope `{snapshotId, surface, datasetId, fetchedAt, rows}` — the four fields the pipeline seals. `MAX_INPUTS=2` is a hard BILLING cap; the poll is bounded by `maxAttempts` (never infinite).
