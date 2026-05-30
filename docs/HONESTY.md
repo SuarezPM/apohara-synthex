@@ -279,3 +279,14 @@ Per A3, the v0.8 module is named `src/forge/injection-guard.js`, NOT `src/guard.
 | [`src/forge/injection-guard.js`](../src/forge/injection-guard.js) | Layer-2 prompt-injection detector — Featherless Qwen3Guard-Gen-8B or self-hosted Prompt-Guard, with heuristic fallback. See §8.A. | Pre-LLM (Forge step, after DJL + prefilter). |
 
 They share a word in their name and nothing else. The first protects the **HTTP boundary** of the public endpoint from abuse; the second hardens the **content path** of every pipeline run. Tests live in different directories (`test/guard.test.js` vs `test/forge/injection-guard.test.js`).
+
+---
+
+## §10 · Partner exports & buyer artefacts (v1.0.0 Phase 2)
+
+### 10.1 STIX 2.1 export (item 2.1)
+
+`synthex stix-export <evidence.json>` (`src/prove/stix.js`) maps a sealed Evidence Report's findings to a **STIX 2.1 bundle** (`indicator` SDOs + a wrapping `report`), so the intelligence drops straight into MISP / OpenCTI / a TAXII feed. Every object carries the report **`contentHash`** (and the Ed25519 **`keyId`** when present) in `external_references`, so a consumer can re-verify the bundle against the original sealed report.
+
+- ✓ Only standard STIX 2.1 vocabulary (`indicator`, `report`, `bundle`) + the standard `external_references` extension point; no invented object types, no smuggled fields. `confidence` is derived from finding `severity` (×10, clamped 0–100); the `pattern` is a valid `[url:value = '…']`. Pure JSON, zero new deps.
+- ✗ Not a threat-feed subscription or a TAXII server — it is a one-shot export of one report. The `external_references` link is a **pointer to the sealed evidence**, not an endorsement of the indicators by any authority.

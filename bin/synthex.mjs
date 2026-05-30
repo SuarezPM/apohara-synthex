@@ -22,6 +22,7 @@ import { generateKeyPair, keyIdOf, resolveSigningKey } from "../src/prove/asymme
 import { buildSelfSignedEd25519Cert, buildC2paManifest, verifyC2paManifest } from "../src/prove/c2pa.js";
 import { renderCardPng, buildCardManifestDefinition } from "../src/prove/evidence-card.js";
 import { anchorKeyId, verifyRekorBundle } from "../src/prove/rekor.js";
+import { toStixBundle } from "../src/prove/stix.js";
 
 const execFileP = promisify(execFile);
 
@@ -240,6 +241,9 @@ export async function main(argv) {
   if (positional[0] === "rekor-verify") {
     return runRekorVerify({ bundlePath: positional[1] });
   }
+  if (positional[0] === "stix-export") {
+    return runStixExport({ evidencePath: positional[1] });
+  }
 
   const hmacKey = process.env.SYNTHEX_HMAC_KEY || "synthex-demo";
   // v0.8.0 — resolve the Ed25519 signing key (env inline → file → XDG default).
@@ -437,6 +441,26 @@ function runRekorVerify({ bundlePath }) {
   for (const [k, val] of Object.entries(v.checks)) console.log(`  ${k.padEnd(13)}: ${val ? "OK" : "FAIL"}`);
   console.log(`  verdict      : ${v.ok ? "VALID" : `INVALID (${v.reason})`}`);
   return v.ok ? 0 : 1;
+}
+
+// ─── stix-export verb (v1.0.0, item 2.1) ─────────────────────────────────
+
+function runStixExport({ evidencePath }) {
+  if (!evidencePath) {
+    console.error("usage: synthex stix-export <evidence.json>");
+    return 2;
+  }
+  let evidence;
+  try {
+    evidence = JSON.parse(readFileSync(evidencePath, "utf8"));
+  } catch (e) {
+    console.error(`cannot read evidence at ${evidencePath}: ${e.message}`);
+    return 2;
+  }
+  const bundle = toStixBundle(evidence);
+  // STIX bundle ONLY to stdout (pipeable to MISP/OpenCTI/jq); no other noise.
+  console.log(JSON.stringify(bundle, null, 2));
+  return 0;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
