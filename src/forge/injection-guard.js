@@ -381,17 +381,27 @@ async function _screenFeatherless(text, opts) {
   try {
     const headers = { "Content-Type": "application/json" };
     if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
-    const res = await fetchImpl(completionsUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model,
-        prompt: renderQwen3GuardPrompt(text),
-        max_tokens: 1024, // thinking model — room for <think> + the verdict
-        temperature: 0,
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
+    const body = JSON.stringify({
+      model,
+      prompt: renderQwen3GuardPrompt(text),
+      max_tokens: 1024, // thinking model — room for <think> + the verdict
+      temperature: 0,
     });
+    // Bounded retry on TRANSIENT capacity/rate errors (503 capacity_exhausted, 429)
+    // before degrading to the heuristic. Hosted moderation models hit capacity
+    // intermittently; a short retry keeps L2 live without weakening the fail-open
+    // guarantee (after the retries are exhausted we still fall back). Tunable via
+    // SYNTHEX_GUARD_RETRIES (default 2). NOT applied to other 4xx (those are real).
+    const maxRetries = Math.max(0, Number(process.env.SYNTHEX_GUARD_RETRIES ?? 2));
+    let res;
+    for (let attempt = 0; ; attempt++) {
+      res = await fetchImpl(completionsUrl, { method: "POST", headers, body, signal: AbortSignal.timeout(timeoutMs) });
+      if ((res.status === 503 || res.status === 429) && attempt < maxRetries) {
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+        continue;
+      }
+      break;
+    }
     if (!res.ok) return heuristicScreen(text);
     const json = await res.json();
     // /completions returns choices[].text (raw); tolerate the chat shape too.
