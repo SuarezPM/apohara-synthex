@@ -140,6 +140,13 @@ h2.head em { font-style: normal; color: var(--ac, var(--amber)); }
 .console { background: var(--mid); border: 1px solid var(--line); border-radius: 14px; padding: 24px; margin-top: 36px; box-shadow: 0 24px 70px rgba(0,0,0,0.55); }
 .flabel { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display:block; margin-bottom: 8px; }
 input[type=text] { width:100%; padding: 14px; background: var(--void); border: 1px solid var(--line); border-radius: 7px; color: var(--bone); font-family: var(--mono); font-size: 14px; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+input[type=text][aria-invalid="true"] { border-color: var(--red); outline: 1px solid var(--red); }
+input[type=text][aria-invalid="true"]:focus-visible { outline: 2px solid var(--red); }
 input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: var(--lime); }
 .lenses { display:flex; gap:8px; flex-wrap:wrap; margin: 18px 0; }
 .lens { padding: 9px 15px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 12px; cursor: pointer; transition: .2s var(--ease); }
@@ -732,7 +739,7 @@ $ openssl ts -reply -in synthex.tsr -text
     <p class="lede" style="text-align:center;margin:0 auto">Paste a URL or term, pick a lens, watch the four stages execute against real Bright Data — then download the signed Evidence Report. This runs the actual pipeline, not a recording.</p>
     <p class="lede" style="text-align:center;margin:10px auto 0;font-size:13px">Rather not run it? <a href="https://github.com/SuarezPM/apohara-synthex/blob/main/samples/synthex-evidence-report.pdf" target="_blank" rel="noopener" style="text-decoration:underline">See a real 6-7 page Evidence Report (7th page when delta_chain present) — sample PDF</a> — sealed with Ed25519 + RFC&nbsp;3161 TSA.</p>
     <div class="console">
-      <label class="flabel" for="target">Target — URL or term</label>
+      <label class="flabel" for="target">Target — URL or term <span aria-hidden="true" style="color:var(--red)">*</span></label>
       <input id="target" type="text" value="https://en.wikipedia.org/wiki/Bright_Data" autocomplete="off" spellcheck="false" placeholder="https://example.com/ or search term" required />
       <div class="lenses" id="lenses" role="group" aria-label="Lens">
         <button class="lens" data-lens="gtm" aria-pressed="false">GTM</button>
@@ -977,12 +984,23 @@ $ openssl ts -reply -in synthex.tsr -text
         if (ev === "stage") applyStage(data); else if (ev === "result") renderResult(data);
         else if (ev === "mode" && data.mode) setMode(data.mode); else if (ev === "error") throw new Error(data.error || "pipeline error"); } } }
   $("#target").addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && $("#target").value.trim() !== "") {
+    if (e.key === "Enter") {
       e.preventDefault();
       $("#run").click();
     }
   });
-  $("#run").addEventListener("click", async () => { if (running) return; if ($("#target").value.trim() === "") return; running = true;
+  $("#run").addEventListener("click", async () => {
+    if (running) return;
+    const targetEl = $("#target");
+    if (targetEl.value.trim() === "") {
+      targetEl.setAttribute("aria-invalid", "true");
+      targetEl.focus();
+      targetEl.style.animation = "shake 0.3s var(--ease)";
+      setTimeout(() => { targetEl.style.animation = ""; }, 300);
+      return;
+    }
+    targetEl.removeAttribute("aria-invalid");
+    running = true;
     const btn = $("#run"); btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = "Running pipeline…";
     $("#panel").classList.remove("hidden"); $("#evidence").classList.add("hidden"); $("#err").classList.add("hidden"); $("#dl").classList.add("hidden"); resetLane();
     try { await streamPipeline($("#target").value.trim()); }
