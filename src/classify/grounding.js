@@ -38,16 +38,18 @@ const SCALE = {
   t: 1e12, trillion: 1e12,
 };
 
-// A figure = optional currency, a number (with thousands/decimal separators),
-// an optional scale word/suffix (word-bounded so "5moves" is not "5M"), and an
-// optional trailing %. Currency symbol is ignored for matching ("$1.5M" == "1.5M");
-// "%" is kept in the canonical token so "20%" never matches a bare "20".
-const FIGURE_RE = /(?:\$|€|£|usd\s*)?\s*(\d[\d,]*(?:\.\d+)?)\s*(thousand|million|billion|trillion|bn|mm|[kmbt])?\b\s*(%)?/gi;
+// A figure = optional currency (CAPTURED, so a bare year can be told apart from money), a number
+// (with thousands/decimal separators), an optional scale word/suffix (word-bounded so "5moves" is
+// not "5M"), and an optional trailing % / "percent" / "pct" / "por ciento". The currency symbol is
+// ignored for matching ("$1.5M" == "1.5M"); "%" is kept in the canonical token so "20%" never
+// matches a bare "20", and "20 percent" canonicalizes to the SAME "20%" token (no asymmetry).
+const FIGURE_RE = /(\$|€|£|¥|₹|usd)?\s*(\d[\d,]*(?:\.\d+)?)\s*(thousand|million|billion|trillion|bn|mm|[kmbt])?\b\s*(%|percent|pct|por\s?ciento)?/gi;
 
 /**
  * Extract the canonical figures mentioned in `text` as a Set of normalized
- * tokens. "$1,500,000" and "1.5M" both → "1500000"; "20%" → "20%". This is the
- * number/currency normalization that lets "$1,500,000" and "1.5M" match.
+ * tokens. "$1,500,000" and "1.5M" both → "1500000"; "20%" and "20 percent" → "20%".
+ * A bare 4-digit year (1900–2099) with no currency/scale/% is SKIPPED — it's a date,
+ * not a financial figure (counting it would let a year "verify" a fabricated amount).
  *
  * @param {string} text
  * @returns {Set<string>}
@@ -56,16 +58,18 @@ export function extractFigures(text) {
   const out = new Set();
   const s = String(text ?? "");
   for (const m of s.matchAll(FIGURE_RE)) {
-    const numRaw = m[1].replace(/,/g, "");
-    let val = parseFloat(numRaw);
+    const currency = m[1];
+    const rawNum = m[2];
+    let val = parseFloat(rawNum.replace(/,/g, ""));
     if (!Number.isFinite(val)) continue;
-    const scaleKey = m[2] ? m[2].toLowerCase() : null;
+    const scaleKey = m[3] ? m[3].toLowerCase() : null;
     if (scaleKey && SCALE[scaleKey]) val *= SCALE[scaleKey];
-    const isPct = !!m[3];
-    // Normalize to a stable string. Integers print without a trailing ".0";
-    // percentages keep their marker so they don't collide with bare counts.
-    const canon = Number.isInteger(val) ? String(val) : String(val);
-    out.add(isPct ? `${canon}%` : canon);
+    const isPct = !!m[4];
+    // Skip a bare 4-digit year (1900–2099) with NO currency/scale/% context — it's a date.
+    if (!currency && !scaleKey && !isPct && Number.isInteger(val) && val >= 1900 && val <= 2099 && !/[.,]/.test(rawNum)) {
+      continue;
+    }
+    out.add(isPct ? `${val}%` : String(val));
   }
   return out;
 }
@@ -73,13 +77,22 @@ export function extractFigures(text) {
 /**
  * Verify ONE signal's figures. Returns its grounding status, or {hasFigure:false}
  * when the signal carries no named figure (pass-through, not adjudicated).
+ *
+ * ALL figures in the signal must check out — a real figure can NEVER launder a fabricated one
+ * stapled into the same signal string (e.g. "$79 driving $888M loss" with only $79 in the source
+ * is DROPPED, not VERIFIED). The signal's status is the WORST across its figures:
+ *   any fabricated → DROPPED · else any beyond-window → UNVERIFIED · else VERIFIED.
  */
 function groundSignal(signal, windowFigures, sourceFigures) {
   const figs = extractFigures(signal);
   if (figs.size === 0) return { hasFigure: false };
-  for (const f of figs) if (windowFigures.has(f)) return { hasFigure: true, status: "VERIFIED" };
-  for (const f of figs) if (sourceFigures.has(f)) return { hasFigure: true, status: "UNVERIFIED" }; // only beyond window
-  return { hasFigure: true, status: "DROPPED" }; // fabricated — nowhere in the source
+  let worst = "VERIFIED";
+  for (const f of figs) {
+    const st = windowFigures.has(f) ? "VERIFIED" : sourceFigures.has(f) ? "UNVERIFIED" : "DROPPED";
+    if (st === "DROPPED") return { hasFigure: true, status: "DROPPED" }; // worst possible — short-circuit
+    if (st === "UNVERIFIED") worst = "UNVERIFIED";
+  }
+  return { hasFigure: true, status: worst };
 }
 
 /**

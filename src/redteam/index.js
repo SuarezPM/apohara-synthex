@@ -113,11 +113,15 @@ export async function redTeam(text, opts = {}) {
     .flatMap((l) => l.concerns.map((c) => `[${l.persona}] ${c}`))
     .slice(0, 3);
 
+  // If EVERY lens degraded (model fully unreachable), the all-zero risk would aggregate to a clean
+  // "PROCEED" — a dangerous all-clear for a high-stakes red-team. Override to INCONCLUSIVE.
+  const allDegraded = perLens.length > 0 && perLens.every((l) => l.degraded);
   return {
     ...agg,
+    verdict: allDegraded ? "INCONCLUSIVE (red-team unavailable)" : agg.verdict,
     topQuestions,
     perLens,
     model_id: model,
-    degraded: perLens.every((l) => l.degraded),
+    degraded: allDegraded,
   };
 }

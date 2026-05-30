@@ -70,6 +70,44 @@ test("ground: señales sin cifra pasan sin tocar (no se dropean paráfrasis vál
   assert.equal(r.outcome, "VERIFIED");
 });
 
+test("ground (HIGH fix): una cifra fabricada pegada a una real → DROPPED (no laundering)", () => {
+  // "$79" está en el source, "$888M" NO → la señal entera se dropea (no se lava la cifra fabricada).
+  const r = ground(
+    { signals: ["price cut to $79 driving $888M revenue loss"] },
+    "Competitor cut its Pro plan to $79/mo.",
+    { charsSeen: 100 },
+  );
+  assert.equal(r.outcome, "DROPPED");
+  assert.equal(r.counts.dropped, 1);
+  assert.equal(r.signals.length, 0, "no se conserva una señal con cifra fabricada");
+});
+
+test("ground (MEDIUM fix): un año suelto NO verifica una cifra fabricada en la misma señal", () => {
+  // source tiene "2024" pero NO "$500M" → la señal se dropea (el año no cuenta como cifra).
+  const r = ground(
+    { signals: ["2024 revenue reached $500M"] },
+    "In 2024 the company grew its team.",
+    { charsSeen: 100 },
+  );
+  assert.equal(r.outcome, "DROPPED");
+});
+
+test("ground (MEDIUM fix): '20%' y '20 percent' canonicalizan igual → VERIFIED (sin asimetría)", () => {
+  const a = ground({ signals: ["margin fell to 20%"] }, "Margin compressed to 20 percent.", { charsSeen: 100 });
+  assert.equal(a.outcome, "VERIFIED", "20% en señal vs '20 percent' en source → match");
+  const b = ground({ signals: ["margin fell to 20 percent"] }, "Margin compressed to 20%.", { charsSeen: 100 });
+  assert.equal(b.outcome, "VERIFIED", "y al revés");
+});
+
+test("ground: señal con TODAS las cifras presentes → VERIFIED", () => {
+  const r = ground(
+    { signals: ["cut from $99 to $79"] },
+    "Competitor cut its Pro plan from $99 to $79/mo.",
+    { charsSeen: 100 },
+  );
+  assert.equal(r.outcome, "VERIFIED");
+});
+
 test("ground: charsSeen sellado refleja la frontera de verificación", () => {
   const r = ground({ signals: [] }, "abc", {});
   assert.equal(r.charsSeen, 3, "sin charsSeen explícito usa min(len, 8000)");

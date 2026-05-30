@@ -274,6 +274,16 @@ export async function runPipeline(target, opts = {}) {
     if (reviewBand.has(d.url)) continue;
     if (heuristicScreen(String(d.content ?? "")).verdict !== "allow") reviewBand.set(d.url, d);
   }
+  // Plus DJL/prefilter REVIEW rows whose matched rule is PROMPT-INJECTION class but the zero-dep
+  // heuristic missed (e.g. bidi-override / Trojan-Source PI-7: regex catches it, heuristicScreen
+  // does not). Scoped to the injection class ONLY — reverse-shell / SSRF rows do NOT escalate, so
+  // L3 stays low-volume. The doc is pulled from `safe` (kept post-D5). Closes a defense-in-depth gap.
+  const _isInjectionRow = (d) => /(?:^|[-_/])PI[-_]|prompt.?injection|injection|jailbreak/i.test(String(d.reason ?? d.layer ?? ""));
+  for (const d of [...djlReviewed, ...prefReviewed]) {
+    if (reviewBand.has(d.url) || !_isInjectionRow(d)) continue;
+    const doc = safe.find((s) => s.url === d.url);
+    if (doc) reviewBand.set(d.url, doc);
+  }
   // Docs an L3 BLOCK removes from the CLASSIFY set: an active injection must NEVER reach the
   // classify LLM (defense-in-depth) — "the poison never reaches classify" (Scene 1). L3 is the
   // real BLOCK authority post-D5; a BLOCK both seals an ALIGNMENT_CHECK row AND drops the doc.

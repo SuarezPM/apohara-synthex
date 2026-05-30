@@ -54,10 +54,10 @@ test("redTeam: una lente caída (runner lanza) degrada a risk 0, no rompe ni inf
   assert.equal(r.degraded, false, "no TODAS degradadas → el verdict sigue válido");
 });
 
-test("redTeam: TODAS las lentes caídas → degraded:true, verdict PROCEED (risk 0)", async () => {
+test("redTeam: TODAS las lentes caídas → degraded:true, verdict INCONCLUSIVE (NO PROCEED falso all-clear)", async () => {
   const runner = async () => { throw new Error("all down"); };
   const r = await redTeam(SRC, { runner });
   assert.equal(r.degraded, true);
   assert.equal(r.score, 0);
-  assert.equal(r.verdict, "PROCEED");
+  assert.match(r.verdict, /INCONCLUSIVE/);
 });
