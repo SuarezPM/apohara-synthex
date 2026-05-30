@@ -100,6 +100,43 @@ function diamond(doc, x, y, size, color) {
   doc.save().translate(x, y).rotate(45).rect(0, 0, size, size).fill(color).restore();
 }
 
+// Trunca un valor largo (firma/keyId/hash) a head…tail; el valor COMPLETO vive en el
+// sidecar evidence.json (design spec §4: nunca un valor truncado sin ruta al completo).
+function truncMid(value, head = 16, tail = 12) {
+  const s = String(value ?? "");
+  return s.length <= head + tail + 1 ? s : `${s.slice(0, head)}…${s.slice(-tail)}`;
+}
+
+// Lee el logIndex de un bundle Rekor v2, tolerante a su forma real (tlogEntry.logIndex) o
+// a un top-level. Devuelve null si ausente — el row queda present-gated (no se renderiza).
+function rekorLogIndex(bundle) {
+  if (!bundle) return null;
+  return bundle?.tlogEntry?.logIndex ?? bundle?.logIndex ?? null;
+}
+
+// Construye, EN ORDEN, las filas del sello realmente presentes en este evidence + sidecars.
+// Lidera Ed25519; HMAC al final etiquetado "internal integrity checksum" (no es el sello
+// publicable). Cada fila es present-gated: solo entra la capa que el objeto realmente trae.
+function sealRows({ seal, contentHash, c2paSidecar, rekorBundle }) {
+  const rows = [];
+  const sig = seal?.signature;
+  if (sig) {
+    rows.push(["Ed25519 sig", `keyId ${sig.keyId ?? "—"}`]);
+    rows.push(["", truncMid(sig.value)]);
+  }
+  const tsa = seal?.rfc3161Tsa;
+  if (tsa) {
+    rows.push(["RFC 3161 TSA", `${tsa.authority ?? "DigiCert"} · ${tsa.genTime ?? "—"}`]);
+    rows.push(["", `serial ${tsa.serial ?? "—"}`]);
+  }
+  const logIndex = rekorLogIndex(rekorBundle);
+  if (logIndex != null) rows.push(["Sigstore Rekor v2", `logIndex ${logIndex}`]);
+  if (c2paSidecar) rows.push(["C2PA Content Cred.", "present (sidecar)"]);
+  rows.push(["SHA-256 hash", truncMid(contentHash, 20, 16)]);
+  rows.push(["HMAC-SHA256", `${truncMid(seal?.hmacSha256, 20, 16)}  (internal integrity checksum)`]);
+  return rows;
+}
+
 // Cabecera estándar de cada página: banda de marca + título de sección + audiencia.
 function pageHeader(doc, section, audience) {
   doc.rect(0, 0, doc.page.width, 84).fill(COLORS.brand);
@@ -139,9 +176,8 @@ function kv(doc, label, value, valueColor) {
 }
 
 // ── páginas ──────────────────────────────────────────────────────────────
-function pageExecutiveSummary(doc, ev, qrPng) {
+function pageExecutiveSummary(doc, ev, qrPng, opts = {}) {
   const { payload = {}, contentHash, seal = {}, sealedAt } = ev;
-  const tsa = seal.rfc3161Tsa;
   pageHeader(doc, "Executive Summary", "Decision makers");
   sectionTitle(doc, "What this report proves");
 
@@ -161,17 +197,20 @@ function pageExecutiveSummary(doc, ev, qrPng) {
   doc.moveDown(0.8);
 
   sectionTitle(doc, "Cryptographic seal");
-  doc.font("Courier").fontSize(8.5).fillColor(COLORS.ink)
-    .text(`SHA-256      : ${contentHash}`, { width: 360 })
-    .text(`HMAC-SHA256  : ${seal.hmacSha256 ?? "—"}`, { width: 360 })
-    .text(`Seal method  : ${seal.method ?? "—"}`);
-  if (tsa) {
-    doc.text(`RFC 3161 TSA : ${tsa.authority ?? "DigiCert"} (${tsa.standard})`)
-      .text(`  genTime    : ${tsa.genTime ?? "—"}`)
-      .text(`  serial     : ${tsa.serial ?? "—"}`);
-  } else {
-    doc.fillColor(COLORS.warn).text("RFC 3161 TSA : none (HMAC-only — no network at seal time)").fillColor(COLORS.ink);
+  // Lead with Ed25519 (the publishable asymmetric signature); HMAC-SHA256 is the internal
+  // integrity checksum, NOT the headline. Every row is present-gated — only the layers this
+  // evidence object (+ passed sidecars) actually carry are rendered. Full values live in the
+  // sidecar evidence.json (truncated head…tail here per design spec §4).
+  const rows = sealRows({ seal, contentHash, c2paSidecar: opts.c2paSidecar, rekorBundle: opts.rekorBundle });
+  // Courier is monospace → pad the label to a fixed width for column alignment without the
+  // continued+width machinery that triggers PDFKit's spurious wrap/pagination on narrow cells.
+  doc.font("Courier").fontSize(8.5).fillColor(COLORS.ink);
+  for (const [label, value] of rows) {
+    // Empty label → continuation line (truncated sig value / TSA serial): indent, no colon.
+    const line = label ? `${label.padEnd(18)}: ${value}` : `${" ".repeat(20)}${value}`;
+    doc.text(line, doc.page.margins.left, doc.y, { width: 380 });
   }
+  doc.fillColor(COLORS.muted).text(`${"Seal method".padEnd(18)}: ${seal.method ?? "—"}`, { width: 380 }).fillColor(COLORS.ink);
   // QR de verificación a la derecha del bloque del sello.
   try { doc.image(qrPng, doc.page.width - 50 - 118, doc.y - 92, { width: 118 }); } catch { /* layout best-effort */ }
   doc.moveDown(2);
@@ -394,8 +433,8 @@ function pageBroker(doc, ev, epssMap = null) {
   });
 }
 
-function pageDelta(doc, ev) {
-  const { payload = {} } = ev;
+function pageDelta(doc, ev, opts = {}) {
+  const { payload = {}, seal = {} } = ev;
   const dc = payload.delta_chain ?? {};
   pageHeader(doc, "Delta Evidence Chain", "Watch & Prove");
 
@@ -432,6 +471,9 @@ function pageDelta(doc, ev) {
     doc.font("Helvetica-Bold").fontSize(28).fillColor(c.color).text(String(c.value), x + 12, tableY + 22, { width: cellW - 24 });
     doc.fillColor(COLORS.ink);
   }
+  // The diff-table loop left doc.x at the last cell (far right); reset to the left margin so the
+  // KG section + closing disclaimer render at full text width instead of overflowing off-page.
+  doc.x = doc.page.margins.left;
   doc.y = tableY + 64;
   doc.moveDown(0.8);
 
@@ -444,10 +486,15 @@ function pageDelta(doc, ev) {
   }
   doc.fillColor(COLORS.ink).moveDown(0.6);
 
+  // Derive the seal description from seal.method (NOT hardcoded), appending the present-gated
+  // sidecar layers so this line never overstates what actually sealed this snapshot.
+  const sealParts = [seal.method ?? "HMAC-SHA256"];
+  if (rekorLogIndex(opts.rekorBundle) != null) sealParts.push("Sigstore Rekor v2");
+  if (opts.c2paSidecar) sealParts.push("C2PA");
   doc.font("Helvetica-Oblique").fontSize(8).fillColor(COLORS.muted).text(
     "What this proves: the bytes of the target changed between the two timestamps shown. " +
     "What this does NOT prove: the truthfulness of either reading. Both snapshots are sealed " +
-    "with HMAC-SHA256 + RFC 3161 — verify with bin/decode-evidence.js.",
+    `with ${sealParts.join(" + ")} — verify with bin/decode-evidence.js.`,
     { width: doc.page.width - 100 }).fillColor(COLORS.ink);
 }
 
@@ -490,11 +537,19 @@ function pageVerify(doc, ev) {
 /**
  * Genera el Evidence Report en PDF de 6 páginas (framing 4-buyer + verify).
  * @param {object} evidence  salida de buildEvidence()/runPipeline() (con timings opcional).
+ * @param {object} [opts]
+ * @param {Map|null} [opts.epssMap]      EPSS map (render-time, non-sealed) for the Broker page.
+ * @param {object|null} [opts.c2paSidecar]  C2PA sidecar (synthex c2pa-emit) — present-gates the
+ *   "C2PA Content Credentials" seal row. NOT inside evidence.seal; supplied separately (Phase 3).
+ * @param {object|null} [opts.rekorBundle]  Sigstore Rekor v2 bundle (synthex rekor-anchor) —
+ *   present-gates the "Sigstore Rekor v2" seal row via its logIndex. Supplied separately (Phase 3).
  * @returns {Promise<Buffer>} bytes del PDF.
  */
 export async function buildPDFReport(evidence, opts = {}) {
   const { payload = {}, contentHash, seal = {}, sealedAt } = evidence;
   const tsa = seal.rfc3161Tsa;
+  const c2paSidecar = opts.c2paSidecar ?? null;
+  const rekorBundle = opts.rekorBundle ?? null;
 
   // QR con los datos de verificación (hash + sello + momento) — escaneás y verificás.
   const qrPayload = JSON.stringify({ hash: contentHash, method: seal.method, sealedAt, tsaSerial: tsa?.serial ?? null });
@@ -514,13 +569,13 @@ export async function buildPDFReport(evidence, opts = {}) {
 
   // 6 páginas base + 1 página opcional Delta (cuando hay delta_chain v0.6.0+).
   // Reports v0.5.0 sin delta_chain → 6 páginas (back-compat 100%).
-  doc.addPage(); pageExecutiveSummary(doc, evidence, qrPng);
+  doc.addPage(); pageExecutiveSummary(doc, evidence, qrPng, { c2paSidecar, rekorBundle });
   doc.addPage(); pageCISO(doc, evidence);
   doc.addPage(); pageCFO(doc, evidence);
   doc.addPage(); pageCounsel(doc, evidence);
   doc.addPage(); pageBroker(doc, evidence, opts.epssMap ?? null);
   if (evidence?.payload?.delta_chain) {
-    doc.addPage(); pageDelta(doc, evidence);
+    doc.addPage(); pageDelta(doc, evidence, { c2paSidecar, rekorBundle });
   }
   doc.addPage(); pageVerify(doc, evidence);
 
