@@ -305,3 +305,83 @@ export function codeBox(doc, { theme, lines, color }) {
   doc.x = left;
   doc.moveDown(0.4);
 }
+
+// ── RAG coverage vocabulary (shared by mappingTable + frameworkMatrix) ──────────
+// Maps a coverage word to its RAG status + a glyphed text label. full = pack-validated AND
+// policy-covered · partial = one signal · none = none. Text label ALWAYS present (a11y: never
+// color alone). Unknown coverage degrades to amber/partial rather than throwing.
+const COVERAGE = {
+  full: { status: "green", glyph: "✓", word: "full" },
+  partial: { status: "amber", glyph: "▲", word: "partial" },
+  none: { status: "red", glyph: "✗", word: "none" },
+};
+function coverageOf(value) {
+  return COVERAGE[String(value ?? "").toLowerCase()] ?? COVERAGE.partial;
+}
+const COVERAGE_LEGEND =
+  "Coverage: full = pack-validated AND policy-covered · partial = one signal · none = none.";
+
+// Apply a TYPE entry's font+size (caller sets fillColor). Local copy so the helpers below do not
+// depend on the private setType above.
+function applyType(doc, t) {
+  doc.font(t.font).fontSize(t.size);
+}
+
+// ── mappingTable: signal → framework mapping, sized-to-content, NEVER overflow ──
+// rows: [{ signal, framework, coverage('full'|'partial'|'none'), note? }]. Reuses table()
+// internally (measure → grow → paginate). The coverage column carries the glyphed RAG word so it
+// is legible without color (a11y). The legend is printed once above the table.
+export function mappingTable(doc, { theme, rows = [] }) {
+  const left = doc.page.margins.left;
+  doc.x = left;
+  applyType(doc, TYPE.footer);
+  doc.fillColor(theme.muted).text(COVERAGE_LEGEND, left, doc.y, { width: PAGE.textWidth });
+  doc.moveDown(0.4);
+  doc.x = left;
+
+  const tableRows = rows.map((r) => {
+    const cov = coverageOf(r.coverage);
+    return { ...r, coverageLabel: `${cov.glyph} ${cov.word}` };
+  });
+  table(doc, {
+    theme,
+    columns: [
+      { key: "signal", header: "Signal" },
+      { key: "framework", header: "Framework / control", width: 150 },
+      { key: "coverageLabel", header: "Coverage", width: 78 },
+    ],
+    rows: tableRows,
+  });
+  doc.x = left;
+}
+
+// ── frameworkMatrix: control/article → RAG status + citation, NEVER overflow ────
+// rows: [{ control, status('green'|'amber'|'red'), citation }]. Reuses ragRow() per row, which
+// already renders the glyph + color + a text status (a11y) + the control label + the citation as
+// detail. ragRow advances the cursor; rows never clip (one line each, wrap-safe in the detail).
+export function frameworkMatrix(doc, { theme, rows = [] }) {
+  const left = doc.page.margins.left;
+  doc.x = left;
+  for (const r of rows) {
+    ragRow(doc, { theme, label: r.control, status: r.status, detail: r.citation, labelWidth: 168 });
+  }
+  doc.x = left;
+}
+
+// ── attestationRow: one model-id / hash attestation line (label → mono value) ──
+// A single label/value line for the Model & Pipeline Attestation page: the label in muted Inter,
+// the value in Mono (it is usually an id/version/SHA-256). Long values truncate head…tail; the
+// FULL value lives in the sidecar evidence.json (design spec §4). Single-line, no wrap, manual
+// y-step (PDFKit does not advance doc.y after a lineBreak:false draw).
+export function attestationRow(doc, { theme, label, value, trunc = [22, 14] }) {
+  const left = doc.page.margins.left;
+  const y = doc.y;
+  const labelW = 150;
+  applyType(doc, TYPE.tableCell);
+  doc.font(FONTS.body).fillColor(theme.muted).text(label, left, y, { width: labelW, lineBreak: false });
+  const shown = trunc ? truncMid(value, trunc[0], trunc[1]) : String(value ?? "—");
+  doc.font(FONTS.mono).fillColor(theme.ink)
+    .text(shown, left + labelW + 8, y, { width: PAGE.textWidth - labelW - 8, lineBreak: false });
+  doc.x = left;
+  doc.y = y + TYPE.tableCell.leading + 2;
+}

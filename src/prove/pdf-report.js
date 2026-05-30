@@ -15,10 +15,13 @@ import { existsSync } from "node:fs";
 import { THEME, FONTS, FONT_FILES, PAGE, reportIdOf } from "./report/theme.js";
 import { drawFooters, makeFooterRegistry } from "./report/components.js";
 import { pageExecutiveSummary } from "./report/page-executive-summary.js";
+import { pageDataBom } from "./report/page-data-bom.js";
 import { pageCISO } from "./report/page-ciso.js";
 import { pageCFO } from "./report/page-cfo.js";
 import { pageCounsel } from "./report/page-counsel.js";
+import { pageModelAttestation } from "./report/page-model-attestation.js";
 import { pageBroker } from "./report/page-broker.js";
+import { pageHonestGap } from "./report/page-honest-gap.js";
 import { pageDelta } from "./report/page-delta.js";
 import { pageVerify } from "./report/page-verify.js";
 
@@ -46,9 +49,9 @@ function registerFonts(doc) {
 }
 
 /**
- * Genera el Evidence Report en PDF (Option C: cover dark + interior light). Page order is fixed:
- * cover · CISO · CFO · Counsel · Broker · [Delta when delta_chain] · Verify — exactly 6 pages
- * without a delta chain (7 with one), preserving back-compat with the page-count tests.
+ * Genera el Evidence Report en PDF (Option C: cover dark + interior light). Page order is fixed
+ * (design spec §8): cover · Data-BOM · CISO · CFO · Counsel · Model-Attestation · Broker ·
+ * Honest-Gap · [Delta when delta_chain] · Verify — 9 pages without a delta chain (10 with one).
  * @param {object} evidence  salida de buildEvidence()/runPipeline() (con timings opcional).
  * @param {object} [opts]
  * @param {Map|null} [opts.epssMap]      EPSS map (render-time, non-sealed) for the Broker page.
@@ -86,11 +89,17 @@ export async function buildPDFReport(evidence, opts = {}) {
   const registry = makeFooterRegistry();
   const ctx = { reportId, registry, qrPng, c2paSidecar, rekorBundle, epssMap: opts.epssMap ?? null };
 
+  // 9-page order (design spec §8): ExecutiveSummary(cover) · Data-BOM · CISO(Security Briefing) ·
+  // CFO · Counsel(Compliance Trace) · Model-Attestation · Broker(Risk Snapshot) · Honest-Gap ·
+  // [Delta when delta_chain] · Verify.
   doc.addPage(); pageExecutiveSummary(doc, evidence, ctx);
+  doc.addPage(); pageDataBom(doc, evidence, ctx);
   doc.addPage(); pageCISO(doc, evidence, ctx);
   doc.addPage(); pageCFO(doc, evidence, ctx);
   doc.addPage(); pageCounsel(doc, evidence, ctx);
+  doc.addPage(); pageModelAttestation(doc, evidence, ctx);
   doc.addPage(); pageBroker(doc, evidence, ctx);
+  doc.addPage(); pageHonestGap(doc, evidence, ctx);
   if (payload?.delta_chain) {
     doc.addPage(); pageDelta(doc, evidence, ctx);
   }
