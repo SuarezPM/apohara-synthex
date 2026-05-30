@@ -263,6 +263,10 @@ ClassificationSchema = z.object({
 
 **Tests**: [`test/classify/spotlight.test.js`](../test/classify/spotlight.test.js) — nonce differs per request (not static); wrap shape; `spotlightInstruction` binds the nonce; CI-lint positive (enveloped call-site passes) + **negative** (un-enveloped call-site is flagged) + comment-only mention is not egress (no false positive).
 
+### 8.G Demo (`--demo`) stubs L2/L3 — declared (v1.0.0 item 1.7)
+
+The 90-second judge demo (`node bin/synthex.mjs --demo security`, Scene 1) runs the **deterministic 3-layer defense offline, with no secrets and no spend**. To be reproducible without a network round-trip, the **L2 (Qwen3Guard) and L3 (AlignmentCheck) layers run as deterministic stubs** (`demo/demo.js`: `demoGuardScreen`, `demoAlignment`) — clearly labelled `(DEMO STUB)` in their sealed `model_id` / `guard_model` fields and disclosed in the demo's printed banner. This is the SAME honest framing the demo always carried ("cached snapshot, live seal"), now extended to the guard layers. What is **real** in the demo: the deterministic regex layers (L1), the **grounding verifier** (pure JS), the full pipeline wiring, and the **cryptographic seal** (Ed25519 + RFC 3161 TSA + HMAC, generated live; the demo self-signs with an ephemeral Ed25519 key when none is configured). The **live path** — real Featherless Qwen3Guard-Gen-8B (§8.A) and real deepseek-v4-pro (§8.D), measured FP/false-BLOCK — is NOT stubbed; it runs against the providers and is what §8.A/§8.D document. The demo stubs reproduce the *verdicts those measurements justify*; they do not fabricate a capability. // ES: el demo stubea L2/L3 (etiquetado `(DEMO STUB)` en el sello) para reproducibilidad offline; grounding + sello son reales; el path en vivo (Featherless + deepseek-v4-pro) NO está stubbed.
+
 ---
 
 ## §9 · Two `guard`s in the tree — naming-collision note
