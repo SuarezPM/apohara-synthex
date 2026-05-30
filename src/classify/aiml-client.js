@@ -17,6 +17,39 @@ export const LENSES = {
   "supply-chain": "Supply chain disruption: supplier/vendor failures, logistics & shipping disruption, raw-material shortages, multi-tier supplier risk, force majeure",
 };
 
+// Output-language guard — the classifier MUST emit English regardless of the source language.
+// Bug fix: Spanish-heavy scraped content (e.g. a Latino piracy site) made some lenses answer in
+// Spanish; lens summaries/signals must always be English for a consistent report.
+const ENGLISH_DIRECTIVE =
+  'Write "summary" and every "signals" entry in ENGLISH ONLY, regardless of the language of the source content.';
+
+/** System prompt for a single-lens classification. English-only output enforced. Pure + exported for tests. */
+export function buildClassifySystem(lens, lensDesc, nonce) {
+  return (
+    `You are a web-intelligence classifier. Lens: ${lensDesc}. ` +
+    `${spotlightInstruction(nonce)} ` +
+    `${ENGLISH_DIRECTIVE} ` +
+    `Return EXCLUSIVELY valid JSON with this shape: ` +
+    `{"lens":"${lens}","severity":<0-10>,"summary":"<1-2 sentences>","signals":["<signal>","..."]}.`
+  );
+}
+
+/** System prompt for the batched multi-lens classification. English-only output enforced. Pure + exported for tests. */
+export function buildBatchedSystem(lenses, nonce) {
+  const lensBlock = lenses.map((l) => `- "${l}": ${LENSES[l] ?? l}`).join("\n");
+  const shape = lenses
+    .map((l) => `"${l}":{"lens":"${l}","severity":<0-10>,"summary":"<1-2 sentences>","signals":["<signal>","..."]}`)
+    .join(",");
+  return (
+    `You are a multi-lens web-intelligence classifier. Analyze the SAME content under EACH of these lenses:\n` +
+    `${lensBlock}\n` +
+    `${spotlightInstruction(nonce)} ` +
+    `${ENGLISH_DIRECTIVE} ` +
+    `Return EXCLUSIVELY valid JSON with one object per lens, with this shape: ` +
+    `{${shape}}.`
+  );
+}
+
 // El texto untrusted del scrape se envuelve con Spotlighting nonce-tagged (1.6,
 // `./spotlight.js`): sentinels por-request no-adivinables. El system prompt instruye al
 // modelo a tratar lo de adentro como DATOS, no como prompt anidado. NO sustituye la
@@ -85,11 +118,7 @@ export async function classify(text, lens = "security", opts = {}) {
   // no lleva los marcadores). El system prompt referencia el nonce de este request.
   const { nonce, wrapped: userMessage } = spotlight(slice);
 
-  const system =
-    `Sos un clasificador de inteligencia web. Lente: ${lensDesc}. ` +
-    `${spotlightInstruction(nonce)} ` +
-    `Devolvé EXCLUSIVAMENTE JSON válido con esta forma: ` +
-    `{"lens":"${lens}","severity":<0-10>,"summary":"<1-2 frases>","signals":["<señal>","..."]}.`;
+  const system = buildClassifySystem(lens, lensDesc, nonce);
   if (truncated && opts.onTruncate) {
     try { opts.onTruncate({ charsSeen, original: raw.length }); } catch { /* best-effort */ }
   } else if (truncated) {
@@ -229,12 +258,6 @@ export async function classifyBatched(text, lenses = Object.keys(LENSES), opts =
   const model = opts.model ? opts.model : tier ? pickModel({ tier }) : DEFAULT_MODEL;
   const baseUrl = opts.baseUrl ?? DEFAULT_BASE;
 
-  // Per-lens descriptions so one prompt covers every angle. Descripciones por lente.
-  const lensBlock = lenses.map((l) => `- "${l}": ${LENSES[l] ?? l}`).join("\n");
-  const shape = lenses
-    .map((l) => `"${l}":{"lens":"${l}","severity":<0-10>,"summary":"<1-2 frases>","signals":["<señal>","..."]}`)
-    .join(",");
-
   // Truncation flag SOLO sobre el input al LLM. La raw text del payload NO se altera.
   const MAX_CHARS = 8000;
   const raw = String(text);
@@ -244,12 +267,7 @@ export async function classifyBatched(text, lenses = Object.keys(LENSES), opts =
   // Spotlighting (1.6): nonce-tagged sentinels por-request (no entra al seal).
   const { nonce, wrapped: userMessage } = spotlight(slice);
 
-  const system =
-    `Sos un clasificador de inteligencia web multi-lente. Analizá el MISMO contenido bajo CADA una de estas lentes:\n` +
-    `${lensBlock}\n` +
-    `${spotlightInstruction(nonce)} ` +
-    `Devolvé EXCLUSIVAMENTE JSON válido con un objeto por lente, con esta forma: ` +
-    `{${shape}}.`;
+  const system = buildBatchedSystem(lenses, nonce);
   if (truncated && opts.onTruncate) {
     try { opts.onTruncate({ charsSeen, original: raw.length }); } catch { /* best-effort */ }
   } else if (truncated) {
