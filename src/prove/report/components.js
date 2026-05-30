@@ -142,15 +142,18 @@ export function table(doc, { theme, columns, rows, onNewPage }) {
     let cx = left;
     setType(doc, TYPE.tableHeader);
     doc.fillColor(theme.muted);
+    // Capture the header baseline ONCE: PDFKit advances doc.y after each lineBreak:false text()
+    // draw, so reading doc.y per cell staggers the headers (the design-spec pitfall). Pin hy0.
+    const hy0 = doc.y;
     for (const c of cols) {
       const label = `${c.header ?? c.key}${cont && c === cols[0] ? " (cont.)" : ""}`;
-      doc.text(label.toUpperCase(), cx + cellPadX, doc.y, {
+      doc.text(label.toUpperCase(), cx + cellPadX, hy0, {
         width: c.width - cellPadX * 2, align: c.align === "right" ? "right" : "left",
         characterSpacing: TYPE.tableHeader.tracking, lineBreak: false,
       });
       cx += c.width;
     }
-    const hy = doc.y + TYPE.tableHeader.leading - 2;
+    const hy = hy0 + TYPE.tableHeader.leading - 2;
     doc.moveTo(left, hy).lineTo(left + cols.reduce((a, c) => a + c.width, 0), hy)
       .strokeColor(theme.ink).lineWidth(1).stroke();
     doc.y = hy + 4;
