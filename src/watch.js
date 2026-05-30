@@ -6,6 +6,7 @@
 import { runPipeline } from "./pipeline.js";
 import { MemoryStore } from "./memory/index.js";
 import { defaultSinks } from "./sinks.js";
+import { resolveSigningKey } from "./prove/asymmetric.js";
 
 // Normaliza findings a un array plano {severity, signals}, soportando tanto el shape
 // plano (lente única) como el tri-lente (lens="all" → {trilens:{gtm,finance,security}}).
@@ -37,7 +38,11 @@ export async function watchTarget(target, opts = {}) {
   const priorSignals = new Set(prior.flatMap((p) => p.signals ?? []));
   const priorMaxSeverity = prior.reduce((m, p) => Math.max(m, p.maxSeverity ?? 0), 0);
 
-  const evidence = await runner(target, { lens, hmacKey });
+  // P2.1 — seal the real Ed25519 by default on the react/monitor path: resolve the persistent
+  // signing key (env → XDG default) so watch-driven evidence is NOT symmetric-only. An injected
+  // test runner just ignores the extra opt. No key configured → resolveSigningKey() returns null →
+  // unchanged (symmetric-only), so CI without a key behaves exactly as before.
+  const evidence = await runner(target, { lens, hmacKey, signingKey: opts.signingKey ?? resolveSigningKey() });
   const signals = signalsOf(evidence);
   const maxSeverity = maxSeverityOf(evidence);
   const newSignals = signals.filter((s) => !priorSignals.has(s));

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { verifyEvidence } from "./prove/evidence-report.js";
 import { runPipeline } from "./pipeline.js";
 import { TriggerWareClient } from "./trigger/index.js";
+import { resolveSigningKey } from "./prove/asymmetric.js";
 
 export const tools = [
   {
@@ -36,7 +37,9 @@ export const tools = [
       lens: z.enum(["gtm", "finance", "security", "supply-chain", "all"]).default("security").describe("Lente de clasificación; 'all' corre las cuatro en paralelo"),
     }),
     execute: async ({ target, lens }) => {
-      const ev = await runPipeline(target, { lens });
+      // P2.1 — the MCP scrape tool seals the real Ed25519 by default: resolve the persistent signing
+      // key (env → XDG default) so MCP-driven evidence is not symmetric-only. null when no key → unchanged.
+      const ev = await runPipeline(target, { lens, signingKey: resolveSigningKey() });
       return JSON.stringify(ev, null, 2);
     },
   },
