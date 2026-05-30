@@ -19,8 +19,7 @@ export function pageCFO(doc, ev, ctx = {}) {
     const pct = (dedup.dedupRatio * 100).toFixed(1);
     kv(doc, "Unique blocks", String(dedup.uniqueBlocks ?? "—"));
     kv(doc, "Duplicate blocks", String(dedup.duplicateBlocks ?? 0), (dedup.duplicateBlocks ?? 0) ? PAPER.green : PAPER.muted);
-    kv(doc, "Dedup ratio", `${pct}%  (LLM calls avoided)`, (dedup.duplicateBlocks ?? 0) ? PAPER.green : PAPER.muted);
-    kv(doc, "Bytes saved", `${(dedup.bytesSaved ?? 0).toLocaleString()} bytes not sent to the model`);
+    kv(doc, "Tokens saved", `~${pct}% of input tokens`, (dedup.duplicateBlocks ?? 0) ? PAPER.green : PAPER.muted);
   } else {
     doc.font(FONTS.body).fontSize(9).fillColor(PAPER.muted)
       .text("Dedup stats not present in this evidence object (no FORGE pass recorded).").fillColor(PAPER.ink);
