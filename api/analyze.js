@@ -17,8 +17,8 @@ export default async function handler(req, res) {
     const { target, lens = "all", tier } = (req.body && typeof req.body === "object" ? req.body : {});
     const hasSecrets = !!process.env.BRIGHT_DATA_TOKEN && !!process.env.AIML_API_KEY;
 
-    // v0.6.0: tier opt-in via playground. tier=free/oss/paid resuelve a model id
-    // concreto via pickModel(). Sin tier → comportamiento v0.5 (DEFAULT_MODEL).
+    // tier opt-in via playground. tier=flash/pro resuelve a model id concreto via
+    // pickModel(). Sin tier → comportamiento por defecto (DEFAULT_TIER → flash).
     let modelOverride = null;
     if (tier) {
       try { modelOverride = pickModel({ tier }); }

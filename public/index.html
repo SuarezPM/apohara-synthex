@@ -741,13 +741,12 @@ $ openssl ts -reply -in synthex.tsr -text
         <button class="lens" data-lens="supply-chain" aria-pressed="false">Supply-chain</button>
         <button class="lens" data-lens="all" aria-pressed="true">All 4</button>
       </div>
-      <label class="flabel" for="tier" style="margin-top:18px;display:block">Model tier <span style="color:var(--muted);font-weight:400">— v0.6 cost/quality tradeoff</span></label>
+      <label class="flabel" for="tier" style="margin-top:18px;display:block">Model tier <span style="color:var(--muted);font-weight:400">— cost/quality tradeoff</span></label>
       <div class="lenses" id="tiers" role="group" aria-label="Model tier">
-        <button class="lens" data-tier="oss" aria-pressed="true">OSS · DeepSeek (default)</button>
-        <button class="lens" data-tier="paid" aria-pressed="false">PAID · DeepSeek thinking</button>
-        <button class="lens" data-tier="free" aria-pressed="false">FREE · Nemotron 9B</button>
+        <button class="lens" data-tier="flash" aria-pressed="true">DeepSeek V4 Flash · default</button>
+        <button class="lens" data-tier="pro" aria-pressed="false">DeepSeek V4 Pro · thinking</button>
       </div>
-      <p class="flabel" style="margin-top:10px;text-transform:none;font-weight:400;color:var(--faint);letter-spacing:0">The FREE tier (Nemotron 9B) is labeled <b style="color:var(--amber)">free-low-quality</b> — fine for trying the flow, not for production verdicts (calibration in <span class="mono">docs/v060-calibration.md</span>).</p>
+      <p class="flabel" style="margin-top:10px;text-transform:none;font-weight:400;color:var(--faint);letter-spacing:0">Flash is the fast, bulk default classifier; Pro is the higher-quality reasoner for high-stakes verdicts.</p>
       <button class="run" id="run">Analyze &amp; Seal</button>
       <div id="panel" class="hidden">
         <div style="display:flex;justify-content:space-between;align-items:center;margin:24px 0 0"><span class="flabel" style="margin:0">Pipeline</span><span id="mode" aria-live="polite"></span></div>
