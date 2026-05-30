@@ -2,7 +2,7 @@
 // (magic %PDF) sin red, para los distintos shapes de evidence, y que el Risk Score es honesto.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildPDFReport, riskScore } from "../src/prove/pdf-report.js";
+import { buildPDFReport, riskScore, riskScoreWeighted } from "../src/prove/pdf-report.js";
 
 const baseEvidence = (overrides = {}) => ({
   payload: {
@@ -117,4 +117,43 @@ test("riskScore T9/L4: maxSev=8, blocked=2 → score=68 (NOT 62 — Kiro audit w
     "REGRESSION: formula = round((maxSev*0.7 + min(blocked,5)/5*10*0.3)*10). Update this comment if you change the formula at src/prove/pdf-report.js:56-57.",
   );
   assert.equal(r.band, "MEDIUM");
+});
+
+// ─── R1: EPSS-weighted Risk Score (additive, opt-in, non-sealed) ──────────────
+
+test("riskScoreWeighted: epssMap null/vacío → IDÉNTICo a riskScore base (opt-out no-op)", () => {
+  const ev = baseEvidence();
+  const base = riskScore(ev);
+  const w0 = riskScoreWeighted(ev, null);
+  const w1 = riskScoreWeighted(ev, new Map());
+  assert.equal(w0.weighted, false);
+  assert.equal(w0.score, base.score); // 69 — formula intacta
+  assert.equal(w1.weighted, false);
+  assert.equal(w1.score, base.score);
+});
+
+test("riskScoreWeighted: con CVE en el finding maxSev → score base intacto + weightedScore mayor", () => {
+  const ev = baseEvidence(); // conserva blocked=1 (mutar findings post-construcción evita el footgun de overrides)
+  ev.payload.findings = [{ url: "u", lens: "security", severity: 9, summary: "Log4Shell CVE-2021-44228", signals: ["CVE-2021-44228", "rce"] }];
+  const base = riskScore(ev); // maxSev 9, blocked 1 → 69 (MEDIUM)
+  const w = riskScoreWeighted(ev, new Map([["CVE-2021-44228", { epss: 0.94 }]]));
+  assert.equal(w.weighted, true);
+  assert.equal(w.score, base.score, "el score SELLADO/base no cambia");
+  assert.equal(w.cve, "CVE-2021-44228");
+  assert.ok(w.weightedScore > base.score, `weighted ${w.weightedScore} debe superar base ${base.score}`);
+  assert.equal(w.weightedScore, 76); // min(10,9*1.282)=10 → round((10*0.7+2*0.3)*10)=76
+  assert.equal(w.weightedBand, "HIGH");
+});
+
+test("riskScoreWeighted: maxSev sin CVE en el texto → weighted:false (best-effort, no inventa)", () => {
+  const ev = baseEvidence(); // signals ["breach","cve"] — sin un CVE id real
+  const w = riskScoreWeighted(ev, new Map([["CVE-2021-44228", { epss: 0.94 }]]));
+  assert.equal(w.weighted, false);
+});
+
+test("pdf: render con opts.epssMap sigue produciendo un PDF válido (la línea extra no rompe layout)", async () => {
+  const ev = baseEvidence();
+  ev.payload.findings = [{ url: "u", lens: "security", severity: 9, summary: "CVE-2021-44228 RCE", signals: ["CVE-2021-44228"] }];
+  const buf = await buildPDFReport(ev, { epssMap: new Map([["CVE-2021-44228", { epss: 0.94 }]]) });
+  assertIsPdf(buf);
 });

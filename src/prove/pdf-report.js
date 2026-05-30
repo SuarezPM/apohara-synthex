@@ -10,6 +10,7 @@
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { synthesizeOutput } from "./output.js";
+import { cveIdsFromFinding, epssWeight } from "./epss.js";
 
 const COLORS = { brand: "#5b21b6", ok: "#15803d", warn: "#b45309", crit: "#b91c1c", muted: "#6b7280", ink: "#111827", line: "#e5e7eb" };
 const sevColor = (s) => (s >= 8 ? COLORS.crit : s >= 5 ? COLORS.warn : COLORS.ok);
@@ -62,6 +63,32 @@ export function riskScore(evidence) {
   const score = Math.round((maxSev * 0.7 + blockTerm * 0.3) * 10);
   const band = score >= 70 ? "HIGH" : score >= 40 ? "MEDIUM" : "LOW";
   return { score, band, maxSev, blocked };
+}
+
+/**
+ * EPSS-weighted Risk Score — ADDITIVE, render-time, NON-SEALED enrichment (item R1). The base
+ * riskScore() above is the single source of truth and is UNCHANGED; this layers an OPTIONAL EPSS
+ * multiplier on the severity term when the maxSev finding's text names a CVE present in `epssMap`.
+ * With a null/empty map (or no CVE match) it returns the base result with `weighted:false` — a
+ * no-op equal to today's behavior. EPSS changes daily and is NEVER sealed (see src/prove/epss.js).
+ * @param {object} evidence
+ * @param {Map<string,{epss:number}>|null} epssMap
+ * @returns {{score:number, band:string, maxSev:number, blocked:number, weighted:boolean,
+ *            weightedScore?:number, weightedBand?:string, weightedMaxSev?:number, epss?:number, cve?:string}}
+ */
+export function riskScoreWeighted(evidence, epssMap) {
+  const base = riskScore(evidence);
+  if (!(epssMap instanceof Map) || epssMap.size === 0) return { ...base, weighted: false };
+  const rows = allRows(evidence?.payload?.findings ?? []);
+  // The row that produced maxSev drives the base score; weight by ITS CVEs' EPSS.
+  const top = rows.filter((r) => (Number(r.severity) || 0) === base.maxSev)[0] ?? null;
+  const { factor, epss, cve } = epssWeight(epssMap, top ? cveIdsFromFinding(top) : []);
+  if (epss === null) return { ...base, weighted: false }; // maxSev finding names no in-map CVE
+  const weightedMaxSev = Math.min(10, base.maxSev * factor);
+  const blockTerm = (Math.min(base.blocked, 5) / 5) * 10;
+  const weightedScore = Math.round((weightedMaxSev * 0.7 + blockTerm * 0.3) * 10);
+  const weightedBand = weightedScore >= 70 ? "HIGH" : weightedScore >= 40 ? "MEDIUM" : "LOW";
+  return { ...base, weighted: true, weightedScore, weightedBand, weightedMaxSev, epss, cve };
 }
 
 // ── helpers de layout ──────────────────────────────────────────────────────
@@ -294,7 +321,7 @@ function pageCounsel(doc, ev) {
     { width: doc.page.width - 100 }).fillColor(COLORS.ink);
 }
 
-function pageBroker(doc, ev) {
+function pageBroker(doc, ev, epssMap = null) {
   const { payload = {} } = ev;
   const r = riskScore(ev);
   pageHeader(doc, "Risk Snapshot", "Broker / Underwriter");
@@ -322,6 +349,17 @@ function pageBroker(doc, ev) {
     "blockTerm = min(blockedCount, 5) / 5 * 10 ............. " + `${((Math.min(r.blocked, 5) / 5) * 10).toFixed(1)}/10  (blocked=${r.blocked})\n` +
     "score     = round( (maxSev*0.70 + blockTerm*0.30) * 10 ) = " + `${r.score}`,
     { width: doc.page.width - 100 }).moveDown(0.8);
+
+  // EPSS enrichment (R1) — OPT-IN, NON-SEALED, render-time only. Printed ONLY when an epssMap is
+  // supplied AND the top finding names a CVE present in it. Never alters the sealed score above.
+  const w = epssMap ? riskScoreWeighted(ev, epssMap) : null;
+  if (w && w.weighted) {
+    doc.font("Courier").fontSize(8.5).fillColor(COLORS.muted).text(
+      `EPSS enrichment (FIRST.org · non-sealed · mapping, not endorsement):\n` +
+      `  ${w.cve}  epss=${w.epss.toFixed(3)}  ->  severity term x${(1 + 0.3 * w.epss).toFixed(3)}  ->  weighted score ${w.weightedScore}/100 (${w.weightedBand})`,
+      { width: doc.page.width - 100 },
+    ).fillColor(COLORS.ink).moveDown(0.6);
+  }
 
   // Disclaimer EXPLÍCITO (requisito de honestidad).
   doc.rect(x, doc.y, doc.page.width - 100, 64).fill("#fef3c7");
@@ -450,7 +488,7 @@ function pageVerify(doc, ev) {
  * @param {object} evidence  salida de buildEvidence()/runPipeline() (con timings opcional).
  * @returns {Promise<Buffer>} bytes del PDF.
  */
-export async function buildPDFReport(evidence) {
+export async function buildPDFReport(evidence, opts = {}) {
   const { payload = {}, contentHash, seal = {}, sealedAt } = evidence;
   const tsa = seal.rfc3161Tsa;
 
@@ -476,7 +514,7 @@ export async function buildPDFReport(evidence) {
   doc.addPage(); pageCISO(doc, evidence);
   doc.addPage(); pageCFO(doc, evidence);
   doc.addPage(); pageCounsel(doc, evidence);
-  doc.addPage(); pageBroker(doc, evidence);
+  doc.addPage(); pageBroker(doc, evidence, opts.epssMap ?? null);
   if (evidence?.payload?.delta_chain) {
     doc.addPage(); pageDelta(doc, evidence);
   }
