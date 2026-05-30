@@ -38,6 +38,54 @@ function allRows(findings) {
   return findings.flatMap(rowsOf);
 }
 
+// Etiqueta de modo de una fila de decisión: DEMO STUB (model_id/guard_model lo marcan) >
+// DEGRADED (fail-safe REVIEW, row.degraded) > LIVE. Honesto: nunca implica que una capa
+// stubbeada corrió en vivo.
+function decisionMode(row) {
+  const label = `${row?.model_id ?? ""} ${row?.guard_model ?? ""}`;
+  if (label.includes("(DEMO STUB)")) return "DEMO STUB";
+  if (row?.degraded) return "DEGRADED (fail-safe REVIEW)";
+  return "LIVE";
+}
+
+// Construye el ledger de defensa 3-tier desde payload.decisions[]. Una fila-resumen por capa
+// (L1 djl/prefilter REVIEW · L2 injection-guard · L3 alignment-check) — present-gated: una capa
+// sin filas se reporta "not run (opt-in)". L3 trae el veredicto describing-vs-executing + la
+// rationale truncada. Etiqueta cada capa LIVE/DEGRADED/DEMO STUB.
+function guardLedger(decisions = []) {
+  const ds = Array.isArray(decisions) ? decisions : [];
+  const l1 = ds.filter((d) => d.layer === "djl" || d.layer === "prefilter");
+  const l2 = ds.filter((d) => d.stage === "INJECTION_GUARD");
+  const l3 = ds.filter((d) => d.stage === "ALIGNMENT_CHECK");
+
+  const summarize = (rows, outcomeKey = "outcome") => {
+    const counts = rows.reduce((m, r) => ({ ...m, [r[outcomeKey]]: (m[r[outcomeKey]] ?? 0) + 1 }), {});
+    return Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(" · ");
+  };
+
+  const rows = [
+    l1.length
+      ? { tier: "L1 regex (DJL/prefilter)", detail: `${summarize(l1)} — REVIEW-only on ingest`, mode: decisionMode(l1[0]) }
+      : { tier: "L1 regex (DJL/prefilter)", detail: "no BLOCK-grade hits this batch", mode: "not run" },
+    l2.length
+      ? { tier: "L2 injection-guard", detail: `${summarize(l2)} (${l2[0].guard_model ?? "guard"})`, mode: decisionMode(l2[0]) }
+      : { tier: "L2 injection-guard", detail: "not run (opt-in · SYNTHEX_GUARD_URL)", mode: "not run (opt-in)" },
+  ];
+  // L3 rows are per-doc; surface each describing-vs-executing verdict + truncated rationale.
+  if (l3.length) {
+    for (const r of l3) {
+      rows.push({
+        tier: "L3 alignment-check",
+        detail: `${r.outcome} (conf ${r.confidence ?? "—"}) — ${truncMid(r.rationale, 70, 0)}`,
+        mode: decisionMode(r),
+      });
+    }
+  } else {
+    rows.push({ tier: "L3 alignment-check", detail: "not run (no REVIEW-band doc to adjudicate)", mode: "not run" });
+  }
+  return rows;
+}
+
 /**
  * Risk Score 0–100 — fórmula determinista, publicada y reproducible, ANCLADA en frameworks
  * públicos NOMBRADOS (mapping, NOT endorsement): el eje de severidad usa la escala 0–10 del
@@ -104,7 +152,9 @@ function diamond(doc, x, y, size, color) {
 // sidecar evidence.json (design spec §4: nunca un valor truncado sin ruta al completo).
 function truncMid(value, head = 16, tail = 12) {
   const s = String(value ?? "");
-  return s.length <= head + tail + 1 ? s : `${s.slice(0, head)}…${s.slice(-tail)}`;
+  if (s.length <= head + tail + 1) return s;
+  // tail===0 → head + ellipsis only (slice(-0) returns the whole string, so guard it).
+  return tail > 0 ? `${s.slice(0, head)}…${s.slice(-tail)}` : `${s.slice(0, head)}…`;
 }
 
 // Lee el logIndex de un bundle Rekor v2, tolerante a su forma real (tlogEntry.logIndex) o
@@ -254,6 +304,21 @@ function pageCISO(doc, ev) {
       doc.font("Helvetica-Bold").fillColor(sevColor(o.sev)).text(`${o.sev}/10  BLOCKED`, { continued: false });
       doc.fillColor(COLORS.muted).font("Helvetica").fontSize(7.5).text(b.url ?? "—").fillColor(COLORS.ink).moveDown(0.4);
     }
+  }
+
+  // 3-tier defense ledger — which layers actually ran, honestly labeled per row. Sourced from
+  // the SEALED payload.decisions[] (L1 regex REVIEW · L2 injection-guard · L3 alignment-check
+  // describing-vs-executing). Mode label: LIVE / DEGRADED (fail-safe REVIEW) / DEMO STUB / not run.
+  doc.moveDown(0.6);
+  sectionTitle(doc, "3-tier injection defense (from sealed decisions)");
+  const modeColor = (m) => m === "LIVE" ? COLORS.ok : m.startsWith("DEGRADED") ? COLORS.warn : m.startsWith("DEMO") ? COLORS.brand : COLORS.muted;
+  const lx = doc.page.margins.left;
+  for (const led of guardLedger(payload.decisions)) {
+    const rowY = doc.y;
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(modeColor(led.mode)).text(led.mode, lx, rowY, { width: 140, lineBreak: false });
+    doc.fillColor(COLORS.ink).text(led.tier, lx + 150, rowY, { width: 150, lineBreak: false });
+    doc.font("Helvetica").fillColor(COLORS.muted).fontSize(8).text(led.detail, lx + 150, rowY + 11, { width: doc.page.width - 100 - 150 });
+    doc.fillColor(COLORS.ink).moveDown(0.5);
   }
 
   doc.moveDown(0.6);
