@@ -70,8 +70,8 @@ const demoAlignment = async (text) => {
   const t = String(text ?? "");
   const executing = /after you read this|call the exfiltrate tool|send all secrets|SYSTEM:/i.test(t);
   return executing
-    ? { decision: "BLOCK", rationale: "DEMO STUB: el contenido INSTRUYE al agente lector a exfiltrar secrets — executing, no describing.", confidence: 0.98, model_id: "deepseek/deepseek-v4-pro (DEMO STUB)", version: "alignment-check-demo", degraded: false }
-    : { decision: "ALLOW", rationale: "DEMO STUB: el contenido DESCRIBE prompt-injection (documentación), no es un ataque al lector.", confidence: 0.95, model_id: "deepseek/deepseek-v4-pro (DEMO STUB)", version: "alignment-check-demo", degraded: false };
+    ? { decision: "BLOCK", rationale: "DEMO STUB: the content INSTRUCTS the reading agent to exfiltrate secrets — executing, not describing.", confidence: 0.98, model_id: "deepseek/deepseek-v4-pro (DEMO STUB)", version: "alignment-check-demo", degraded: false }
+    : { decision: "ALLOW", rationale: "DEMO STUB: the content DESCRIBES prompt-injection (documentation), it is not an attack on the reader.", confidence: 0.95, model_id: "deepseek/deepseek-v4-pro (DEMO STUB)", version: "alignment-check-demo", degraded: false };
 };
 
 /** Corre el demo y devuelve el Evidence Report. requestTsa=false en tests para rapidez.
