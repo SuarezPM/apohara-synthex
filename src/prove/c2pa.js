@@ -33,6 +33,18 @@ const COSE_HEADER_ALG = 1;
 const COSE_HEADER_X5CHAIN = 33;
 const COSE_ALG_EDDSA = -8;
 
+// CAWG (Creator Assertions Working Group) identity assertion (v1.0.0 item R2). This adds a
+// structurally spec-shaped `cawg.identity` assertion (sig_type `cawg.x509.cose`) binding the
+// signer's SELF-SIGNED organizational identity to the SAME c2pa.hash.data hard-binding hash, via a
+// COSE_Sign1 over the signer_payload with the SAME self-signed Ed25519 cert. **Honest (binding):**
+// SELF-SIGNED + UNTRUSTED — it asserts WHO claims the org identity, not that any trust ecosystem
+// vouches for it. NOT CA-rooted, NOT the CAWG Organizational Identity Profile, and NOT validated by
+// c2patool in this sidecar path (c2patool never reads our JSON sidecar — that path is disjoint from
+// evidence-card.js). It is "structurally spec-shaped", verified by our own verifyC2paManifest. A
+// c2patool-VALIDATED CAWG identity (native [cawg_x509_signer] flow) is separate future work.
+const CAWG_IDENTITY_LABEL = "cawg.identity";
+const CAWG_SIG_TYPE = "cawg.x509.cose";
+
 // Canonical CBOR encoder — definite-length, integer-keyed maps, sorted.
 // `mapsAsObjects: false` keeps Map() instances as CBOR maps (not converted to
 // objects with string keys, which would fail COSE header structure).
@@ -169,6 +181,49 @@ export async function buildSelfSignedEd25519Cert(opts) {
   return new Uint8Array(cert.toSchema(true).toBER(false));
 }
 
+// ─── CAWG identity assertion (R2) ──────────────────────────────────────────
+
+/**
+ * Build a CAWG `cawg.identity` assertion (sig_type cawg.x509.cose): a COSE_Sign1 over the
+ * signer_payload, signed with the SAME self-signed Ed25519 cert (x5chain). The signer_payload binds
+ * the SAME c2pa.hash.data hard-binding hash (NOT a recompute — reuses contentHashBytes). The COSE
+ * payload is ATTACHED, so the verifier rebuilds Sig_structure from the attached bytes (no canonical
+ * re-encoding needed). Self-signed → untrusted org identity (see header).
+ * @param {Uint8Array} contentHashBytes  the c2pa.hash.data hash bytes (the hard binding).
+ * @param {Uint8Array} x509CertDer
+ * @param {string} signingKey  pkcs8 PEM
+ * @param {{role?:string[]}} [opts]
+ * @returns {Promise<{signer_payload:Map, signature:Uint8Array, pad1:Uint8Array}>}
+ */
+async function _buildCawgAssertion(contentHashBytes, x509CertDer, signingKey, { role = ["cawg.creator"] } = {}) {
+  const signerPayload = new Map([
+    ["referenced_assertions", [new Map([
+      ["url", "self#jumbf=c2pa.assertions/c2pa.hash.data"],
+      ["hash", contentHashBytes],
+    ])]],
+    ["sig_type", CAWG_SIG_TYPE],
+    ["role", role],
+  ]);
+  const signerPayloadCbor = cborEncode(signerPayload);
+  // COSE_Sign1 protected header {1:-8 EdDSA, 33:[cert]} — same shape as the claim signature.
+  const protectedBytes = cborEncode(new Map([[COSE_HEADER_ALG, COSE_ALG_EDDSA], [COSE_HEADER_X5CHAIN, [x509CertDer]]]));
+  const sigStructureBytes = cborEncode(["Signature1", protectedBytes, new Uint8Array(0), signerPayloadCbor]);
+  const privKeyObj = createPrivateKey(signingKey);
+  const pkcs8Der = privKeyObj.export({ type: "pkcs8", format: "der" });
+  const cryptoKey = await webcrypto.subtle.importKey(
+    "pkcs8", pkcs8Der.buffer.slice(pkcs8Der.byteOffset, pkcs8Der.byteOffset + pkcs8Der.byteLength),
+    { name: "Ed25519" }, false, ["sign"],
+  );
+  const signature = new Uint8Array(await webcrypto.subtle.sign("Ed25519", cryptoKey, sigStructureBytes));
+  // Attached payload (signer_payload CBOR) so the verifier needs no canonical re-encoding.
+  const coseSign1Bytes = cborEncode(new CborTag([protectedBytes, new Map(), signerPayloadCbor, signature], COSE_SIGN1_TAG));
+  return new Map([
+    ["signer_payload", signerPayload],
+    ["signature", coseSign1Bytes],
+    ["pad1", new Uint8Array(0)],
+  ]);
+}
+
 // ─── C2PA manifest builder ────────────────────────────────────────────────
 
 /**
@@ -195,6 +250,8 @@ export async function buildC2paManifest(evidence, opts) {
     signingKey,
     generatorVersion = "0.8.0",
     softwareAgent = "Apohara Synthex",
+    includeCawgIdentity = true, // R2 — append the self-signed CAWG identity assertion
+    orgIdentity = { role: ["cawg.creator"] },
   } = opts;
 
   if (!evidence?.contentHash || typeof evidence.contentHash !== "string") {
@@ -219,6 +276,17 @@ export async function buildC2paManifest(evidence, opts) {
     ],
     instance_id: `urn:uuid:${_uuid4()}`,
   };
+  // R2 — append the CAWG identity assertion LAST (c2pa.hash.data stays first; verify finds it
+  // order-independently via .find). Self-signed/untrusted org identity bound to the same hash.
+  if (includeCawgIdentity) {
+    const cawg = await _buildCawgAssertion(contentHashBytes, x509CertDer, signingKey, { role: orgIdentity.role });
+    claim.created_assertions.push({
+      label: CAWG_IDENTITY_LABEL,
+      signer_payload: cawg.get("signer_payload"),
+      signature: cawg.get("signature"),
+      pad1: cawg.get("pad1"),
+    });
+  }
   const claimCbor = cborEncode(claim);
 
   // COSE_Sign1 protected header: {1: -8 (EdDSA), 33: [cert DER]}.
@@ -338,7 +406,34 @@ export async function verifyC2paManifest(sidecar, opts = {}) {
       return { ok: false, reason: "hash-mismatch-vs-sidecar", contentHash: claimedHashHex };
     }
 
-    return { ok: true, reason: null, claim, contentHash: claimedHashHex };
+    // R2 — CAWG identity assertion (additive, self-signed/untrusted). Absent → present:false
+    // (back-compat: old sidecars + includeCawgIdentity:false still verify ok). Verify the inner
+    // COSE_Sign1 over the ATTACHED signer_payload against the SAME leaf cert key, and that the
+    // CAWG referenced hash binds the SAME contentHash.
+    let cawg = { present: false };
+    const cawgAssertion = createdAssertions.find((a) => _readField(a, "label") === CAWG_IDENTITY_LABEL);
+    if (cawgAssertion) {
+      const coseBytes = _toBuf(_readField(cawgAssertion, "signature"));
+      const cose = cborDecode(coseBytes);
+      const coseArr = cose instanceof CborTag ? cose.value : cose;
+      if (!Array.isArray(coseArr) || coseArr.length !== 4) return { ok: false, reason: "cawg-malformed" };
+      const [cawgProtected, , cawgPayload, cawgSig] = coseArr;
+      const cawgSigStructBytes = cborEncode(["Signature1", _toBuf(cawgProtected), new Uint8Array(0), _toBuf(cawgPayload)]);
+      const cawgSigBuf = _toBuf(cawgSig);
+      const cawgOk = await webcrypto.subtle.verify(
+        "Ed25519", cryptoKey,
+        cawgSigBuf.buffer.slice(cawgSigBuf.byteOffset, cawgSigBuf.byteOffset + cawgSigBuf.byteLength),
+        cawgSigStructBytes.buffer.slice(cawgSigStructBytes.byteOffset, cawgSigStructBytes.byteOffset + cawgSigStructBytes.byteLength),
+      );
+      if (!cawgOk) return { ok: false, reason: "cawg-bad-signature" };
+      const sp = cborDecode(_toBuf(cawgPayload));
+      const refs = _readField(sp, "referenced_assertions");
+      const refHashHex = Array.isArray(refs) && refs[0] ? Buffer.from(_toBuf(_readField(refs[0], "hash"))).toString("hex") : null;
+      if (refHashHex !== claimedHashHex) return { ok: false, reason: "cawg-hash-mismatch", contentHash: claimedHashHex };
+      cawg = { present: true, sigType: _readField(sp, "sig_type"), selfSigned: true, trusted: false };
+    }
+
+    return { ok: true, reason: null, claim, contentHash: claimedHashHex, cawg };
   } catch (e) {
     return { ok: false, reason: `decode-error: ${e?.message ?? String(e)}` };
   }

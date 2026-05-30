@@ -9,6 +9,7 @@ import { createPublicKey, createHash } from "node:crypto";
 import { generateKeyPair } from "../../src/prove/asymmetric.js";
 import { buildEvidence } from "../../src/prove/evidence-report.js";
 import { buildSelfSignedEd25519Cert, buildC2paManifest, verifyC2paManifest } from "../../src/prove/c2pa.js";
+import { decode as cborDecode } from "cbor-x";
 
 // Pequeño helper: arma un evidence sellado + cert + sidecar listos para verify.
 async function _fixture() {
@@ -163,4 +164,67 @@ test("buildC2paManifest: rechaza evidence sin contentHash", async () => {
     () => buildC2paManifest({}, { x509CertDer: certDer, signingKey: kp.privateKeyPem }),
     TypeError,
   );
+});
+
+// ─── R2: CAWG identity assertion (self-signed / untrusted) ────────────────────
+
+function _cawgAssertionFrom(sidecar) {
+  const claim = cborDecode(Buffer.from(sidecar.claim_b64, "base64"));
+  const arr = claim.created_assertions;
+  return arr.find((a) => a.label === "cawg.identity");
+}
+
+test("cawg: created_assertions incluye cawg.identity (signer_payload + signature + pad1, sig_type cawg.x509.cose)", async () => {
+  const { sidecar } = await _fixture();
+  const cawg = _cawgAssertionFrom(sidecar);
+  assert.ok(cawg, "debe existir la assertion cawg.identity");
+  assert.ok(cawg.signer_payload && cawg.signature && cawg.pad1 !== undefined);
+  assert.equal(cawg.signer_payload.sig_type, "cawg.x509.cose");
+});
+
+test("cawg: referenced_assertions liga el MISMO hash c2pa.hash.data (= contentHash)", async () => {
+  const { evidence, sidecar } = await _fixture();
+  const cawg = _cawgAssertionFrom(sidecar);
+  const ref = cawg.signer_payload.referenced_assertions[0];
+  assert.equal(ref.url, "self#jumbf=c2pa.assertions/c2pa.hash.data");
+  assert.equal(Buffer.from(ref.hash).toString("hex"), evidence.contentHash);
+});
+
+test("cawg: verifyC2paManifest valida la firma COSE interna → cawg.present + selfSigned + NO trusted", async () => {
+  const { sidecar } = await _fixture();
+  const v = await verifyC2paManifest(sidecar);
+  assert.equal(v.ok, true);
+  assert.equal(v.cawg.present, true);
+  assert.equal(v.cawg.selfSigned, true);
+  assert.equal(v.cawg.trusted, false, "honestidad: la identidad org self-signed NO es trusted");
+  assert.equal(v.cawg.sigType, "cawg.x509.cose");
+});
+
+test("cawg: back-compat — includeCawgIdentity:false → sin assertion, verify ok, cawg.present:false", async () => {
+  const kp = generateKeyPair();
+  const certDer = await buildSelfSignedEd25519Cert({ privateKeyPem: kp.privateKeyPem, publicKeyPem: kp.publicKeyPem, validityDays: 365 });
+  const evidence = await buildEvidence({ test: true, schema_version: 3 }, { hmacKey: "k", requestTsa: false, signingKey: kp.privateKeyPem });
+  const { sidecar } = await buildC2paManifest(evidence, { x509CertDer: certDer, signingKey: kp.privateKeyPem, includeCawgIdentity: false });
+  assert.equal(_cawgAssertionFrom(sidecar), undefined);
+  const v = await verifyC2paManifest(sidecar);
+  assert.equal(v.ok, true);
+  assert.equal(v.cawg.present, false);
+});
+
+test("cawg: la firma CAWG es DETERMINISTA para el mismo cert + evidence", async () => {
+  const kp = generateKeyPair();
+  const certDer = await buildSelfSignedEd25519Cert({ privateKeyPem: kp.privateKeyPem, publicKeyPem: kp.publicKeyPem, validityDays: 365 });
+  const evidence = await buildEvidence({ test: true, schema_version: 3 }, { hmacKey: "k", requestTsa: false, signingKey: kp.privateKeyPem });
+  const a = await buildC2paManifest(evidence, { x509CertDer: certDer, signingKey: kp.privateKeyPem });
+  const b = await buildC2paManifest(evidence, { x509CertDer: certDer, signingKey: kp.privateKeyPem });
+  const ca = _cawgAssertionFrom(a.sidecar), cb = _cawgAssertionFrom(b.sidecar);
+  assert.deepEqual(Buffer.from(ca.signature), Buffer.from(cb.signature), "CAWG sig determinista (no depende del instance_id/serial)");
+});
+
+test("cawg: tamper en signature_b64 (que contiene la CAWG) es detectado → v.ok false", async () => {
+  const { sidecar } = await _fixture();
+  const buf = Buffer.from(sidecar.signature_b64, "base64");
+  buf[buf.length - 5] ^= 0xff;
+  const v = await verifyC2paManifest({ ...sidecar, signature_b64: buf.toString("base64") });
+  assert.equal(v.ok, false);
 });

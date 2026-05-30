@@ -338,6 +338,9 @@ async function runC2paVerify({ sidecarPath, evidencePath }) {
   if (expectedHash) {
     console.log(`  vs evidence hash   : ${v.contentHash === expectedHash ? "OK match" : "MISMATCH"}`);
   }
+  if (v.cawg) {
+    console.log(`  CAWG identity      : ${v.cawg.present ? `present (${v.cawg.sigType}) — self-signed, UNTRUSTED (not CA-rooted, not c2patool-validated)` : "absent"}`);
+  }
   return v.ok ? 0 : 1;
 }
 
