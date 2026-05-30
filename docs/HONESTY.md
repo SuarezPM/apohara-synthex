@@ -75,7 +75,7 @@ The product pitches *verifiable honesty over polished claims*. That rule applies
 
 ### 1.2 Model confidence is NOT part of the seal (AI-2)
 - The cryptographic seal proves the *evidence bytes existed*; it does not say anything about the classifier's confidence. Classifier output (severity, summary, signals) is advisory — the PDF disclaimers in `src/prove/pdf-report.js` state this on the rendered page.
-- No ensemble / cross-model agreement scoring ships in OSS. Tier-level confidence is conveyed by tier labels (`free-low-quality`, `oss`, `paid`) and by the visible low-confidence flag on free-tier output (v0.7.0 T11).
+- No ensemble / cross-model agreement scoring ships in OSS. Tier-level confidence is conveyed by the tier labels `flash` (default/bulk) and `pro` (spot/council/L3) — both `deepseek/deepseek-v4-*` (v1.0.0). The v0.6 `free`/`oss`/`paid` labels and the `free-low-quality` flag were retired when Nemotron was removed (item 1.4). // ES: confianza por etiqueta de tier; el flag de baja-calidad del free tier se retiró al eliminar Nemotron.
 
 ### 1.3 PDF rendering responsibilities (AI-5)
 - Evidence JSON carries the raw model text (truncated only on the LLM *input*, never on the sealed bytes — see §3 below).
@@ -144,7 +144,7 @@ The honest summary: the guard's hostname check is *defense-in-depth* against lit
 - v0.5 verified 6 Bright Data surfaces live; v0.6 stress exercised 2 (Web Unlocker + SERP) over 500 URLs (src: `out/stress-500-2026-05-28/report.json`).
 - The 3 pre-LLM layers are **heuristic regex deterministic** (inspired by adversarial-resilient guard patterns referenced in SkillFortify, arXiv 2603.00195; the paper itself argues *against* purely heuristic approaches in favor of formal methods — we use the paper for its threat taxonomy, not as endorsement of regex) — **not** a formal proof.
 - "78/78 fixtures pass identically" for DJL means measured coverage on 156 curated positive+negative pairs, NOT every possible adversarial input.
-- v0.6 FREE tier (`nvidia/nemotron-nano-9b-v2`) is labeled `free-low-quality` because 50% of fixtures had Δseverity > 1.5 vs DeepSeek (src: [`docs/v060-calibration.md`](v060-calibration.md)).
+- v0.6 FREE tier (`nvidia/nemotron-nano-9b-v2`) was labeled `free-low-quality` because 50% of fixtures had Δseverity > 1.5 vs DeepSeek (src: [`docs/v060-calibration.md`](v060-calibration.md)). **Removed in v1.0.0 (item 1.4):** Nemotron is no longer in the tier map; the classifier now runs `deepseek/deepseek-v4-flash` (default/bulk) and `deepseek/deepseek-v4-pro` (spot/council/L3), both smoke-tested live via `scripts/probe-aiml-models.mjs`.
 - The Delta Engine combines scrape + diff + HMAC + RFC 3161 + KG — a directed search at 2026-05-28 found no open-source combination of the five, but we make no "first in world" claim (see [`docs/PRIOR_ART.md`](PRIOR_ART.md) for reproducible queries).
 - **INV-15 is prior-art, not a shipped feature (v1.0.0 hygiene)** — `computeJcrRisk` / `shouldUseDensePrefill` (the INV-15 KV-cache gate) had **0 callers** in `src/` and was moved to `experimental/` in v1.0.0. Synthex has no KV-cache surface for it to protect, so it is kept as reproducible prior-art only (see [`experimental/README.md`](../experimental/README.md)). // ES: INV-15 es prior-art sin cablear; movido a experimental/, fuera del forge de producción.
 
