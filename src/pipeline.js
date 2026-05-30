@@ -6,7 +6,7 @@ import { dedupe, prefilter } from "./forge/index.js";
 import { evaluate as djlScreen, RULES as DJL_RULES, POLICY_BUNDLE_VERSION as DJL_POLICY_BUNDLE_VERSION } from "./forge/djl.js";
 import { POLICY_BUNDLE_VERSION as PREFILTER_POLICY_BUNDLE_VERSION } from "./forge/prefilter.js";
 import { screen as injectionGuardScreen, heuristicScreen, POLICY_BUNDLE_VERSION as GUARD_POLICY_BUNDLE_VERSION } from "./forge/injection-guard.js";
-import { classify as defaultClassify } from "./classify/aiml-client.js";
+import { classify as defaultClassify, classifyBatched as defaultBatched } from "./classify/aiml-client.js";
 import { alignmentCheck as defaultAlignmentCheck, ALIGNMENT_CHECK_VERSION } from "./classify/alignment-check.js";
 import { ground, GROUNDING_WINDOW } from "./classify/grounding.js";
 import { synthesizeOutput } from "./prove/output.js";
@@ -325,12 +325,24 @@ export async function runPipeline(target, opts = {}) {
   // ambos modos; solo se pasa {onUsage} cuando NO hay classifier inyectado (= defaultClassify).
   const doClassify = classifier ?? defaultClassify;
   const classifyOpts = classifier ? {} : { onUsage: recordTokens };
+  // P1.3 — lens="all" bulk path uses classifyBatched: ONE structured call pays the untrusted input
+  // ONCE instead of 4× (the cost win; the trilens output shape is identical). The per-lens classify()
+  // stays the ISOLATION fallback — used whenever a per-lens `classifier` is injected (tests/custom),
+  // so one bad lens still can't corrupt the others. `batchedClassifier` is injectable for tests;
+  // defaultBatched only when nothing is injected.
+  const doBatched = opts.batchedClassifier ?? (classifier ? null : defaultBatched);
   const findings = await timed("CLASSIFY", async ({ record }) => {
     record("lens", lens);
     record("docs", safeForClassify.length); // post-L3: docs an L3 BLOCK removed are not classified
     if (lens === "all") {
-      // map externo capeado a `concurrency`; las 4 lentes internas por doc siguen en paralelo
-      // (hasta concurrency×4 llamadas al clasificador en vuelo en el peor caso).
+      if (doBatched) {
+        // ONE call per doc for all 4 lenses (the AI/ML cost lever — input paid once).
+        return mapLimit(safeForClassify, concurrency, async (d) => {
+          const tri = await doBatched(d.content, LENS_SET, classifyOpts);
+          return { url: d.url, contentHash: d.contentHash, trilens: tri };
+        });
+      }
+      // Isolation fallback — injected per-lens classifier, each lens its own call.
       return mapLimit(safeForClassify, concurrency, async (d) => {
         const tri = Object.fromEntries(
           await Promise.all(LENS_SET.map(async (l) => [l, await doClassify(d.content, l, classifyOpts)])),
