@@ -1,0 +1,381 @@
+{
+  "version": "1",
+  "constructed": true,
+  "purpose": "guard recall + false-positive benchmark",
+  "frameworks": [
+    "OWASP LLM01",
+    "OWASP ASI",
+    "MITRE ATLAS AML.T0051",
+    "Bag-of-Tricks arXiv:2510.11570"
+  ],
+  "totals": {
+    "cells": 45,
+    "samples": 647,
+    "injection": 370,
+    "benign_describing": 132,
+    "benign_neutral": 108,
+    "borderline_review": 37
+  },
+  "files": [
+    {
+      "cell": "alt-text-injection",
+      "file": "alt-text-injection.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "777e6335c7118010ca2abda41e33c504700fcefa1711f06f409c09ec6a630626"
+    },
+    {
+      "cell": "benign-academic-paper",
+      "file": "benign-academic-paper.json",
+      "count": 14,
+      "label": "benign",
+      "subtype": "describing",
+      "sha256": "fc5d2f552e95ff75c0d401d5705b56b185e925fb0a53c42d9826cae7a4d4e952"
+    },
+    {
+      "cell": "benign-api-docs",
+      "file": "benign-api-docs.json",
+      "count": 10,
+      "label": "benign",
+      "subtype": "neutral",
+      "sha256": "67065fc9b4b754bc291103a840ee1ae2a2c58705e3d4093e6874a92e4caac0bf"
+    },
+    {
+      "cell": "benign-corporate-about",
+      "file": "benign-corporate-about.json",
+      "count": 14,
+      "label": "benign",
+      "subtype": "neutral",
+      "sha256": "ae61e30ee5b4c73a6e62e9ef6bbf329a0012c4a193622a9271dccf39b67c0ad2"
+    },
+    {
+      "cell": "benign-cve-advisory",
+      "file": "benign-cve-advisory.json",
+      "count": 13,
+      "label": "benign",
+      "subtype": "describing",
+      "sha256": "688335b2577c618bd37fbe3d97180fc4fdbb578a671b23822864bdb5228993ca"
+    },
+    {
+      "cell": "benign-ecommerce-product",
+      "file": "benign-ecommerce-product.json",
+      "count": 13,
+      "label": "benign",
+      "subtype": "neutral",
+      "sha256": "bb4c20fb9fa26869fda5552061fe65bc5f5d2dd8927e56e22ae9c577788cf671"
+    },
+    {
+      "cell": "benign-financial-filing",
+      "file": "benign-financial-filing.json",
+      "count": 10,
+      "label": "benign",
+      "subtype": "neutral",
+      "sha256": "c37d11fe8b00523437b24a107258e076cae3bffb51075c0964491e0e546ae4a5"
+    },
+    {
+      "cell": "benign-forum-discussion",
+      "file": "benign-forum-discussion.json",
+      "count": 15,
+      "label": "benign",
+      "subtype": "neutral",
+      "sha256": "64acbfb0c8e7c34f840af1bfae21771e9dedc04911432e68e31358a40aabd750"
+    },
+    {
+      "cell": "benign-injection-explainer-blog",
+      "file": "benign-injection-explainer-blog.json",
+      "count": 15,
+      "label": "benign",
+      "subtype": "describing",
+      "sha256": "3176ac52a2bb6e5dad1a45620a0c30d8758723b381b992b4c6704f4c9823f127"
+    },
+    {
+      "cell": "benign-malware-analysis",
+      "file": "benign-malware-analysis.json",
+      "count": 14,
+      "label": "benign",
+      "subtype": "describing",
+      "sha256": "b035edce80a4e595481ad5d24c591a4cd2de70148ad1e0f9fc80c161b1e43bd4"
+    },
+    {
+      "cell": "benign-news-article",
+      "file": "benign-news-article.json",
+      "count": 12,
+      "label": "benign",
+      "subtype": "neutral",
+      "sha256": "2f395f3e1fb75350ad614b3b7eb35dd4010468f724d951a2abbd8d66a8cc60bf"
+    },
+    {
+      "cell": "benign-owasp-cheatsheet",
+      "file": "benign-owasp-cheatsheet.json",
+      "count": 14,
+      "label": "benign",
+      "subtype": "describing",
+      "sha256": "7c4ba71cc201c882bc071e64779557618522cc84bc54b7d95b064eda5c31393b"
+    },
+    {
+      "cell": "benign-pentest-writeup",
+      "file": "benign-pentest-writeup.json",
+      "count": 14,
+      "label": "benign",
+      "subtype": "describing",
+      "sha256": "09e023c15580a7fbdc40538588de6cc04f8af99f987840ee0c2d184426ea0159"
+    },
+    {
+      "cell": "benign-pricing-page",
+      "file": "benign-pricing-page.json",
+      "count": 15,
+      "label": "benign",
+      "subtype": "neutral",
+      "sha256": "1ab34dbce58a7f68869f3134614a3e95e8a45071ceff04a7329f724057cca67a"
+    },
+    {
+      "cell": "benign-sqli-tutorial",
+      "file": "benign-sqli-tutorial.json",
+      "count": 15,
+      "label": "benign",
+      "subtype": "describing",
+      "sha256": "b915bffeccd36ea6a3e4506bde20fc3df644d297e2ae4e6000b0453cd8fc1313"
+    },
+    {
+      "cell": "benign-wikipedia-style",
+      "file": "benign-wikipedia-style.json",
+      "count": 15,
+      "label": "benign",
+      "subtype": "neutral",
+      "sha256": "9580ad6663cab975652f0e69cf53edd5c8e2d778f33bb480b6612f695c80425d"
+    },
+    {
+      "cell": "benign-xss-tutorial",
+      "file": "benign-xss-tutorial.json",
+      "count": 15,
+      "label": "benign",
+      "subtype": "describing",
+      "sha256": "3aa7edd97fb2b6f37db08a3ce0c82ce66ed182421eeaede3168b17437e8756b6"
+    },
+    {
+      "cell": "borderline-ambiguous-directive",
+      "file": "borderline-ambiguous-directive.json",
+      "count": 13,
+      "label": "injection",
+      "subtype": "review",
+      "sha256": "d73580eeca77562f16ea6020c47f19c8d4b92bde02724e5e289cfd2ed03e1942"
+    },
+    {
+      "cell": "borderline-quoted-payload-in-article",
+      "file": "borderline-quoted-payload-in-article.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "review",
+      "sha256": "b736a4210b0826c06d9736eca18077f4362abb7ed4316d99bd4971520a137b8f"
+    },
+    {
+      "cell": "bot-base64-encoded",
+      "file": "bot-base64-encoded.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "b1460a724b3e2f52de5d89022262988af2ad15613c8abcd0d422d2b8f77318d1"
+    },
+    {
+      "cell": "bot-comment-interleave",
+      "file": "bot-comment-interleave.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "e5ba44e1dfc49f23a1dba687e96bacaf1844f111ca0a7cf48cd9b25c565e9481"
+    },
+    {
+      "cell": "bot-homoglyph-unicode",
+      "file": "bot-homoglyph-unicode.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "9e7124893b812cf3bd3d1e5b314946d4e5891b902d39119764c373d0ed3896a8"
+    },
+    {
+      "cell": "bot-leetspeak",
+      "file": "bot-leetspeak.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "5607d9f028934311108bdac08e1edd5916f36a8395b080c60c652034ed0ca9e7"
+    },
+    {
+      "cell": "bot-markdown-escape",
+      "file": "bot-markdown-escape.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "454c6003523662b80d2aa60170f0de2edcc53fff42921867b7ed99b92da62d2f"
+    },
+    {
+      "cell": "bot-payload-splitting",
+      "file": "bot-payload-splitting.json",
+      "count": 14,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "1c793bb4d855cf6931ff9a12451f6f939fe5f6a2b6e1e6406d305a0f443c013d"
+    },
+    {
+      "cell": "bot-rtl-override",
+      "file": "bot-rtl-override.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "f5eb07abcf5cf5d8d82487c53edade1ebec491f6dbce536431645198fba9dbd8"
+    },
+    {
+      "cell": "bot-zero-width",
+      "file": "bot-zero-width.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "2306c9ae88905cf1613528ef63266a7a44be7e45e4f9d32bf98da57db8dd7713"
+    },
+    {
+      "cell": "css-hidden-text",
+      "file": "css-hidden-text.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "98ecbdbb8fed014d3b258239ab5afd9357ad2df0052355759e6c72c3f1aabcba"
+    },
+    {
+      "cell": "direct-ignore-instructions",
+      "file": "direct-ignore-instructions.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "f093ccd2c358b0c5b95b5e82cd8d6b916eb9b9827809ddbc8a830d036dd0828c"
+    },
+    {
+      "cell": "direct-role-override",
+      "file": "direct-role-override.json",
+      "count": 14,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "c0f56bdbd223b61e194e51837a0b78f654300be0841b0a5b6c32fca010b902b9"
+    },
+    {
+      "cell": "direct-systemprompt-leak",
+      "file": "direct-systemprompt-leak.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "b511632772886511b8e7c0771eceb9ff230d1b28efd95df0e9ceab10f68d8939"
+    },
+    {
+      "cell": "exfil-credential-harvest",
+      "file": "exfil-credential-harvest.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "91fff43ba19183d71acc4dff5824fdc9d7d56405e41074dc7aa9cc7dea39b117"
+    },
+    {
+      "cell": "exfil-tool-call",
+      "file": "exfil-tool-call.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "8ea8a6123b7626ec085c940ee6c785b51d17b3e7cff4f28409fd9402d41b0d06"
+    },
+    {
+      "cell": "exfil-url-beacon",
+      "file": "exfil-url-beacon.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "ad10f62913c5df33d5a6b0ec565551409e8dfae3efaa280786ee7472c1424ac8"
+    },
+    {
+      "cell": "html-comment-hidden",
+      "file": "html-comment-hidden.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "f54cc913ef234390cd482179f12db06fb5287755de1bf3307278d8052a8035cb"
+    },
+    {
+      "cell": "jailbreak-dan-style",
+      "file": "jailbreak-dan-style.json",
+      "count": 14,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "81861a422f3114fa8f61d1ac94db5c4919bc9a5d915fb5f6e1fd372e743337fa"
+    },
+    {
+      "cell": "jailbreak-hypothetical",
+      "file": "jailbreak-hypothetical.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "c24b20dc696acb93527c31c2f0e84322a9af109d4b43b59bd277390a4853fbb9"
+    },
+    {
+      "cell": "markdown-metadata-injection",
+      "file": "markdown-metadata-injection.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "9303bb540bdb178ef496b8886e74e4761dfc4181a0b33bf581c3dd98de9f3571"
+    },
+    {
+      "cell": "mcp-tool-poisoning",
+      "file": "mcp-tool-poisoning.json",
+      "count": 14,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "d4d100ea50bbec08ecb781697143b059ea36b649f4fdf442a6168072740250b5"
+    },
+    {
+      "cell": "ml-chinese-injection",
+      "file": "ml-chinese-injection.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "bf7083f8b9b883aa01d75029817859700193b95e7e18f8a2767b649a3fba1273"
+    },
+    {
+      "cell": "ml-codeswitch-injection",
+      "file": "ml-codeswitch-injection.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "609fa94fcf7de80dbbbbb01db7ad50848e7f37b86437332646a9af180a16ffeb"
+    },
+    {
+      "cell": "ml-spanish-injection",
+      "file": "ml-spanish-injection.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "bb1e9aa1513608e5b48d8d43304ef94908cd504ca21547496118c97f103fa989"
+    },
+    {
+      "cell": "proto-pollution-payload",
+      "file": "proto-pollution-payload.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "3e26ff66d233cbade35eed7fd5496a9b23f89f4d13eaca34f16542db58646455"
+    },
+    {
+      "cell": "ssrf-metadata-endpoint",
+      "file": "ssrf-metadata-endpoint.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "9e5e3065a3392e0c0499708c3dc91e98fcac190afb51e3802b60499c54573110"
+    },
+    {
+      "cell": "tool-result-injection",
+      "file": "tool-result-injection.json",
+      "count": 15,
+      "label": "injection",
+      "subtype": "executing",
+      "sha256": "f695abadac4002d27323dcc9bd53662e98758457338c3e09d5d959bc1a7bf57f"
+    }
+  ]
+}
