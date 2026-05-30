@@ -194,8 +194,11 @@ test("pipeline: injection-guard wire — REVIEW kept con decision row, BLOCK qui
   // REVIEW_ME SIGUE en findings (no dropped)
   assert.ok(ev.payload.findings.some((f) => f.url === "borderline"));
 
-  // decisions[] tiene REVIEW row para borderline
-  const reviewRows = (ev.payload.decisions ?? []).filter((d) => d.outcome === "REVIEW");
+  // decisions[] tiene REVIEW row del injection-guard para borderline. v1.0.0 (1.3): borderline
+  // lleva señal de injection (L2 REVIEW) → también escala a L3 y emite una fila ALIGNMENT_CHECK
+  // (degradada a REVIEW sin key). Por eso filtramos por layer="injection-guard" (la intención
+  // del test: exactamente UNA fila REVIEW del guard L2 para borderline).
+  const reviewRows = (ev.payload.decisions ?? []).filter((d) => d.layer === "injection-guard" && d.outcome === "REVIEW");
   assert.equal(reviewRows.length, 1);
   assert.equal(reviewRows[0].layer, "injection-guard");
   assert.equal(reviewRows[0].guard_mode, "prompt-guard");
