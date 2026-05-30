@@ -23,6 +23,7 @@ import { pageModelAttestation } from "./report/page-model-attestation.js";
 import { pageBroker } from "./report/page-broker.js";
 import { pageHonestGap } from "./report/page-honest-gap.js";
 import { pageDelta } from "./report/page-delta.js";
+import { pageRedteam } from "./report/page-redteam.js";
 import { pageVerify } from "./report/page-verify.js";
 
 // Re-export the Risk Score API from its module so existing test imports
@@ -102,6 +103,11 @@ export async function buildPDFReport(evidence, opts = {}) {
   doc.addPage(); pageHonestGap(doc, evidence, ctx);
   if (payload?.delta_chain) {
     doc.addPage(); pageDelta(doc, evidence, ctx);
+  }
+  // Red-Team Board Briefing — present-gated on sealed REDTEAM_* rows (the red-team is on-demand,
+  // NEVER bulk), so ordinary evidence is unaffected. Sits before Verify (the closing page).
+  if (payload?.decisions?.some((d) => /^REDTEAM_/.test(String(d?.stage ?? "")))) {
+    doc.addPage(); pageRedteam(doc, evidence, ctx);
   }
   doc.addPage(); pageVerify(doc, evidence, ctx);
 
