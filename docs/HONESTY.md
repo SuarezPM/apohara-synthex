@@ -300,6 +300,13 @@ They share a word in their name and nothing else. The first protects the **HTTP 
 - ✓ **Red-team FP / control discipline + fail-safe.** A lens that the reasoner cannot answer (no key / timeout / non-200) **degrades to risk 0** — a dead lens can NEVER inflate the verdict (verified by test). The **control-doc FP** (how many lenses scream high-risk on a NEUTRAL document — should be low) is the red-team analogue of the L2/L3 FP gate; the `--offline` path is a **deterministic stub** (labelled `OFFLINE STUB`, like the demo) for reproducible Scene 4 with no secrets, while the live path runs the real `deepseek-v4-pro`. Measured live on the S-1 fixture: 4–5 lenses return high risk → verdict `DO NOT PROCEED` (a going-concern S-1 should score high); a benign control document should NOT.
 - ✗ Not financial advice or an underwriting decision. It is a structured adversarial reading to surface board-level questions, sealed for audit — a human makes the call.
 
+### 10.4 TriggerWare react loop — CaMeL-gated webhook (item 2.4)
+
+The react loop (`src/reactor.js` → `src/watch.js` → `src/sinks.js`) polls a TriggerWare trigger for web deltas → fires the pipeline → seals → alerts. **Gate-before-trust:** `scripts/probe-triggerware.mjs` confirms `GET /triggers → 200` (real surface `https://api.triggerware.com`, `Api-Key` header) before the loop is relied on; on probe FAIL the loop falls back to its current state (declared).
+
+- ✓ **CaMeL trusted-data gate (load-bearing).** A webhook fire driven by untrusted REVIEW'd content is an adversarial action vector. The gate in `src/sinks.js` suppresses both the webhook AND the Cognee ingest when a source carries a REVIEW/BLOCK row from `layer ∈ {injection-guard, djl, prefilter}` **or** `stage === "ALIGNMENT_CHECK"` (L3). The widening to djl/prefilter/L3 was folded into the D5 fix (0.2, A1) — item 2.4 VERIFIES it covers the TriggerWare path (test: a fixture whose only REVIEW row is `ALIGNMENT_CHECK` → webhook + Cognee both suppressed).
+- ✗ The react loop is real, not a stub, but it is single-trigger and best-effort (a failing sink does not break the loop). It is not a distributed job queue.
+
 ### 10.2 Closing synthesis — "3 questions" + verdict (item 2.6, SEALED)
 
 The Evidence Report closes with a one-line **verdict** + **"3 questions this evidence raises"** (`src/prove/output.js synthesizeOutput`), rendered on the Risk Snapshot page and **sealed into `payload.{verdict,questions}`** (covered by the canonical pre-image like every other field).
