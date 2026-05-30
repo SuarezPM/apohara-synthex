@@ -17,7 +17,7 @@
 // Suppressions are surfaced via console.warn when SYNTHEX_DEBUG is set; the
 // REVIEW decision itself is already sealed in evidence.payload.decisions[]
 // for audit (operator can replay the run from the sealed record).
-import { CogneeClient } from "./memory/index.js";
+import { CogneeClient, CogneeCloudClient } from "./memory/index.js";
 
 // Layers/stages whose REVIEW (or BLOCK) verdict gates the action/persistence sinks.
 // v1.0.0 (A1) — widened beyond injection-guard: the D5 FP fix makes DJL/prefilter emit REVIEW
@@ -122,7 +122,10 @@ export function webhookSink(url, opts = {}) {
  * @returns {Promise<Function[]>}
  */
 export async function defaultSinks(opts = {}) {
-  const { env = process.env, cogneeClientFactory = () => new CogneeClient() } = opts;
+  // Default factory: local OSS CogneeClient, OR the opt-in CogneeCloudClient when COGNEE_CLOUD is
+  // set (R6). The CaMeL gate below is backend-agnostic — a REVIEW'd source is never ingested by
+  // EITHER backend. The local client's COGNEE_REMOTE_URL hard-abort guard is untouched.
+  const { env = process.env, cogneeClientFactory = () => (env.COGNEE_CLOUD ? new CogneeCloudClient() : new CogneeClient()) } = opts;
   const sinks = [];
   if (env.COGNEE_LIVE) {
     const client = await cogneeClientFactory();

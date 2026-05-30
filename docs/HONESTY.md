@@ -323,14 +323,14 @@ They share a word in their name and nothing else. The first protects the **HTTP 
 - ⚠️ **`discover_new` is dataset-dependent — honest scope.** The available dataset (`gd_m6gjtfmeh43we6cqc`) is a scraper/crawl dataset; it does NOT expose the `discover_new` discovery collector, so the probe fell back to a plain async `trigger` (which works). The `triggerDiscoverNew()` wrapper + `type=discover_new` query are built and offline-tested, but the live discovery-collector path requires a dataset that supports it — we **declare** this rather than claim Scene-3 `discover_new` ingest on a dataset that can't do it.
 - ✗ The adapter is wired and tested; the end-to-end pipeline ingest of a `discover_new` snapshot (Scene 3) is gated on a discovery-capable dataset_id and is NOT claimed shipped. No fabricated discovery results.
 
-### 10.5 Cognee memory — local OSS default; cloud probed + CUT (item 2.3)
+### 10.5 Cognee memory — local OSS default; cloud backend SHIPPED opt-in (item 2.3 / R6)
 
-Synthex memory (`src/memory/cognee-client.js`) defaults to **local OSS Cognee** (Apache-2.0): zero-lock-in, full data-residency, the stdio MCP path. A cloud backend would be an explicit opt-in.
+Synthex memory (`src/memory/cognee-client.js`) defaults to **local OSS Cognee** (Apache-2.0): zero-lock-in, full data-residency, the stdio MCP path. The cloud backend (`CogneeCloudClient`) is an **EXPLICIT opt-in** (`COGNEE_CLOUD=1`).
 
-- **Gate-before-trust → CUT to local-only (honest).** `scripts/check-cognee-cloud.mjs` probed the cloud with `COGNEE_API_KEY`: `platform.cognee.ai` is reachable but every `/api/*` path returns the **web dashboard (HTML)**, not a programmatic JSON ingest/recall API with this key. Per gate-before-trust we do **NOT** build a speculative cloud client on an unconfirmed surface. **Cognee stays local OSS only** — exactly the documented cut (#7). No fabricated cloud path ships.
-- ✓ **The `COGNEE_REMOTE_URL` guard (PM-2) is intact** — it remains a hard abort ("strictly local"), verified. A cloud mode, if added later, would be a NEW explicit `COGNEE_CLOUD` opt-in distinct from that guard.
-- ✓ **The CaMeL gate covers the Cognee path regardless of backend.** A source carrying a REVIEW/BLOCK row (incl. `stage: ALIGNMENT_CHECK`) is never ingested (test/integration/cognee-guard.test.js). So even a future cloud backend cannot ingest poisoned content.
-- ✗ **No backend is part of the sealed evidence.** Memory is convenience, not proof — the evidence is sealed locally; Cognee (local or cloud) is a graph index over it, never the attestation.
+- **Gate-before-trust → SHIPPED (correction).** An earlier probe of `platform.cognee.ai` hit the **web dashboard (SPA HTML)** and I wrongly concluded the cloud had no programmatic API. The real surface is the **TENANT endpoint** `https://tenant-<id>.aws.cognee.ai`, a JSON REST API authenticated with `X-Api-Key` + `X-Tenant-Id`. Re-probed live 2026-05-30 and confirmed end-to-end: `/api/health` 200, `/api/v1/datasets/` authed, `add_text` → `PipelineRunCompleted`, `cognify` → `PipelineRunStarted`, `search` reachable. `CogneeCloudClient` mirrors the local `remember/recall/forget` interface over this REST API (`scripts/check-cognee-cloud.mjs` is the gate).
+- ✓ **The `COGNEE_REMOTE_URL` guard (PM-2) is intact, NOT negated.** The local `CogneeClient` still hard-aborts ("strictly local") if `COGNEE_REMOTE_URL` is set; the cloud backend is a *separate, explicit* `COGNEE_CLOUD` path (verified by test). Default remains local OSS.
+- ✓ **The CaMeL gate covers BOTH backends.** A source carrying a REVIEW/BLOCK row (incl. `stage: ALIGNMENT_CHECK`) is never ingested by local OR cloud (`test/integration/cognee-guard.test.js`; the gate in `sinks.js` is backend-agnostic). Poisoned content can't reach the graph either way.
+- ✗ **No backend is part of the sealed evidence.** Memory is convenience, not proof — the evidence is sealed locally; Cognee (local or cloud) is a graph index over it, never the attestation. Config: `COGNEE_API_URL` (tenant base) + `COGNEE_TENANT_ID` + `COGNEE_API_KEY`.
 
 ### 10.4 TriggerWare react loop — CaMeL-gated webhook (item 2.4)
 
