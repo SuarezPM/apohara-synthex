@@ -17,11 +17,13 @@ import { promisify } from "node:util";
 import { createPublicKey, createPrivateKey } from "node:crypto";
 import { runPipeline } from "../src/pipeline.js";
 import { runDemo } from "../demo/demo.js";
-import { verifyEvidence } from "../src/prove/evidence-report.js";
+import { verifyEvidence, buildEvidence } from "../src/prove/evidence-report.js";
 import { generateKeyPair, keyIdOf, resolveSigningKey } from "../src/prove/asymmetric.js";
 import { buildSelfSignedEd25519Cert, buildC2paManifest, verifyC2paManifest } from "../src/prove/c2pa.js";
 import { renderCardPng, buildCardManifestDefinition } from "../src/prove/evidence-card.js";
 import { anchorKeyId, verifyRekorBundle } from "../src/prove/rekor.js";
+import { toStixBundle } from "../src/prove/stix.js";
+import { redTeam } from "../src/redteam/index.js";
 
 const execFileP = promisify(execFile);
 
@@ -240,6 +242,16 @@ export async function main(argv) {
   if (positional[0] === "rekor-verify") {
     return runRekorVerify({ bundlePath: positional[1] });
   }
+  if (positional[0] === "stix-export") {
+    return runStixExport({ evidencePath: positional[1] });
+  }
+  if (positional[0] === "redteam") {
+    return runRedteam({
+      fixturePath: typeof flags.fixture === "string" ? flags.fixture : null,
+      target: positional[1] || null,
+      offline: !!flags.offline,
+    });
+  }
 
   const hmacKey = process.env.SYNTHEX_HMAC_KEY || "synthex-demo";
   // v0.8.0 — resolve the Ed25519 signing key (env inline → file → XDG default).
@@ -437,6 +449,85 @@ function runRekorVerify({ bundlePath }) {
   for (const [k, val] of Object.entries(v.checks)) console.log(`  ${k.padEnd(13)}: ${val ? "OK" : "FAIL"}`);
   console.log(`  verdict      : ${v.ok ? "VALID" : `INVALID (${v.reason})`}`);
   return v.ok ? 0 : 1;
+}
+
+// ─── stix-export verb (v1.0.0, item 2.1) ─────────────────────────────────
+
+function runStixExport({ evidencePath }) {
+  if (!evidencePath) {
+    console.error("usage: synthex stix-export <evidence.json>");
+    return 2;
+  }
+  let evidence;
+  try {
+    evidence = JSON.parse(readFileSync(evidencePath, "utf8"));
+  } catch (e) {
+    console.error(`cannot read evidence at ${evidencePath}: ${e.message}`);
+    return 2;
+  }
+  const bundle = toStixBundle(evidence);
+  // STIX bundle ONLY to stdout (pipeable to MISP/OpenCTI/jq); no other noise.
+  console.log(JSON.stringify(bundle, null, 2));
+  return 0;
+}
+
+// ─── redteam verb (v1.0.0, item 2.5) ─────────────────────────────────────
+
+// Deterministic OFFLINE stub for the 5 lenses — reproducible Scene 4 with NO secrets/network.
+// Each persona's concerns are grounded in demo/fixtures/redteam-s1.txt (figures present → kept).
+const _REDTEAM_OFFLINE_STUB = {
+  CFO: { risk: 68, concerns: ["going-concern doubt disclosed by the auditor", "net loss of $61.4 million in 2025", "accumulated deficit of $214 million", "cash funds operations only into the first quarter of 2027"], rationale: "STUB: severe liquidity + going-concern risk." },
+  Market: { risk: 52, concerns: ["two largest customers accounted for 41% of revenue", "incumbents bundling competing AI features at no additional cost"], rationale: "STUB: concentration + pricing-power erosion." },
+  Legal: { risk: 58, concerns: ["pending patent-infringement lawsuit seeking damages and an injunction", "evolving third-party open-source and model licenses", "EU AI Act compliance exposure"], rationale: "STUB: live litigation + regulatory exposure." },
+  Competitor: { risk: 60, concerns: ["incumbents with greater financial, technical, and marketing resources", "eroding pricing power and differentiation"], rationale: "STUB: weak/eroding moat vs incumbents." },
+  Execution: { risk: 55, concerns: ["dependence on the founder and CEO and a small number of key engineers", "grew headcount from 110 to 290 in eighteen months"], rationale: "STUB: key-person + scaling risk." },
+};
+const _redteamOfflineRunner = async ({ persona }) =>
+  JSON.stringify(_REDTEAM_OFFLINE_STUB[persona] ?? { risk: 0, concerns: [], rationale: "" });
+
+async function runRedteam({ fixturePath, target, offline }) {
+  let text;
+  if (fixturePath) {
+    try { text = readFileSync(fixturePath, "utf8"); }
+    catch (e) { console.error(`cannot read fixture ${fixturePath}: ${e.message}`); return 2; }
+  } else if (target) {
+    // Live target would route through the fetch layer; for v1.0.0 the verb is fixture-first.
+    console.error("redteam: live target fetch not wired in this verb — use --fixture=<path>. (Scene 4 is fixture-deterministic.)");
+    return 2;
+  } else {
+    console.error("usage: synthex redteam --fixture=<path> [--offline]");
+    return 2;
+  }
+
+  const result = await redTeam(text, offline ? { runner: _redteamOfflineRunner } : {});
+
+  // Seal the verdict + per-lens rows into an Evidence Report (decisions[] = REDTEAM_* rows).
+  const payload = {
+    schema_version: 3,
+    target: fixturePath ?? target,
+    lens: "finance",
+    fetchedAt: new Date().toISOString(),
+    redteam: { score: result.score, band: result.band, verdict: result.verdict, topQuestions: result.topQuestions },
+    decisions: result.perLens.map((l) => ({
+      stage: l.stage, persona: l.persona, outcome: l.verdict ?? null,
+      risk: l.risk, concerns: l.concerns, grounding: l.grounding,
+      model_id: l.model_id, version: l.version, degraded: l.degraded,
+    })),
+  };
+  const ev = await buildEvidence(payload, { hmacKey: process.env.SYNTHEX_HMAC_KEY || "synthex-demo", requestTsa: false, signingKey: resolveSigningKey() });
+
+  console.log(`\n⬡ APOHARA SYNTHEX — Sealed Red-Team (5 lenses · ${offline ? "OFFLINE STUB" : result.model_id})\n`);
+  console.log(`  Honesty: 5 PROMPTS over ONE frontier reasoner — prompt-diversity, NOT 5 independent models.\n`);
+  for (const l of result.perLens) {
+    console.log(`  ${l.stage.padEnd(18)} risk=${String(l.risk).padStart(3)}/100  grounding=${l.grounding}${l.degraded ? "  (degraded)" : ""}`);
+    if (l.concerns.length) console.log(`      ↳ ${l.concerns.slice(0, 3).join(" · ")}`);
+  }
+  console.log(`\n  Risk Score: ${result.score}/100  (${result.band})`);
+  console.log(`  VERDICT: ${result.verdict}`);
+  console.log(`\n  Top-3 board questions:`);
+  result.topQuestions.forEach((q, i) => console.log(`    ${i + 1}. ${q}`));
+  console.log(`\n  sealed: contentHash ${ev.contentHash.slice(0, 16)}…  (HMAC${ev.seal.signature ? " + Ed25519" : ""})\n`);
+  return 0;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

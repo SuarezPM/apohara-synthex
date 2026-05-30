@@ -9,6 +9,7 @@
 // fórmula publicada en la propia página — NO una calificación de un tercero ni de Munich Re.
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
+import { synthesizeOutput } from "./output.js";
 
 const COLORS = { brand: "#5b21b6", ok: "#15803d", warn: "#b45309", crit: "#b91c1c", muted: "#6b7280", ink: "#111827", line: "#e5e7eb" };
 const sevColor = (s) => (s >= 8 ? COLORS.crit : s >= 5 ? COLORS.warn : COLORS.ok);
@@ -37,14 +38,18 @@ function allRows(findings) {
 }
 
 /**
- * Risk Score 0–100 — estimación INTERNA de Synthex (fórmula publicada y reproducible).
- * Combina la severidad de los findings de la lente de seguridad con la presencia de amenazas
- * que FORGE bloqueó antes del LLM. NO es una evaluación de un tercero ni una calificación de
- * suscripción (p.ej. Munich Re); es una heurística determinista sobre los datos del reporte.
+ * Risk Score 0–100 — fórmula determinista, publicada y reproducible, ANCLADA en frameworks
+ * públicos NOMBRADOS (mapping, NOT endorsement): el eje de severidad usa la escala 0–10 del
+ * CVSS base score y las bandas se alinean a las severity ratings de CVSS (High ≥ 7.0); el
+ * encuadre de cumplimiento se mapea a NIST AI RMF (Govern/Map/Measure/Manage) y a las categorías
+ * de riesgo del EU AI Act. EPSS (exploit-prediction) queda documentado como input futuro de la
+ * lente Security. NO es una evaluación de un tercero ni una calificación de suscripción (p.ej.
+ * Munich Re), y ningún framework citado endosa el número — es un mapeo trazable, no una
+ * certificación. Ver docs/compliance-mapping.md.
  *
- *   maxSev   = máxima severity entre findings (0..10)         → 70% del peso
- *   blockTerm= min(blockedCount, 5) / 5 * 10  (0..10)         → 30% del peso
- *   score    = round( (maxSev*0.7 + blockTerm*0.3) * 10 )     → 0..100
+ *   maxSev   = máxima severity entre findings (escala CVSS 0..10)  → 70% del peso
+ *   blockTerm= min(blockedCount, 5) / 5 * 10  (0..10)              → 30% del peso
+ *   score    = round( (maxSev*0.7 + blockTerm*0.3) * 10 )          → 0..100
  *
  * @returns {{score:number, band:string, maxSev:number, blocked:number}}
  */
@@ -293,7 +298,7 @@ function pageBroker(doc, ev) {
   const { payload = {} } = ev;
   const r = riskScore(ev);
   pageHeader(doc, "Risk Snapshot", "Broker / Underwriter");
-  sectionTitle(doc, "Synthex Risk Score (internal estimate)");
+  sectionTitle(doc, "Synthex Risk Score (CVSS 0–10 severity scale · NIST AI RMF / EU AI Act framing · mapping, not endorsement)");
 
   // Gauge numérico grande, coloreado por banda.
   const x = doc.page.margins.left;
@@ -322,11 +327,29 @@ function pageBroker(doc, ev) {
   doc.rect(x, doc.y, doc.page.width - 100, 64).fill("#fef3c7");
   doc.fillColor("#92400e").font("Helvetica-Bold").fontSize(9).text("DISCLAIMER", x + 10, doc.y + 8, { width: doc.page.width - 120 });
   doc.font("Helvetica").fontSize(8.5).text(
-    "This Risk Score is an INTERNAL ESTIMATE produced by Synthex from the data in this report, " +
-    "using the deterministic formula shown above. It is NOT a Munich Re assessment, NOT an " +
-    "insurance rating, and NOT underwriting advice. No third party has reviewed or endorsed this number.",
+    "This Risk Score is computed by Synthex from the data in this report using the deterministic " +
+    "formula shown above. Its severity axis is the CVSS 0–10 base-score scale and its bands align " +
+    "to CVSS severity ratings; the compliance framing maps to NIST AI RMF and EU AI Act risk " +
+    "categories. This is a MAPPING, NOT an ENDORSEMENT: it is NOT a Munich Re assessment, NOT an " +
+    "insurance rating, and NOT underwriting advice. No third party or framework body has reviewed " +
+    "or endorsed this number. See docs/compliance-mapping.md.",
     x + 10, doc.y + 2, { width: doc.page.width - 120 });
   doc.fillColor(COLORS.ink).y += 8;
+
+  // 2.6 — closing synthesis: the one-line verdict + the 3 questions this evidence raises.
+  // Read from the sealed payload when present; recompute deterministically for legacy reports.
+  const out = (ev.payload?.verdict && Array.isArray(ev.payload?.questions))
+    ? { verdict: ev.payload.verdict, questions: ev.payload.questions }
+    : synthesizeOutput(ev.payload ?? {});
+  doc.moveDown(0.8);
+  sectionTitle(doc, "Verdict");
+  doc.font("Helvetica-Bold").fontSize(11).fillColor(bandColor).text(out.verdict, { width: doc.page.width - 100 });
+  doc.fillColor(COLORS.ink).moveDown(0.6);
+  sectionTitle(doc, "3 questions this evidence raises");
+  doc.font("Helvetica").fontSize(10).fillColor(COLORS.ink);
+  out.questions.slice(0, 3).forEach((q, i) => {
+    doc.text(`${i + 1}.  ${q}`, { width: doc.page.width - 100 }).moveDown(0.25);
+  });
 }
 
 function pageDelta(doc, ev) {

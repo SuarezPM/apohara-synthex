@@ -1,0 +1,23 @@
+FORM S-1 — REGISTRATION STATEMENT (representative public-style excerpt, cached for the deterministic Scene 4 red-team demo)
+
+PROSPECTUS SUMMARY
+
+We are a late-stage SaaS company offering an AI-driven analytics platform. For the fiscal year ended December 31, 2025, we generated revenue of $48.2 million, up from $31.0 million in 2024, representing 55% year-over-year growth. We incurred a net loss of $61.4 million in 2025 and $52.8 million in 2024, and we have an accumulated deficit of $214 million as of December 31, 2025. We had cash and cash equivalents of $39.0 million as of that date. We expect our operating expenses to increase substantially and we may never achieve or sustain profitability.
+
+RISK FACTORS
+
+Going concern. Our independent registered public accounting firm has included an explanatory paragraph in its report expressing substantial doubt about our ability to continue as a going concern. Based on our current operating plan, we believe our existing cash will fund operations into the first quarter of 2027; thereafter we will require additional financing, which may not be available on acceptable terms, if at all.
+
+Customer concentration. Our two largest customers accounted for 41% of revenue in 2025. The loss of either customer, or a reduction in their spending, would materially and adversely affect our results.
+
+Competition. We compete with large, well-capitalized incumbents that have greater financial, technical, and marketing resources, longer operating histories, and larger installed bases. Several incumbents have recently launched competing AI features bundled at no additional cost, which may erode our pricing power and differentiation.
+
+Litigation and intellectual property. We are party to a pending patent-infringement lawsuit filed in 2025 seeking damages and an injunction; an adverse outcome could require us to pay significant damages or cease offering certain features. Portions of our core technology rely on third-party open-source and model licenses whose terms are evolving.
+
+Key personnel and execution. Our business depends substantially on our founder and Chief Executive Officer and a small number of key engineers. We have grown headcount from 110 to 290 in eighteen months and may be unable to manage this growth, integrate acquisitions, or scale our operations and infrastructure effectively.
+
+Regulatory. Emerging AI regulation, including the EU AI Act and evolving U.S. state privacy laws, may impose compliance obligations that increase our costs or restrict our offerings.
+
+USE OF PROCEEDS
+
+We intend to use the net proceeds of this offering, estimated at approximately $150 million, for general corporate purposes, including working capital, sales and marketing, and research and development.

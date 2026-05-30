@@ -1,39 +1,34 @@
-// Unit tests para src/classify/tiers.js (T0.3 del PRD v0.6.0).
-// Cubre los 3 tiers + override por opts.model + tier desconocido + default.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { MODEL_TIERS, DEFAULT_TIER, pickModel } from "../../src/classify/tiers.js";
+import { pickModel, MODEL_TIERS, DEFAULT_TIER } from "../../src/classify/tiers.js";
 
-test("MODEL_TIERS contiene exactamente free/oss/paid", () => {
-  assert.deepEqual(Object.keys(MODEL_TIERS).sort(), ["free", "oss", "paid"]);
+// v1.0.0 (item 1.4): DeepSeek V4 family, Nemotron removed.
+// flash = default/bulk · pro = spot/council. Smoke-gated by scripts/probe-aiml-models.mjs.
+
+test("pickModel sin opts → tier por defecto (flash → deepseek-v4-flash)", () => {
+  assert.equal(pickModel(), MODEL_TIERS[DEFAULT_TIER]);
+  assert.equal(pickModel({}), "deepseek/deepseek-v4-flash");
 });
 
-test("pickModel resuelve cada tier al modelo mapeado", () => {
-  assert.equal(pickModel({ tier: "free" }), "nvidia/nemotron-nano-9b-v2");
-  assert.equal(pickModel({ tier: "oss" }), "deepseek/deepseek-non-thinking-v3.2-exp");
-  assert.equal(pickModel({ tier: "paid" }), "deepseek/deepseek-thinking-v3.2-exp");
+test("pickModel: opts.model explícito gana sobre tier (back-compat)", () => {
+  assert.equal(pickModel({ model: "custom/model-x", tier: "pro" }), "custom/model-x");
 });
 
-test("pickModel sin args usa DEFAULT_TIER (oss)", () => {
-  assert.equal(DEFAULT_TIER, "oss");
-  assert.equal(pickModel(), MODEL_TIERS.oss);
-  assert.equal(pickModel({}), MODEL_TIERS.oss);
+test("pickModel: tier flash → deepseek-v4-flash", () => {
+  assert.equal(pickModel({ tier: "flash" }), "deepseek/deepseek-v4-flash");
 });
 
-test("opts.model explícito gana sobre tier (back-compat)", () => {
-  assert.equal(pickModel({ model: "custom/model" }), "custom/model");
-  assert.equal(pickModel({ model: "custom/model", tier: "free" }), "custom/model");
+test("pickModel: tier pro → deepseek-v4-pro (spot/council)", () => {
+  assert.equal(pickModel({ tier: "pro" }), "deepseek/deepseek-v4-pro");
 });
 
-test("tier desconocido lanza con mensaje claro", () => {
-  assert.throws(
-    () => pickModel({ tier: "premium" }),
-    /Unknown model tier "premium"/,
-  );
+test("pickModel: tier desconocido lanza (no falla silente a otro tier)", () => {
+  assert.throws(() => pickModel({ tier: "free" }), /Unknown model tier/);
+  assert.throws(() => pickModel({ tier: "oss" }), /Unknown model tier/);
 });
 
-test("MODEL_TIERS es Object.freeze (no se puede mutar)", () => {
-  assert.throws(() => {
-    MODEL_TIERS.free = "evil";
-  }, TypeError);
+test("MODEL_TIERS no menciona nemotron y está congelado", () => {
+  assert.ok(Object.isFrozen(MODEL_TIERS));
+  assert.equal(JSON.stringify(MODEL_TIERS).toLowerCase().includes("nemotron"), false);
+  assert.deepEqual(Object.keys(MODEL_TIERS), ["flash", "pro"]);
 });

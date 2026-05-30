@@ -245,6 +245,36 @@ test("cogneeSink + webhookSink: Evidence Report cuyo ÚNICO REVIEW row es layer 
   }
 });
 
+test("cogneeSink + webhookSink: ÚNICO REVIEW row es stage 'ALIGNMENT_CHECK' (sin layer) → ambos suprimidos (A1/2.3/2.4)", async () => {
+  // L3 rows carry stage (no layer); el gate ampliado en 0.2 los honra por `stage`. Verifica que
+  // 2.3 (Cognee) y 2.4 (webhook) quedan cubiertos por el gate de stage ALIGNMENT_CHECK.
+  const evidence = {
+    contentHash: "h-l3",
+    payload: {
+      sources: ["l3-reviewed.example/x"],
+      findings: [{ url: "l3-reviewed.example/x", summary: "kept + L3-reviewed" }],
+      decisions: [
+        { url: "l3-reviewed.example/x", outcome: "REVIEW", stage: "ALIGNMENT_CHECK", confidence: 0.6 },
+      ],
+    },
+  };
+  let remembered = null;
+  const cognee = cogneeSink({ remember: async (t) => { remembered = t; } }, { env: {} });
+  await cognee({ target: "acme", lens: "security", evidence, signals: ["s"], maxSeverity: 5 });
+  assert.equal(remembered, null, "cognee debe suprimir por el REVIEW de ALIGNMENT_CHECK");
+
+  const calls = [];
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => { calls.push(url); return { ok: true }; };
+  try {
+    const webhook = webhookSink("https://hook/x", { env: {} });
+    await webhook({ alert: { target: "acme", maxSeverity: 9 }, evidence });
+    assert.equal(calls.length, 0, "webhook debe suprimir por el REVIEW de ALIGNMENT_CHECK");
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
+
 test("defaultSinks: COGNEE_LIVE + SYNTHEX_WEBHOOK_URL => Cognee + webhook", async () => {
   const fakeCognee = { connect: async () => fakeCognee, remember: async () => {} };
   const sinks = await defaultSinks({
