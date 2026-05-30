@@ -89,6 +89,13 @@ export async function runPipeline(target, opts = {}) {
     emitter,
     dedupMode = "exact", // "semantic" (opt-in, CLI-only) carga dedup-semantic.js con import() dinámico
     concurrency = Number(process.env.SYNTHEX_CONCURRENCY) || 6, // cap de FETCH/CLASSIFY en vuelo (PR #2 acotado)
+    // TEST-ONLY hook (v1.0.0): seed one POST-FORGE decision row so the extraDecisions[]
+    // channel can be exercised before CLASSIFY/L3/grounding exist. Production stages push
+    // via the `pushDecision` collector below — never via this option.
+    // Hook SOLO de test: siembra una fila de decisión POST-FORGE para ejercitar el canal
+    // extraDecisions[] antes de que existan CLASSIFY/L3/grounding. Las etapas de producción
+    // empujan vía el colector `pushDecision` de abajo, NUNCA vía esta opción.
+    __injectDecision,
   } = opts;
 
   await startTelemetry(); // arranca el exporter OTLP solo si hay endpoint (idempotente)
@@ -208,6 +215,19 @@ export async function runPipeline(target, opts = {}) {
     return { blocked, safe, dedup: stats, tokensSaved, guardReviewed, djlReviewed, prefReviewed };
   });
 
+  // POST-FORGE decision accumulator. CLASSIFY/L3/grounding/redteam (later stories) push their
+  // rows here via `pushDecision`; the rows are concatenated into payload.decisions[] below. It
+  // starts EMPTY and is only spread when non-empty, so a report with no new layers keeps a
+  // byte-identical canonical pre-image (M1 back-compat). pushDecision appends without mutating
+  // any prior array.
+  // Acumulador de decisiones POST-FORGE. CLASSIFY/L3/grounding/redteam (stories siguientes)
+  // empujan sus filas acá vía `pushDecision`; se concatenan a payload.decisions[] abajo. Arranca
+  // VACÍO y solo se esparce si tiene filas → un report sin capas nuevas conserva una pre-imagen
+  // canónica byte-idéntica (back-compat M1). pushDecision agrega sin mutar arrays previos.
+  const extraDecisions = [];
+  const pushDecision = (row) => { extraDecisions.push(row); };
+  if (__injectDecision) pushDecision(__injectDecision); // TEST-ONLY seed; see opts destructure
+
   // 3. CLASSIFY (cada doc seguro). lens="all" → las 4 lentes (GTM+Finance+Security+SupplyChain)
   // en paralelo; si no, la lente pedida (retrocompat). El classifier inyectable se respeta en
   // ambos modos; solo se pasa {onUsage} cuando NO hay classifier inyectado (= defaultClassify).
@@ -306,6 +326,13 @@ export async function runPipeline(target, opts = {}) {
             at: fetchedAt,
             ..._guardDecisionExtras(d),
           })),
+          // POST-FORGE rows sealed by CLASSIFY/L3/grounding/redteam via pushDecision (1.0). Goes
+          // LAST and is a byte-level no-op when empty → preserves M1/A2 back-compat (HEAD-identical
+          // contentHash for reports without new layers).
+          // Filas POST-FORGE selladas por CLASSIFY/L3/grounding/redteam vía pushDecision (1.0). Van
+          // al FINAL y son no-op byte a byte cuando está vacío → preserva back-compat M1/A2
+          // (contentHash idéntico a HEAD para reports sin capas nuevas).
+          ...extraDecisions,
         ],
       }
     : {

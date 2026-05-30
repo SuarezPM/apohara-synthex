@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { runPipeline, mcpText } from "../src/pipeline.js";
-import { verifyEvidence } from "../src/prove/evidence-report.js";
+import { buildEvidence, verifyEvidence } from "../src/prove/evidence-report.js";
 import { generateKeyPair } from "../src/prove/asymmetric.js";
 
 test("mcpText extrae texto de un resultado de tool MCP", () => {
@@ -263,4 +263,73 @@ test("pipeline: sin signingKey → seal.signature null (symmetric-only preservad
   const ev = await runPipeline("nosign", { lens: "security", fetcher, classifier, requestTsa: false, hmacKey: "k" });
   assert.equal(ev.seal.signature, null);
   assert.equal(ev.seal.signerIdentity, null);
+});
+
+// ─── extraDecisions[] accumulator (v1.0.0 item 1.0 — POST-FORGE seal channel) ──────────────
+// Precondition for 1.3/1.5/2.5: CLASSIFY/L3/grounding run AFTER FORGE and need a channel to
+// seal rows into payload.decisions[]. __injectDecision is a TEST-ONLY hook that seeds one row.
+// Precondición de 1.3/1.5/2.5: CLASSIFY/L3/grounding corren DESPUÉS de FORGE y necesitan un
+// canal para sellar filas en payload.decisions[]. __injectDecision es un hook SOLO de test.
+
+test("pipeline: __injectDecision (stage ALIGNMENT_CHECK) llega a payload.decisions, al final del ledger", async () => {
+  const fetcher = async () => [{ url: "u", content: "benign content nothing flaggy" }];
+  const classifier = async (text, lens) => ({ lens, severity: 1, summary: "s", signals: [] });
+  const injected = { stage: "ALIGNMENT_CHECK", url: "u", outcome: "REVIEW" };
+  const ev = await runPipeline("x", { lens: "security", fetcher, classifier, requestTsa: false, __injectDecision: injected });
+
+  assert.ok(Array.isArray(ev.payload.decisions), "decisions debe ser un array");
+  const found = ev.payload.decisions.find((d) => d.stage === "ALIGNMENT_CHECK");
+  assert.ok(found, "la fila ALIGNMENT_CHECK inyectada debe llegar a payload.decisions");
+  assert.deepEqual(found, injected, "la fila inyectada se sella verbatim");
+  // extraDecisions se concatena al FINAL del ledger (después de blocked/guardReviewed/L1-REVIEW).
+  assert.equal(
+    ev.payload.decisions[ev.payload.decisions.length - 1].stage,
+    "ALIGNMENT_CHECK",
+    "extraDecisions van al final del array decisions",
+  );
+});
+
+test("pipeline: extraDecisions vacío es no-op byte a byte en el pre-image canónico (M1 back-compat)", async () => {
+  // El thread no debe tocar el contentHash de un report SIN capas nuevas. Como `runPipeline`
+  // sella `fetchedAt = new Date()` (wall-clock, dentro del pre-image), comparar dos corridas del
+  // pipeline NO aísla el efecto de extraDecisions. La invariante M1 se prueba sobre `buildEvidence`,
+  // que es puro sobre el payload: un `decisions` terminado en `...[]` (lo que produce el thread
+  // cuando nadie empuja) hashea IDÉNTICO a uno sin el spread. Concatenar [] vacío = no-op.
+  // The thread must not change the contentHash of a report with no new layers. Since runPipeline
+  // seals a wall-clock `fetchedAt` (inside the pre-image), comparing two pipeline runs does NOT
+  // isolate extraDecisions. The M1 invariant is proven over buildEvidence (pure over the payload):
+  // a `decisions` ending in `...[]` (what the thread yields when nobody pushes) hashes IDENTICALLY
+  // to one without the spread. Concatenating an empty [] is a no-op.
+  const fixedAt = "2024-06-01T00:00:00.000Z";
+  const baseRows = [
+    { stage: "INJECTION_GUARD", url: "u", outcome: "REVIEW", layer: "injection-guard", at: fixedAt },
+  ];
+  const empty = []; // the thread's accumulator when no POST-FORGE stage sealed a row
+  const headPayload = { schema_version: 3, target: "x", findings: [], decisions: [...baseRows] };
+  const threadedPayload = { schema_version: 3, target: "x", findings: [], decisions: [...baseRows, ...empty] };
+
+  const head = await buildEvidence(headPayload, { hmacKey: "k", requestTsa: false });
+  const threaded = await buildEvidence(threadedPayload, { hmacKey: "k", requestTsa: false });
+  assert.equal(threaded.contentHash, head.contentHash, "empty extraDecisions must NOT change contentHash (byte-identical pre-image)");
+  assert.equal(threaded.seal.hmacSha256, head.seal.hmacSha256, "HMAC pre-image unchanged when extraDecisions is empty");
+
+  // Y una fila no-vacía SÍ cambia el hash → confirma que decisions[] (incl. extraDecisions) está
+  // en el pre-image. And a non-empty row DOES change the hash → confirms decisions[] is in the pre-image.
+  const withRow = await buildEvidence(
+    { schema_version: 3, target: "x", findings: [], decisions: [...baseRows, { stage: "ALIGNMENT_CHECK", url: "u", outcome: "REVIEW" }] },
+    { hmacKey: "k", requestTsa: false },
+  );
+  assert.notEqual(withRow.contentHash, head.contentHash, "a real extra row changes the contentHash (decisions[] is sealed)");
+
+  // Cross-check en el pipeline real: sin inyección, 0 filas POST-FORGE en decisions[].
+  const ev = await runPipeline("x", {
+    lens: "security",
+    fetcher: async () => [{ url: "u", content: "benign content nothing flaggy" }],
+    classifier: async (text, lens) => ({ lens, severity: 1, summary: "s", signals: [] }),
+    requestTsa: false, hmacKey: "k",
+  });
+  assert.equal((ev.payload.decisions ?? []).some((d) => d.stage === "ALIGNMENT_CHECK"), false, "sin inyección, 0 filas POST-FORGE en el pipeline");
+  const v = await verifyEvidence(ev, { hmacKey: "k" });
+  assert.equal(v.hashOk, true);
+  assert.equal(v.hmacOk, true);
 });
