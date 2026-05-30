@@ -159,9 +159,53 @@ export function parseCheckpoint(envelope) {
 }
 
 /** C2SP key ID for an Ed25519 log key: SHA-256(name || 0x0A || 0x01 || 32B pubkey)[:4]. */
-function ed25519CheckpointKeyId(origin, spkiDer) {
+export function ed25519CheckpointKeyId(origin, spkiDer) {
   const rawPub = Buffer.from(spkiDer).subarray(-32);
   return sha256(Buffer.from(origin), Buffer.from([0x0a, 0x01]), rawPub).subarray(0, 4);
+}
+
+/**
+ * Live-compare a fetched Rekor v2 checkpoint against a pinned log key (R3 rotation DETECTION).
+ * PURE, NEVER throws. Reuses the exact keyhint+Ed25519 logic verifyRekorBundle uses (step 5):
+ *   - match:true                       → a sig line carrying the pinned key's 4-byte hint VERIFIES
+ *                                         (the pinned key is still current — no rotation).
+ *   - match:false, reason "keyhint-rotated" → NO sig line carries the pinned hint (shard rotated to
+ *                                         a new key; pin is stale — re-pin from Sigstore TUF).
+ *   - match:false, reason "signature"  → a line carries the hint but Ed25519 verify FAILED
+ *                                         (forgery / corruption).
+ *   - match:false, reason "parse-error" → the envelope didn't parse.
+ * @param {string} envelope  the C2SP signed-note checkpoint text.
+ * @param {{origin:string, publicKeySpkiB64:string}} log  a pinned log entry.
+ * @returns {{match:boolean, reason:string|null, pinnedKeyHintHex:string|null, liveKeyHintHex:string|null}}
+ */
+export function checkpointMatchesPinnedKey(envelope, log) {
+  try {
+    const cp = parseCheckpoint(envelope);
+    const logSpki = Buffer.from(log.publicKeySpkiB64, "base64");
+    const expectKid = ed25519CheckpointKeyId(cp.origin, logSpki);
+    const pinnedKeyHintHex = expectKid.toString("hex");
+    const logPub = createPublicKey({ key: logSpki, format: "der", type: "spki" });
+    let liveKeyHintHex = null;
+    let hintMatched = false;
+    for (const line of cp.sigBlock.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("—")) continue;
+      const b64 = trimmed.split(" ").pop();
+      let blob;
+      try { blob = Buffer.from(b64, "base64"); } catch { continue; }
+      if (blob.length < 5) continue;
+      const hint = blob.subarray(0, 4);
+      if (liveKeyHintHex === null) liveKeyHintHex = hint.toString("hex");
+      if (!hint.equals(expectKid)) continue;
+      hintMatched = true;
+      if (verify(null, Buffer.from(cp.signedText), logPub, blob.subarray(4))) {
+        return { match: true, reason: null, pinnedKeyHintHex, liveKeyHintHex: pinnedKeyHintHex };
+      }
+    }
+    return { match: false, reason: hintMatched ? "signature" : "keyhint-rotated", pinnedKeyHintHex, liveKeyHintHex };
+  } catch {
+    return { match: false, reason: "parse-error", pinnedKeyHintHex: null, liveKeyHintHex: null };
+  }
 }
 
 /**
