@@ -24,6 +24,10 @@ export function isUrlTarget(t) { return /^https?:\/\//i.test(String(t ?? "")); }
  * @throws Error con motivo si el destino no es seguro/permitido.
  */
 export function assertSafeTarget(target) {
+  if (Array.isArray(target)) {
+    for (const t of target) assertSafeTarget(t);
+    return;
+  }
   const s = String(target ?? "").trim();
   if (!s) throw new Error("target vacío");
   // Cualquier scheme://  que NO sea http/https se rechaza (no se degrada a término de búsqueda).

@@ -23,6 +23,15 @@ test("guard: bloquea IPs ofuscadas (decimal/hex) e IPv6 privado", () => {
   }
 });
 
+test("guard: bloquea SSRF cuando target es un array que evade la coerción a string", () => {
+  assert.throws(
+    () => assertSafeTarget(["https://google.com", "http://127.0.0.1"]),
+    /SSRF|privado|interno/i,
+    "debería inspeccionar cada elemento del array y bloquear el SSRF interno"
+  );
+  assert.doesNotThrow(() => assertSafeTarget(["https://en.wikipedia.org", "https://google.com"]));
+});
+
 test("guard: rechaza protocolos no http/https y target vacío", () => {
   assert.throws(() => assertSafeTarget("ftp://x.com"), /http/i); // isUrlTarget=false → cae como término... validamos URL real
   assert.throws(() => assertSafeTarget(""), /vac/i);
