@@ -67,22 +67,28 @@ on the same 5 benign pages. This is the number that decides whether L2 earns
 The number is **never hardcoded** (D9). fail-honest: if Featherless does not
 answer, the script prints `FAIL` and exits non-zero — it never assumes a value.
 
-### Result (2026-05-29, n=5, temperature=0 → deterministic, reproduced 2×)
+### Result (2026-05-29, n=5, temperature=0 — but hosted inference is NOT run-to-run deterministic)
 
 | Guard | Provider | Benign FP | Verdict vs. ≤20% rule |
 |-------|----------|-----------|------------------------|
-| **Qwen/Qwen3Guard-Gen-8B** | Featherless | **2/5 (40%)** | **DISQUALIFIED** (40% > 20%) |
+| **Qwen/Qwen3Guard-Gen-8B** | Featherless | **3/5 (60%)** (observed 2/5–3/5 across runs) | **DISQUALIFIED** (>20% in every run) |
 | google/shieldgemma-9b | Featherless | NOT MEASURED | HTTP 404 — honest FAIL |
 | OpenSafetyLab/MD-Judge-v0.1 | Featherless | NOT MEASURED | HTTP 404 — honest FAIL |
 | meta-llama/Llama-Guard-3-8B | Featherless | NOT ATTEMPTED | GATED, by design |
 
 - 0/5 responses were unparsed — all five emitted a clean `Safety:` verdict.
-- The two false positives are **page 01 (Simon Willison's "Prompt injection
-  attacks against GPT-3")** and **page 04 (PortSwigger SQL injection)** — both
-  quote literal attack payloads. The two OWASP cheat sheets and the CVE page
-  classified `Safe`. So the model is more precise than the L1 regex layers on the
-  prevention cheat sheets (it clears page 03, which DJL BLOCKs) but, like them,
-  trips on pages that embed runnable example payloads.
+- The false positives are **page 01 (Simon Willison's "Prompt injection attacks
+  against GPT-3")**, **page 04 (PortSwigger SQL injection)**, and **page 05
+  (CVE-2021-44228 / Log4Shell)** — all three quote literal attack payloads or
+  exploit strings. The two OWASP *prevention* cheat sheets classified `Safe`. The
+  model is more precise than the L1 regex layers on the prevention cheat sheets
+  (it clears page 03, which DJL BLOCKs) but, like them, trips on pages that embed
+  runnable example payloads.
+- **Run-to-run variance:** despite `temperature=0`, the hosted endpoint is not
+  deterministic across runs (batched inference). A prior run measured 2/5 (40%),
+  flagging only pages 01 and 04; this run adds page 05. The borderline page is the
+  CVE advisory, which flips between `Safe` and `Unsafe`. Every observed value
+  exceeds the ≤20% bar, so the gating decision is stable regardless.
 
 ### Decision rule (BLOCK gating) — DOCUMENTED
 
@@ -93,7 +99,7 @@ answer, the script prints `FAIL` and exits non-zero — it never assumes a value
 > `Unsafe`/`block`-grade verdict degrades to **REVIEW** (doc kept, suspicion
 > sealed in `decisions[]`). This is the fail-safe / fail-honest default.
 
-- **Qwen3Guard-Gen-8B = 40% > 20% → DISQUALIFIED.** It does NOT receive BLOCK
+- **Qwen3Guard-Gen-8B = 60% > 20% → DISQUALIFIED.** It does NOT receive BLOCK
   authority.
 - **Recommended: `SYNTHEX_GUARD_BLOCK_ENABLED=0` (leave unset).** L2 stays
   REVIEW-capped — a model `Unsafe` is surfaced as `REVIEW`, never dropped. This is
@@ -101,7 +107,7 @@ answer, the script prints `FAIL` and exits non-zero — it never assumes a value
   fail-safe rather than changing it.** No code change to the guard is needed.
 - **Why this is the right call (not a failure):** L2 is the *volume filter*; L3
   AlignmentCheck (item 1.3) is the *FP-killer*. A 40%-benign-FP guard holding
-  BLOCK authority would silently drop ~2 of every 5 security pages — the exact
+  BLOCK authority would silently drop ~3 of every 5 security pages — the exact
   content Synthex is built to scrape. An L2 FP that only REVIEWs is recoverable;
   an L2 BLOCK that drops a benign page is not. **BLOCK authority waits for L3.**
 - **Connection to item 1.1:** the gating mechanism already exists — `_capVerdict`
@@ -113,9 +119,11 @@ answer, the script prints `FAIL` and exits non-zero — it never assumes a value
 ### Caveat
 
 n=5 is **indicative, not statistically robust** — a floor, not a precise rate.
-40% on five pages has a wide confidence interval; the takeaway is directional
-(L2 alone is too trigger-happy on security content to hold BLOCK), not a certified
-percentage. Expand `test/fixtures/guard-fp-corpus/` and re-run to refine.
+The benign FP has been observed at 40%–60% across runs on these five pages (the
+hosted model is not run-to-run deterministic despite temperature=0); the takeaway
+is directional (L2 alone is too trigger-happy on security content to hold BLOCK),
+not a certified percentage. Expand `test/fixtures/guard-fp-corpus/` and re-run to
+refine.
 
 ## Pipeline-level result (v1.0.0, after the D5 FP fix — n=5)
 
