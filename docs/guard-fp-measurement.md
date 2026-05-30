@@ -55,6 +55,68 @@ Per page:
 | 04 PortSwigger SQLi | BLOCK | BLOCK | ALLOW |
 | 05 CVE-2021-44228 | ALLOW | REVIEW (PII rules) | ALLOW |
 
+## Layer-2 model (Qwen3Guard-Gen-8B via Featherless) — item 1.2
+
+The table above is the *isolated regex layers + the zero-dep heuristic*. Item 1.2
+measures the **actual hosted L2 model** — `Qwen/Qwen3Guard-Gen-8B` on Featherless —
+on the same 5 benign pages. This is the number that decides whether L2 earns
+**BLOCK authority** (until now its `Unsafe` verdicts are REVIEW-capped via
+`_capVerdict`; see HONESTY §8.A). Computed LIVE by
+`node scripts/measure-guard-fp.mjs --provider=featherless`, reusing
+`renderQwen3GuardPrompt` + `parseQwen3GuardCompletion` (no template duplication).
+The number is **never hardcoded** (D9). fail-honest: if Featherless does not
+answer, the script prints `FAIL` and exits non-zero — it never assumes a value.
+
+### Result (2026-05-29, n=5, temperature=0 → deterministic, reproduced 2×)
+
+| Guard | Provider | Benign FP | Verdict vs. ≤20% rule |
+|-------|----------|-----------|------------------------|
+| **Qwen/Qwen3Guard-Gen-8B** | Featherless | **2/5 (40%)** | **DISQUALIFIED** (40% > 20%) |
+| google/shieldgemma-9b | Featherless | NOT MEASURED | HTTP 404 — honest FAIL |
+| OpenSafetyLab/MD-Judge-v0.1 | Featherless | NOT MEASURED | HTTP 404 — honest FAIL |
+| meta-llama/Llama-Guard-3-8B | Featherless | NOT ATTEMPTED | GATED, by design |
+
+- 0/5 responses were unparsed — all five emitted a clean `Safety:` verdict.
+- The two false positives are **page 01 (Simon Willison's "Prompt injection
+  attacks against GPT-3")** and **page 04 (PortSwigger SQL injection)** — both
+  quote literal attack payloads. The two OWASP cheat sheets and the CVE page
+  classified `Safe`. So the model is more precise than the L1 regex layers on the
+  prevention cheat sheets (it clears page 03, which DJL BLOCKs) but, like them,
+  trips on pages that embed runnable example payloads.
+
+### Decision rule (BLOCK gating) — DOCUMENTED
+
+> A guard is **granted BLOCK authority** only if its benign FP **≤ 20%** (the same
+> bar as the L1 heuristic, which measures 20%). The threshold is checked LIVE in
+> `measure-guard-fp.mjs`, which emits the recommended flag value from the real
+> measurement. If **no** guard qualifies → **BLOCK disabled**: every
+> `Unsafe`/`block`-grade verdict degrades to **REVIEW** (doc kept, suspicion
+> sealed in `decisions[]`). This is the fail-safe / fail-honest default.
+
+- **Qwen3Guard-Gen-8B = 40% > 20% → DISQUALIFIED.** It does NOT receive BLOCK
+  authority.
+- **Recommended: `SYNTHEX_GUARD_BLOCK_ENABLED=0` (leave unset).** L2 stays
+  REVIEW-capped — a model `Unsafe` is surfaced as `REVIEW`, never dropped. This is
+  exactly the shipped default, so **the measurement confirms the conservative
+  fail-safe rather than changing it.** No code change to the guard is needed.
+- **Why this is the right call (not a failure):** L2 is the *volume filter*; L3
+  AlignmentCheck (item 1.3) is the *FP-killer*. A 40%-benign-FP guard holding
+  BLOCK authority would silently drop ~2 of every 5 security pages — the exact
+  content Synthex is built to scrape. An L2 FP that only REVIEWs is recoverable;
+  an L2 BLOCK that drops a benign page is not. **BLOCK authority waits for L3.**
+- **Connection to item 1.1:** the gating mechanism already exists — `_capVerdict`
+  in `src/forge/injection-guard.js` demotes `block → review` unless
+  `SYNTHEX_GUARD_BLOCK_ENABLED` is truthy. Item 1.2 supplies the missing input
+  (the measured FP) and the rule. The measurement says: leave the flag unset. No
+  guard code changed; this story is measurement + decision + documentation.
+
+### Caveat
+
+n=5 is **indicative, not statistically robust** — a floor, not a precise rate.
+40% on five pages has a wide confidence interval; the takeaway is directional
+(L2 alone is too trigger-happy on security content to hold BLOCK), not a certified
+percentage. Expand `test/fixtures/guard-fp-corpus/` and re-run to refine.
+
 ## Pipeline-level result (v1.0.0, after the D5 FP fix — n=5)
 
 The isolated-module table above is the *raw signal*. What the **pipeline** does
