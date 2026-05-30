@@ -26,6 +26,7 @@
 // two-guards distinction.
 import { createHash } from "node:crypto";
 import { spotlight } from "../classify/spotlight.js";
+import { renderNemoGuardMessages, parseNemoGuardCompletion, NEMOGUARD_MODEL_ID, NEMOGUARD_VERSION } from "./nemoguard.js";
 
 // ─── Featherless / Qwen3Guard-Gen-8B (L2 detector, opt-in) ─────────────────
 //
@@ -301,7 +302,15 @@ export async function screen(text, opts = {}) {
   // classifier-shape ({text}→softmax). Autodetect Featherless by URL host.
   const provider = (opts.guardProvider ?? process.env.SYNTHEX_GUARD_PROVIDER ?? "").toLowerCase();
   const isFeatherless = provider === "featherless" || /featherless\.ai/i.test(url);
-  if (isFeatherless) return _screenFeatherless(text, { ...opts, url });
+  if (isFeatherless) {
+    // Route by model: NemoGuard (the two-axis FP-gate WINNER — measured benign FP 11% ≤ 20% on the
+    // 647-sample corpus, docs/guard-recall-measurement.md) speaks a content-safety prompt via
+    // /chat/completions; Qwen3Guard needs its moderation template via raw /completions. Default
+    // stays Qwen3Guard for back-compat.
+    const model = opts.guardModel ?? process.env.SYNTHEX_GUARD_MODEL ?? QWEN3GUARD_MODEL_ID;
+    if (model === NEMOGUARD_MODEL_ID) return _screenNemoGuard(text, { ...opts, url, guardModel: model });
+    return _screenFeatherless(text, { ...opts, url });
+  }
   return _screenClassifier(text, { ...opts, url });
 }
 
@@ -410,6 +419,61 @@ async function _screenFeatherless(text, opts) {
     if (!safety) return heuristicScreen(text); // chatted, not classified → degrade
     const label = safety === "Safe" ? null : (categories[0] ?? safety);
     return sealOk(score, label);
+  } catch {
+    return heuristicScreen(text);
+  }
+}
+
+/**
+ * Featherless / NemoGuard path — the two-axis FP-gate WINNER (measured benign FP 11% ≤ 20% on the
+ * 647-sample corpus → it EARNS BLOCK authority; docs/guard-recall-measurement.md). NVIDIA's content
+ * safety model emits a parseable JSON verdict for a VANILLA content-safety prompt via /chat/completions
+ * (unlike Qwen3Guard, which Featherless serves with a generic template → needs the raw /completions
+ * render). Binary safe/unsafe → allow/block. BLOCK stays REVIEW-capped by SYNTHEX_GUARD_BLOCK_ENABLED
+ * like every guard — conservative because the measured FP is on a CONSTRUCTED corpus; the operator
+ * opts in (and for NemoGuard the measurement justifies it). Fail-open to the heuristic on any error,
+ * non-200, or a chatted (non-classifying) response.
+ */
+async function _screenNemoGuard(text, opts) {
+  const { url } = opts;
+  const timeoutMs = opts.timeoutMs ?? (Number(process.env.SYNTHEX_GUARD_TIMEOUT_MS) || 60000);
+  const fetchImpl = opts.fetchImpl ?? fetch;
+  const apiKey = opts.apiKey ?? process.env.FEATHERLESS_API_KEY;
+  const model = opts.guardModel ?? NEMOGUARD_MODEL_ID;
+  // NemoGuard uses /chat/completions (chat shape) — normalize the base, then append it once.
+  const chatUrl = `${url.replace(/\/+$/, "").replace(/\/(?:chat\/)?completions$/, "")}/chat/completions`;
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    const body = JSON.stringify({ model, messages: renderNemoGuardMessages(text), max_tokens: 256, temperature: 0 });
+    const maxRetries = Math.max(0, Number(process.env.SYNTHEX_GUARD_RETRIES ?? 2));
+    let res;
+    for (let attempt = 0; ; attempt++) {
+      res = await fetchImpl(chatUrl, { method: "POST", headers, body, signal: AbortSignal.timeout(timeoutMs) });
+      if ((res.status === 503 || res.status === 429) && attempt < maxRetries) {
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+        continue;
+      }
+      break;
+    }
+    if (!res.ok) return heuristicScreen(text);
+    const json = await res.json();
+    const raw = json?.choices?.[0]?.message?.content ?? json?.choices?.[0]?.text ?? "";
+    const { safety, verdict } = parseNemoGuardCompletion(raw);
+    if (!safety) return heuristicScreen(text); // chatted, not classified → degrade
+    const score = verdict === "block" ? 0.97 : 0.0;
+    return {
+      verdict: _capVerdict(verdict, opts),
+      score,
+      label: verdict === "block" ? "unsafe" : null,
+      source: "featherless",
+      model_hash: opts.modelHash ?? process.env.SYNTHEX_GUARD_MODEL_HASH ?? null,
+      degraded: false,
+      policy_bundle_version: POLICY_BUNDLE_VERSION,
+      guard_provider: "featherless",
+      guard_model: model,
+      guard_version: NEMOGUARD_VERSION,
+    };
   } catch {
     return heuristicScreen(text);
   }
