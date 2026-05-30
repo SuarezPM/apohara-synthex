@@ -24,7 +24,13 @@ export default async function handler(req, res) {
     const evidence = body.evidence ?? body;
     if (!evidence || !evidence.contentHash) return res.status(400).json({ error: "evidence inválido" });
     const epssMap = await maybeEpssMap(evidence);
-    const pdf = await buildPDFReport(evidence, { epssMap });
+    // Pass through client-supplied provenance sidecars so the C2PA + Rekor seal rows surface when the
+    // artifacts exist (honest: an ad-hoc evidence with no anchor simply omits those rows). P0.1.
+    const pdf = await buildPDFReport(evidence, {
+      epssMap,
+      c2paSidecar: body.c2paSidecar ?? null,
+      rekorBundle: body.rekorBundle ?? null,
+    });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=synthex-evidence.pdf");
     res.status(200).send(pdf);
