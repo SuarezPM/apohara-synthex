@@ -146,9 +146,10 @@ function pageExecutiveSummary(doc, ev, qrPng) {
   sectionTitle(doc, "What this report proves");
 
   doc.font("Helvetica").fontSize(10).fillColor(COLORS.ink).text(
-    "Synthex turned web data into court-grade evidence: every source was fetched, screened for " +
-    "malicious content before reaching the LLM, classified, and cryptographically sealed. " +
-    "The seal proves WHEN and that the bytes are UNCHANGED — not that the underlying claims are true.",
+    "Synthex turned web data into a cryptographically sealed, tamper-evident evidence record: every " +
+    "source was fetched, screened for malicious content before reaching the LLM, classified, and " +
+    "cryptographically sealed. The seal proves WHEN and that the bytes are UNCHANGED — not that the " +
+    "underlying claims are true.",
     { width: doc.page.width - 100 }).moveDown(0.8);
 
   kv(doc, "Target", Array.isArray(payload.target) ? payload.target.join(", ") : (payload.target ?? "—"));
