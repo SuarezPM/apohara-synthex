@@ -201,11 +201,11 @@ content diff and a 7th PDF page when delta is present.
   a phantom change.
 - **`src/forge/pii-filter.js`** — 25-rule PII bundle (10 DJL-PII reused +
   15 secrets-leak: AWS / GitHub / Stripe / JWT / etc.) gating Cognee ingest.
-- **Model tier selector** (`src/classify/tiers.js`) — `free` / `oss` / `paid`.
-  FREE labeled `free-low-quality` per `docs/v060-calibration.md` (50 % of
-  fixtures had Δseverity > 1.5 vs DeepSeek baseline).
+- **Model tier selector** (`src/classify/tiers.js`) — `flash` (default/bulk) /
+  `pro` (spot · council · L3), both DeepSeek V4 via the AI/ML API. The v0.6 free
+  tier (Nemotron 9B) was removed in v1.0.0 (item 1.4) — it 404s on the current API.
 - **Try it inline** in the `#live` section of [synthex.apohara.dev](https://synthex.apohara.dev) —
-  paste a URL, pick a lens + model tier (OSS / PAID / FREE), watch the 4
+  paste a URL, pick a lens + model tier (Flash / Pro), watch the 4
   stages execute in real time against Bright Data, download the 6-7 page
   signed PDF. No separate playground page needed — everything lives in
   one REEF-style scroll.
