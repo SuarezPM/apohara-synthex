@@ -97,9 +97,13 @@ export async function buildEvidence(payload, { hmacKey, requestTsa = true, signi
       const token = await requestTimestamp(new Uint8Array(hash));
       const v = await verifyTimestamp(token, new Uint8Array(hash));
       if (v.granted && v.match) {
+        // Multi-TSA (R4): describe WHICH TSA produced the token from the configured URL. Plain
+        // descriptor only — NEVER "qualified"/"eIDAS" (the free Actalis endpoint is NOT qualified).
+        const tsaUrl = process.env.SYNTHEX_TSA_URL || "";
+        const authority = /actalis/i.test(tsaUrl) ? "actalis" : "digicert";
         tsa = {
           standard: "RFC 3161",
-          authority: "digicert",
+          authority,
           token: Buffer.from(token).toString("base64"),
           genTime: v.genTime,
           serial: v.serial,

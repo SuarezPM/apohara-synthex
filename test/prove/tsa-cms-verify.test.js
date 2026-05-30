@@ -120,11 +120,13 @@ test("M1 AC6 · v1+TSA back-compat: schema_version undefined + TSA token verifie
   assert.equal(v.signatureValidReason, "symmetric-only");
 });
 
-test("M1 anchor-guard · fingerprints frozen + loadAnchors() returns intermediate+root", () => {
+test("M1 anchor-guard · fingerprints frozen + loadAnchors() returns the multi-TSA set", () => {
   const anchors = loadAnchors();
-  assert.equal(anchors.length, 2, "intermediate + root cross-cert");
+  // R4 — multi-TSA: DigiCert intermediate + DigiCert root cross-cert + Actalis TS CA G1.
+  assert.equal(anchors.length, 3, "DigiCert intermediate + DigiCert root + Actalis CA G1");
   assert.ok(ANCHOR_FINGERPRINTS.intermediate.startsWith("CA:0B:15:54"), "intermediate FP pinned");
   assert.ok(ANCHOR_FINGERPRINTS.rootCross.startsWith("33:84:6B:54"), "root cross-cert FP pinned");
+  assert.ok(ANCHOR_FINGERPRINTS.actalisTsCaG1.startsWith("AA:0C:A7:B6"), "Actalis CA G1 FP pinned");
   // Frozen — silent drift refused at the type level.
   assert.throws(
     () => { ANCHOR_FINGERPRINTS.intermediate = "tamper"; },

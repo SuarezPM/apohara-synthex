@@ -262,7 +262,7 @@ async function verifyCmsSigned(signed, trustedCerts, genTime = null) {
  * @param {Uint8Array} hashBytes  32 bytes del SHA-256 del contenido.
  * @returns {Promise<Uint8Array>} TimeStampResp DER crudo (se guarda en el evidence).
  */
-export async function requestTimestamp(hashBytes, { tsaUrl = DEFAULT_TSA_URL, timeoutMs = 10000, retries = 2 } = {}) {
+export async function requestTimestamp(hashBytes, { tsaUrl = process.env.SYNTHEX_TSA_URL || DEFAULT_TSA_URL, timeoutMs = 10000, retries = 2 } = {}) {
   const messageImprint = new pkijs.MessageImprint({
     hashAlgorithm: new pkijs.AlgorithmIdentifier({ algorithmId: SHA256_OID }),
     hashedMessage: new asn1js.OctetString({ valueHex: toArrayBuffer(hashBytes) }),

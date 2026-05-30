@@ -97,11 +97,64 @@ hJ9vytsgjTVgHAIDyyCwrFigDkBjxZgiwbJZ9VVrzyerbHbObyMt9H5xaiNrIv8S
 uFQtJ37YOtnwtoeW/VvRXKwYw02fc7cBqZ9Xql4o4rmU
 -----END CERTIFICATE-----`;
 
+// Actalis Time Stamping CA G1 — second TSA anchor for MULTI-TSA RESILIENCE (v1.0.0 item R4).
+// Pinned so a token from the public Actalis RFC 3161 TSA (http://timestamp.actalis.it) verifies
+// against our own anchors alongside DigiCert. Provenance (reproducible): fetched from the leaf
+// token's AIA caIssuers on 2026-05-30 — http://cacert.actalis.it/certs/actalis-authtsg1. The chain
+// walk terminates at ANY pinned fingerprint, so pinning this CA (the leaf's direct issuer) suffices
+// — the Actalis root is NOT pinned.
+//
+// HONESTY (binding): this is the NON-QUALIFIED free Actalis TSA (token policy OID 1.3.159.8.2.1, a
+// private Actalis arc, NOT an ETSI qualified-timestamp policy; chain via "Actalis Authentication
+// Root CA", the non-qualified root). So this is multi-TSA RESILIENCE, NOT an eIDAS-QUALIFIED
+// timestamp — the qualified service is paid + a different CA/policy and stays roadmap. NEVER label
+// it "qualified"/"eIDAS-qualified" (a string-guard test enforces this).
+const ACTALIS_TS_CA_G1_PEM = `-----BEGIN CERTIFICATE-----
+MIIGyDCCBLCgAwIBAgIQFh/hKzoALR7O1hRyUNXZDjANBgkqhkiG9w0BAQsFADBr
+MQswCQYDVQQGEwJJVDEOMAwGA1UEBwwFTWlsYW4xIzAhBgNVBAoMGkFjdGFsaXMg
+Uy5wLkEuLzAzMzU4NTIwOTY3MScwJQYDVQQDDB5BY3RhbGlzIEF1dGhlbnRpY2F0
+aW9uIFJvb3QgQ0EwHhcNMjMwMzEwMTMwMTUxWhcNMzAwOTIyMTEyMjAyWjB5MQsw
+CQYDVQQGEwJJVDEQMA4GA1UECAwHQmVyZ2FtbzEZMBcGA1UEBwwQUG9udGUgU2Fu
+IFBpZXRybzEXMBUGA1UECgwOQWN0YWxpcyBTLnAuQS4xJDAiBgNVBAMMG0FjdGFs
+aXMgVGltZSBTdGFtcGluZyBDQSBHMTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCC
+AgoCggIBAJ7wUQB/NkuYbe0O8F+dtqkbo/Rjr4XDm2wKKwLdIoDbSPldU57CsO10
+BC0qlfhEYqABJBDoXkXigtSPfm68mI1GVGjmrfsfsyKVrvyW/cTGi+gRUUoJ7g25
+ufNPfQbzNmFkxcyC/a+OZJjsF73A8majT2VNYbMl/qpXKuCkL2FoRvsLPA3OLCPw
+RvFG5o8UK0EXvT+ovb4j+61D97VEpq/K9Fv/wEiqzKBtPCexs78YD0H5+vFRRxsx
+zIZp2FUKRf3WtFX+/XC2yBoypYa2R3ow7Wm4Z2m2y+Ot67KrKxsl15kCDvHDd7ej
+oQxGII7yWSxDc0EpmDSsibnHf+MgXhZjtetuH04rEocfRA03SC0Xsp7TAvSz2dHt
+2ZndZkw6QeJkBS10EI+Gu1oEbrC5inJb/Hq+4VWeptH07jBicvk0R7smZo9DYgqg
+HIR2vs/LTWmdTLpBiEmOjb4wFe/anNOk5KT7NE3GsIygxUGouEIx2iqn74F0moTL
+cC33775zdqVLGhR1PXvepknNvAMXuJhhBA83m9LaXc0dJokCOU0/Ywjh3eVS/nTB
+NmrLDwkLNZDtG63Pbh6CoYKjIICaUqpiKkftTheUk5AXO6P6rZbIQcgwew2lLo5v
+z3bEsE2GdR756Jv5zT5gRjQAvrVqlEWT9Jl+tYfRf/bLqzECFcRpAgMBAAGjggFY
+MIIBVDAPBgNVHRMBAf8EBTADAQH/MB8GA1UdIwQYMBaAFFLYiDrIn3hm7Ynzezhw
+lMkCAjbQMH0GCCsGAQUFBwEBBHEwbzA6BggrBgEFBQcwAoYuaHR0cDovL2NhY2Vy
+dC5hY3RhbGlzLml0L2NlcnRzL2FjdGFsaXMtYXV0cm9vdDAxBggrBgEFBQcwAYYl
+aHR0cDovL29jc3AwNS5hY3RhbGlzLml0L1ZBL0FVVEgtUk9PVDATBgNVHSAEDDAK
+MAgGBmeBDAEEAjATBgNVHSUEDDAKBggrBgEFBQcDCDBIBgNVHR8EQTA/MD2gO6A5
+hjdodHRwOi8vY3JsMDUuYWN0YWxpcy5pdC9SZXBvc2l0b3J5L0FVVEgtUk9PVC9n
+ZXRMYXN0Q1JMMB0GA1UdDgQWBBTXnHM5LX3w2eQWSlAjUwBtTv0RozAOBgNVHQ8B
+Af8EBAMCAQYwDQYJKoZIhvcNAQELBQADggIBAGeD2l4CcwRHGo7PfMEUQGTwhnkM
+msI7x4FvrnIVKWWPxERO9M5CCHC6Cxwr8cvDjB/LvzDUyOp6iCLDgY3N3bTBasY4
+9bu2b4pmQtDBlNY0z38Sryq3DLg8TgprRoBq9h5j5EQjZ7DRSkgqcqFehPAwRA0H
+SQA5Kk9ZfXI6RNOOUUCIX5CNTkIJJLvBGdPzeg5iev9sD0Xi7/SzIKq93CnuMYrm
+P84x26p6/yy+v3yfVdvyOi071W6kMhXD9qbl6D4BjJtIkO/q+mjAoRSUZlgoZw9H
+cMYG4yTKdu8w4/oX+ZJ2rFB/kjWCvCDD2DBrfkoQHuvqp0C5SBewfVuS+YyVf4TW
+f2tDNkTBgUrRS+Nr0tf+QClViW8eYTMMVNKSgNxmAsnC2I4Bjc6UNxH9qafdf1L4
+yIQ6f91//1kl+3ryF5TFO3o9dPnqKJBE7O4ktLBW1A5cEjL/V66qdwI+73HLSc7q
+RIjY5IKG2LLeXY5J8C6lwaGoQUSWbhdRCHq09rRSkSP5XmYBWY6/hFlVKyDXNPf2
+vcqLPY2hUffwnN7MSGA9mE71aKjko3lsJDIQkk6I5o+478DPmlIDQ5OmpkOn0QHJ
+Hb7Zk6QB4OC0qkYbFsPurcbASkwSq1JMPsrYZyZ81EAg5hxmCWdD3ho5dAQTx/mS
+uBgJva7GS3fCAZ9l
+-----END CERTIFICATE-----`;
+
 // SHA-256 fingerprints (colon-separated, uppercase — matches `openssl ... -fingerprint -sha256`).
 // Load-time guard refuses to load if PEM was edited without updating fingerprint.
 export const ANCHOR_FINGERPRINTS = Object.freeze({
   intermediate: "CA:0B:15:54:EC:D9:01:EA:19:DC:AD:87:49:E9:F2:64:8C:8D:6D:FC:EA:1A:DD:9D:2C:21:09:41:5B:B8:2C:CD",
   rootCross: "33:84:6B:54:5A:49:C9:BE:49:03:C6:0E:01:71:3C:1B:D4:E4:EF:31:EA:65:CD:95:D6:9E:62:79:4F:30:B9:41",
+  actalisTsCaG1: "AA:0C:A7:B6:C6:A4:DD:53:35:76:1A:72:13:80:1B:3D:2D:18:29:CD:D0:A7:2F:45:87:F8:83:08:04:A0:3B:7E",
 });
 
 export const ANCHOR_METADATA = Object.freeze({
@@ -116,6 +169,14 @@ export const ANCHOR_METADATA = Object.freeze({
     issuer: "DigiCert Assured ID Root CA",
     notBefore: "2022-08-01T00:00:00Z",
     notAfter: "2031-11-09T23:59:59Z",
+  },
+  // Second TSA anchor (multi-TSA resilience, R4). NON-QUALIFIED free Actalis TSA — NOT eIDAS-qualified.
+  actalisTsCaG1: {
+    subject: "Actalis Time Stamping CA G1",
+    issuer: "Actalis Authentication Root CA",
+    notBefore: "2023-03-10T13:01:51Z",
+    notAfter: "2030-09-22T11:22:02Z",
+    qualified: false, // explicit: free endpoint, NOT the eIDAS-qualified Actalis service
   },
 });
 
@@ -136,7 +197,9 @@ let _cached = null;
  * matches ANCHOR_FINGERPRINTS. Throws on mismatch (means a PEM was edited without
  * updating its fingerprint — guard against silent trust drift). Cached after first call.
  *
- * @returns {pkijs.Certificate[]} two certs in chain order: [intermediate, rootCross]
+ * @returns {pkijs.Certificate[]} multi-TSA anchor set: [DigiCert intermediate, DigiCert rootCross,
+ *          Actalis TS CA G1]. The chain walk matches by fingerprint, so each TSA's token reaches
+ *          its own anchor.
  */
 export function loadAnchors() {
   if (_cached) return _cached;
@@ -153,6 +216,13 @@ export function loadAnchors() {
     throw new Error(`tsa-anchors: root cross-cert fingerprint mismatch (got ${rootFp}, expected ${ANCHOR_FINGERPRINTS.rootCross}). PEM was edited without updating ANCHOR_FINGERPRINTS — refuse to load.`);
   }
 
+  // R4 — second TSA anchor (Actalis CA G1). Same fingerprint guard discipline as DigiCert.
+  const actalisDer = pemToDer(ACTALIS_TS_CA_G1_PEM);
+  const actalisFp = sha256FpColon(actalisDer);
+  if (actalisFp !== ANCHOR_FINGERPRINTS.actalisTsCaG1) {
+    throw new Error(`tsa-anchors: Actalis CA G1 fingerprint mismatch (got ${actalisFp}, expected ${ANCHOR_FINGERPRINTS.actalisTsCaG1}). PEM was edited without updating ANCHOR_FINGERPRINTS — refuse to load.`);
+  }
+
   const parse = (der) => {
     const arr = der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength);
     const a = asn1js.fromBER(arr);
@@ -160,6 +230,8 @@ export function loadAnchors() {
     return new pkijs.Certificate({ schema: a.result });
   };
 
-  _cached = Object.freeze([parse(intDer), parse(rootDer)]);
+  // Multi-TSA anchor SET: the chain walk matches by fingerprint, so a DigiCert token reaches the
+  // DigiCert anchors and an Actalis token reaches the Actalis anchor — no per-TSA selector needed.
+  _cached = Object.freeze([parse(intDer), parse(rootDer), parse(actalisDer)]);
   return _cached;
 }

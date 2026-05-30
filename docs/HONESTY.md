@@ -301,6 +301,14 @@ They share a word in their name and nothing else. The first protects the **HTTP 
 - ✓ **Red-team FP / control discipline + fail-safe.** A lens that the reasoner cannot answer (no key / timeout / non-200) **degrades to risk 0** — a dead lens can NEVER inflate the verdict (verified by test). The **control-doc FP** (how many lenses scream high-risk on a NEUTRAL document — should be low) is the red-team analogue of the L2/L3 FP gate; the `--offline` path is a **deterministic stub** (labelled `OFFLINE STUB`, like the demo) for reproducible Scene 4 with no secrets, while the live path runs the real `deepseek-v4-pro`. Measured live on the S-1 fixture: 4–5 lenses return high risk → verdict `DO NOT PROCEED` (a going-concern S-1 should score high); a benign control document should NOT.
 - ✗ Not financial advice or an underwriting decision. It is a structured adversarial reading to surface board-level questions, sealed for audit — a human makes the call.
 
+### 10.9 Multi-TSA resilience — Actalis as a 2nd RFC 3161 TSA (roadmap R4; NOT eIDAS-qualified)
+
+`src/prove/tsa-anchors.js` now pins a SECOND TSA anchor (Actalis Time Stamping CA G1) alongside DigiCert, so a token from the public Actalis RFC 3161 TSA (`SYNTHEX_TSA_URL=http://timestamp.actalis.it`) verifies against our own anchors — resilience if DigiCert is unavailable or rotates.
+
+- ✓ **Verify algorithm UNCHANGED.** `verifyCmsSigned` already walks signer→issuer and matches ANY pinned fingerprint, so multi-TSA needed only a larger anchor SET (3 anchors now), an env-tier `SYNTHEX_TSA_URL`, and a dynamic `authority` descriptor. Live-proven: an Actalis token (3001 B, EKU id-kp-timeStamping, RSA-SHA256) → `signatureValid:true`; with DigiCert-only anchors → `untrusted-anchor` (NOT forged — the staleness/forgery distinction holds for the 2nd TSA too). DigiCert unaffected (back-compat suite green).
+- ⚠️ **NOT eIDAS-qualified (the honesty crux).** The FREE Actalis endpoint is a working RFC 3161 TSA but its token policy OID is `1.3.159.8.2.1` (Actalis's private enterprise arc), NOT an ETSI qualified-timestamp policy, and its chain is the **non-qualified** "Actalis Authentication Root CA". A QUALIFIED eIDAS timestamp requires the **paid** Actalis qualified service (a different CA + ETSI policy) and stays roadmap. We never label this "qualified"/"eIDAS-qualified" — a string-guard test (`tsa-multi-anchor.test.js`) enforces it.
+- ✗ **FreeTSA CUT.** `freetsa.org` returns a token our custom CMS verify rejects as `forged` (its signedAttrs/algorithm shape differs); shipping it as a "working TSA" would be a false resilience claim, so it is NOT added.
+
 ### 10.8 EPSS exploitation weighting (roadmap R1, opt-in, non-sealed)
 
 `src/prove/epss.js` + `riskScoreWeighted()` add an OPT-IN (`SYNTHEX_EPSS_ENABLED`) FIRST.org EPSS enrichment of the Security Risk Score, fetched at report-RENDER time.
