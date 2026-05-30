@@ -300,6 +300,15 @@ They share a word in their name and nothing else. The first protects the **HTTP 
 - ✓ **Red-team FP / control discipline + fail-safe.** A lens that the reasoner cannot answer (no key / timeout / non-200) **degrades to risk 0** — a dead lens can NEVER inflate the verdict (verified by test). The **control-doc FP** (how many lenses scream high-risk on a NEUTRAL document — should be low) is the red-team analogue of the L2/L3 FP gate; the `--offline` path is a **deterministic stub** (labelled `OFFLINE STUB`, like the demo) for reproducible Scene 4 with no secrets, while the live path runs the real `deepseek-v4-pro`. Measured live on the S-1 fixture: 4–5 lenses return high risk → verdict `DO NOT PROCEED` (a going-concern S-1 should score high); a benign control document should NOT.
 - ✗ Not financial advice or an underwriting decision. It is a structured adversarial reading to surface board-level questions, sealed for audit — a human makes the call.
 
+### 10.5 Cognee memory — local OSS default; cloud probed + CUT (item 2.3)
+
+Synthex memory (`src/memory/cognee-client.js`) defaults to **local OSS Cognee** (Apache-2.0): zero-lock-in, full data-residency, the stdio MCP path. A cloud backend would be an explicit opt-in.
+
+- **Gate-before-trust → CUT to local-only (honest).** `scripts/check-cognee-cloud.mjs` probed the cloud with `COGNEE_API_KEY`: `platform.cognee.ai` is reachable but every `/api/*` path returns the **web dashboard (HTML)**, not a programmatic JSON ingest/recall API with this key. Per gate-before-trust we do **NOT** build a speculative cloud client on an unconfirmed surface. **Cognee stays local OSS only** — exactly the documented cut (#7). No fabricated cloud path ships.
+- ✓ **The `COGNEE_REMOTE_URL` guard (PM-2) is intact** — it remains a hard abort ("strictly local"), verified. A cloud mode, if added later, would be a NEW explicit `COGNEE_CLOUD` opt-in distinct from that guard.
+- ✓ **The CaMeL gate covers the Cognee path regardless of backend.** A source carrying a REVIEW/BLOCK row (incl. `stage: ALIGNMENT_CHECK`) is never ingested (test/integration/cognee-guard.test.js). So even a future cloud backend cannot ingest poisoned content.
+- ✗ **No backend is part of the sealed evidence.** Memory is convenience, not proof — the evidence is sealed locally; Cognee (local or cloud) is a graph index over it, never the attestation.
+
 ### 10.4 TriggerWare react loop — CaMeL-gated webhook (item 2.4)
 
 The react loop (`src/reactor.js` → `src/watch.js` → `src/sinks.js`) polls a TriggerWare trigger for web deltas → fires the pipeline → seals → alerts. **Gate-before-trust:** `scripts/probe-triggerware.mjs` confirms `GET /triggers → 200` (real surface `https://api.triggerware.com`, `Api-Key` header) before the loop is relied on; on probe FAIL the loop falls back to its current state (declared).
