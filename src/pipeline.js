@@ -8,6 +8,7 @@ import { POLICY_BUNDLE_VERSION as PREFILTER_POLICY_BUNDLE_VERSION } from "./forg
 import { screen as injectionGuardScreen, heuristicScreen, POLICY_BUNDLE_VERSION as GUARD_POLICY_BUNDLE_VERSION } from "./forge/injection-guard.js";
 import { classify as defaultClassify } from "./classify/aiml-client.js";
 import { alignmentCheck as defaultAlignmentCheck, ALIGNMENT_CHECK_VERSION } from "./classify/alignment-check.js";
+import { ground, GROUNDING_WINDOW } from "./classify/grounding.js";
 import { buildEvidence } from "./prove/evidence-report.js";
 import { sha256 } from "./prove/hmac.js";
 import { withSpan, recordTokens, recordBlocked, recordSealed, startTelemetry } from "./telemetry/otel.js";
@@ -332,6 +333,50 @@ export async function runPipeline(target, opts = {}) {
     });
   });
 
+  // 3.5 GROUNDING (1.5) — deterministic, zero-LLM. For each finding, every NAMED FIGURE in
+  // its signals is verified against the SAME window the classifier saw (content[0:charsSeen],
+  // charsSeen = min(len, GROUNDING_WINDOW)). Fabricated figures are DROPPED from the finding;
+  // beyond-window ones are flagged UNVERIFIED. A GROUNDING row is sealed (via extraDecisions[])
+  // ONLY when a finding had ≥1 figure to adjudicate → reports whose findings carry no named
+  // figures keep a byte-identical pre-image (M1/A2 back-compat). No new deps; pure JS.
+  const contentByUrl = new Map(safeForClassify.map((d) => [d.url, String(d.content ?? "")]));
+  const seal = (f, charsSeen, outcome, counts) => pushDecision({
+    stage: "GROUNDING",
+    url: f.url,
+    charsSeen,
+    outcome,
+    verified: counts.verified,
+    dropped: counts.dropped,
+    unverified: counts.unverified,
+    at: fetchedAt,
+  });
+  const groundedFindings = findings.map((f) => {
+    const content = contentByUrl.get(f.url) ?? "";
+    const charsSeen = Math.min(content.length, GROUNDING_WINDOW);
+    if (f.trilens) {
+      // lens="all" — ground each lens; one GROUNDING row aggregates the doc's counts.
+      const trilens = {};
+      const agg = { verified: 0, dropped: 0, unverified: 0 };
+      let adjudicated = 0;
+      for (const [lensKey, sub] of Object.entries(f.trilens)) {
+        const r = ground(sub, content, { charsSeen });
+        trilens[lensKey] = r.finding;
+        agg.verified += r.counts.verified;
+        agg.dropped += r.counts.dropped;
+        agg.unverified += r.counts.unverified;
+        adjudicated += r.adjudicated;
+      }
+      if (adjudicated > 0) {
+        const outcome = agg.dropped > 0 ? "DROPPED" : agg.unverified > 0 ? "UNVERIFIED" : "VERIFIED";
+        seal(f, charsSeen, outcome, agg);
+      }
+      return { ...f, trilens };
+    }
+    const r = ground(f, content, { charsSeen });
+    if (r.adjudicated > 0) seal(f, charsSeen, r.outcome, r.counts);
+    return { ...f, signals: r.finding.signals };
+  });
+
   // 4. PROVE: sellar el reporte.
   // Payload v3 (default since v0.8.0): same canonical pre-image as v2 (so contentHash + HMAC
   // pre-image byte-identical); the v3 schema enables `seal.signature` + `seal.signerIdentity`
@@ -371,7 +416,7 @@ export async function runPipeline(target, opts = {}) {
         sources: docs.map((d) => d.url),
         dedup,
         blocked: blockedForPayload,
-        findings,
+        findings: groundedFindings,
         tokens_saved: tokensSaved,
         policy_bundle_version: {
           djl: DJL_POLICY_BUNDLE_VERSION,
@@ -433,7 +478,7 @@ export async function runPipeline(target, opts = {}) {
         sources: docs.map((d) => d.url),
         dedup,
         blocked: blockedForPayload,
-        findings,
+        findings: groundedFindings,
       };
   const evidence = await timed("PROVE", async ({ record }) => {
     const ev = await buildEvidence(payload, { hmacKey, requestTsa, signingKey, signerIdentity });

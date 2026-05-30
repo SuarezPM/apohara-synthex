@@ -239,6 +239,20 @@ ClassificationSchema = z.object({
 
 **Tests**: [`test/classify/alignment-check.test.js`](../test/classify/alignment-check.test.js) — injected runner (zero network): executing→BLOCK, describing(OWASP)→ALLOW, fail-safe degrade (no key / runner throws → REVIEW-keep, never BLOCK, never throws), `parseAlignment` defensive parsing (unknown decision → safe REVIEW default, confidence clamp).
 
+### 8.E Grounding verifier — deterministic, zero-LLM figure check (v1.0.0 item 1.5)
+
+**The gap it closes** (`src/classify/grounding.js`). The seal proves a report was not tampered *after* signing; it cannot prove the **classifier didn't invent a number** — "$42 BILLION acquisition" on a page that mentions no money. After CLASSIFY, every **named figure** (number / currency / percentage) in a finding's `signals` is verified — *number-normalized* — against the **same byte window the model actually saw**: `raw.slice(0, charsSeen)`, where `charsSeen = min(len, 8000)` (the aiml-client truncation window — **not** the full payload text). Pure JS, zero LLM, zero network, zero new deps. // ES: verifica cada CIFRA nombrada del finding contra la ventana `[0,charsSeen)` que el modelo vio; cero LLM, cero deps.
+
+- **Verdict per figure-bearing signal** — sealed in a `GROUNDING` decision row (stage `GROUNDING`, with `charsSeen` as the verification frontier + verified/dropped/unverified counts):
+  - figure present **inside** `[0, charsSeen)` → **VERIFIED** (kept).
+  - figure present **only** in `raw[charsSeen:]` (beyond the window the model received) → **UNVERIFIED** (kept, flagged): the model could NOT have derived it from the text it saw, so we tag it — we do **not** claim grounding (M3: verifying against the *full* content would manufacture false-VERIFIEDs).
+  - figure present **nowhere** in the source → **DROPPED** from the finding (the fabrication is removed).
+- **Conservative by design.** Signals with **no named figure** are pass-through — NOT adjudicated, NOT dropped. The verifier targets fabricated FIGURES (the real, checkable risk); it does not drop legitimate keyword/paraphrase signals (the "too aggressive" failure that would discard valid intelligence). Number-normalization makes `$1,500,000` and `1.5M` match the same figure; `%` is kept canonical so `20%` never matches a bare `20`.
+- **Back-compat (M1/A2).** A `GROUNDING` row is sealed ONLY when a finding had ≥1 figure to adjudicate. Findings with no named figures emit no row → reports without figure-bearing signals keep a byte-identical canonical pre-image. The raw payload text is NEVER altered — only the verification window is bounded.
+- ✗ **Not semantic fact-checking.** It does not validate that a *claim* is true, only that a *named figure* appears in the source the model read. A figure quoted correctly from a wrong source still VERIFIES. It is a hallucinated-number tripwire, not a truth oracle.
+
+**Tests**: [`test/classify/grounding.test.js`](../test/classify/grounding.test.js) — figure in window → VERIFIED; fabricated → DROPPED; beyond-window (M3) → UNVERIFIED; `$1,500,000` == `1.5M` normalization; non-figure signals pass-through; charsSeen frontier sealed.
+
 ---
 
 ## §9 · Two `guard`s in the tree — naming-collision note
