@@ -267,8 +267,19 @@ export async function runPipeline(target, opts = {}) {
     prefilter: { stage: "PREFILTER", bundle: PREFILTER_POLICY_BUNDLE_VERSION },
     "injection-guard": { stage: "INJECTION_GUARD", bundle: GUARD_POLICY_BUNDLE_VERSION },
   };
+  // Seal the guard's identity in every guard-authored decision row. The 4
+  // §4 fields (guard_model/guard_provider/guard_version/model_hash) come from
+  // the verdict and are ALWAYS present (the heuristic fallback seals coherent
+  // values too — never undefined). guard_mode/guard_score keep back-compat.
   const _guardDecisionExtras = (d) => d.guard
-    ? { guard_mode: d.guard.source, guard_score: d.guard.score, model_hash: d.guard.model_hash }
+    ? {
+        guard_mode: d.guard.source,
+        guard_score: d.guard.score,
+        model_hash: d.guard.model_hash,
+        guard_model: d.guard.guard_model,
+        guard_provider: d.guard.guard_provider,
+        guard_version: d.guard.guard_version,
+      }
     : {};
 
   const payload = _SCHEMA_V2
