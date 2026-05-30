@@ -125,7 +125,7 @@ The honest summary: the guard's hostname check is *defense-in-depth* against lit
 
 ## §4 · Risk Score and tri-lens semantics (M5)
 
-- The PDF Risk Score is an **internal heuristic estimate**, not an industry benchmark. The formula and its inputs are printed on the same PDF page that displays the number.
+- The PDF Risk Score is a **deterministic formula anchored in named public frameworks** (v1.0.0 item 2.2): the severity axis is the **CVSS 0–10 base-score scale** with bands aligned to CVSS severity ratings (High ≥ 7.0); the compliance framing maps to **NIST AI RMF** and **EU AI Act** risk categories. This is a **mapping, not an endorsement** — no framework body has reviewed or endorsed the number; it is NOT an industry benchmark, a Munich Re assessment, or an insurance rating. The formula and its inputs are printed on the same PDF page that displays the number; the framework mapping is documented in [`docs/compliance-mapping.md`](compliance-mapping.md). EPSS (exploit-prediction) is a documented future input for the security lens.
 - The score renders on the **Broker page** of the report (`pdf-report.js pageBroker`), not the CISO page. README and SLIDES list four buyer personas under the score; the placement of the rendered number is Broker.
 - A "lens-bleed" appearance can occur only on `lens=all` runs (security findings can pull the score up when the user requested an all-lens snapshot); the on-page disclaimer says so. A future security-lens-only variant (Follow-up F5) is opt-in.
 

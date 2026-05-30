@@ -43,6 +43,47 @@ The reviewer of 2026-05-29 flagged that the page mentions "EU AI Act / DORA" wit
 - **OpenTelemetry GenAI spans** per stage (`src/telemetry/otel.js`). When `OTEL_EXPORTER_OTLP_ENDPOINT` is set, every FETCH/FORGE/CLASSIFY/PROVE stage emits a span with token usage, blocked counts, and latency. OTLP-compatible backends (Tempo, Honeycomb, etc.) ingest natively.
 - **Sealed evidence files persist independently of telemetry.** The evidence file IS the durable record — even if telemetry is off, the `decisions[]` + `policy_bundle_version` + `contentHash` + seal constitute a per-run audit log.
 
+### Article 11 — Technical documentation
+
+> "The technical documentation of a high-risk AI system shall be drawn up before that system is placed on the market … and shall be kept up-to-date."
+
+**What Synthex provides — RAG status: 🟢 GREEN (supports):**
+
+- The Evidence Report itself IS technical documentation of a decision: it records the sources scraped, the per-layer `decisions[]` (DJL/prefilter/L2/L3/grounding), the `policy_bundle_version` of every rule set, the model ids used, and the seal — drawn up automatically *at decision time*, not reconstructed after the fact.
+- **What this does NOT do:** it does not document the *deployer's* overall AI system (its training, intended purpose, risk-management system). Article 11 is a system-level obligation on the provider; Synthex documents the *per-run evidence*, one input to that dossier.
+
+### Article 13 — Transparency and provision of information to deployers
+
+> "High-risk AI systems shall be designed and developed … to enable deployers to interpret a system's output and use it appropriately."
+
+**What Synthex provides — RAG status: 🟡 AMBER (partially supports):**
+
+- Every classification ships with the **inputs it was derived from** (sealed source list + the `charsSeen` window the model actually saw, via the grounding verifier) and the **per-layer rationale** in `decisions[]` (e.g. an L3 `ALIGNMENT_CHECK` row carries its `rationale` + `confidence`). The Risk Score page prints its exact formula. This is interpretability of the *output*.
+- **AMBER, not GREEN:** the frontier-model classification step is not itself fully explainable; we surface the inputs, the grounding verdicts, and the deterministic-layer decisions, but the LLM's internal reasoning is summarized, not proven. A deployer interprets the output with these aids; we do not claim full model transparency.
+
+---
+
+## NIST AI RMF (AI 100-1) — risk-management framing
+
+The Synthex Risk Score and `decisions[]` ledger map onto the four NIST AI RMF functions (mapping, **not** endorsement — NIST does not certify tools):
+
+| NIST AI RMF function | Synthex feature |
+|---|---|
+| **GOVERN** | `policy_bundle_version` sealed per run + `docs/HONESTY.md` (documented limits) make the governing rule set auditable. |
+| **MAP** | The 4-lens classification + sealed source list MAP the context of what the agent scraped. |
+| **MEASURE** | Measured guard FP (L2) + L3 false-BLOCK (`docs/guard-fp-measurement.md`) + the CVSS-scaled severity are the MEASURE function — quantified, not asserted. |
+| **MANAGE** | The CaMeL-gated react/webhook + L3 BLOCK authority (drop the poisoned doc) are the MANAGE/response function. |
+
+---
+
+## Risk Score grounding — CVSS / EPSS
+
+The Synthex Risk Score (`src/prove/pdf-report.js riskScore`) is **anchored in named public scoring frameworks** rather than presented as a private heuristic (do-not §9). This is a **mapping, not an endorsement** — neither FIRST (CVSS/EPSS) nor any body has reviewed the number:
+
+- **CVSS (Common Vulnerability Scoring System, FIRST.org)** — the severity axis (`maxSev`, 0–10) uses the **CVSS base-score scale**, and the bands align to CVSS severity ratings: **High ≥ 7.0**, Medium 4.0–6.9, Low < 4.0. The Synthex `HIGH ≥ 70 / MEDIUM ≥ 40` cutoffs are the CVSS bands × 10.
+- **EPSS (Exploit Prediction Scoring System, FIRST.org)** — documented as a **future input** for the security lens (exploitation-probability weighting of the severity term). It is **not yet computed**; we name it as the intended source rather than claim it ships.
+- The compliance framing maps to **EU AI Act** risk categories (Article 11/12/13/14 above) and **NIST AI RMF** (table above).
+
 ---
 
 ## California SB 942 (AI Transparency Act, effective 2026-01-01)
