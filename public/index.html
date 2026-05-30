@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Apohara Synthex — the evidence layer that lives inside Bright Data</title>
+<title>Apohara Synthex — screen it, seal it · inside Bright Data</title>
 <meta name="description" content="Apohara Synthex scrapes the live web via Bright Data, screens it for injection before the LLM, classifies it under four lenses, and seals it with an RFC 3161 timestamp you can verify yourself." />
-<meta property="og:title" content="Apohara Synthex — scrape it, classify it, prove it." />
-<meta property="og:description" content="The cryptographic proof layer over Bright Data + Triggerware + Cognee. 500 URLs sealed in 9 min for $0.75. RFC 3161 · SLSA L3 · npm provenance." />
+<meta property="og:title" content="Apohara Synthex — screen it, seal it." />
+<meta property="og:description" content="The screen-and-seal layer over Bright Data + Triggerware + Cognee — layered injection defense (FP measured) + court-verifiable evidence. 500 URLs sealed in 9 min for $0.75. RFC 3161 · Ed25519 · C2PA." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
@@ -529,17 +529,17 @@ h2.head em {
 <section class="hero s-lime divline">
   <div class="hero-atmos" aria-hidden="true"></div>
   <div class="wrap">
-    <div class="kicker"><span class="dot"></span> THE EVIDENCE LAYER · INSIDE BRIGHT DATA</div>
+    <div class="kicker"><span class="dot"></span> SCREEN IT · SEAL IT · INSIDE BRIGHT DATA</div>
     <h1 class="hero-mark">
       <span class="hero-mark-prefix">APOHARA</span>
       <span class="hero-mark-name">SYNTHEX</span>
       <span class="sr-only"> — the evidence layer for AI agents that scrape the live web</span>
     </h1>
     <div class="tag">for <b>AI agents</b> that scrape the live web</div>
-    <div class="sub">Scrape it. Screen it. Classify it. <em>Prove it.</em></div>
+    <div class="sub">Screen what your agents ingest. <em>Seal what they found.</em></div>
     <div class="pills">
       <span class="pill lime">RFC 3161 · DigiCert · CMS chain verify (v1.0.0)</span>
-      <span class="pill amber">6-page signed PDF</span>
+      <span class="pill amber">L1→L2→L3 screen · FP-measured</span>
       <span class="pill teal">6 / 6 Bright Data surfaces · live</span>
       <span class="pill">SLSA L3 · npm provenance</span>
     </div>
@@ -659,7 +659,27 @@ h2.head em {
 <section class="divline s-amber">
   <div class="wrap">
     <div class="kicker"><span class="dot"></span> SYNTHEX · IN ONE SENTENCE</div>
-    <p class="oneliner">Synthex is the <span class="g">evidence layer that lives inside Bright Data</span> — the only pipeline that scrapes, screens, classifies, and <span class="a">cryptographically signs</span> the web content your agents touch.</p>
+    <p class="oneliner">Synthex is the <span class="g">screen-and-seal layer that lives inside Bright Data</span> — it screens what your agents ingest with a layered injection defense, then <span class="a">cryptographically seals</span> what they found.</p>
+  </div>
+</section>
+
+<!-- TWO PILLARS · screen + seal -->
+<section class="divline">
+  <div class="wrap">
+    <div class="kicker s-violet"><span class="dot"></span> TWO JOBS · SCREEN IT · SEAL IT</div>
+    <h2 class="head s-violet">Screen what they ingest. <em>Seal what they found.</em></h2>
+    <div class="grid2" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:42px">
+      <div class="buyer s-violet">
+        <div class="who">① Screen it</div>
+        <div class="pain">Layered injection defense — the poison never reaches the classifier. Every layer's false-positive is <em>measured</em>, not asserted.</div>
+        <div class="art"><b>DEFENSE IN DEPTH · FP MEASURED</b>L1 regex (78 DJL + 32 prefilter) — REVIEW-only on ingest<span style="display:block;color:var(--lime);font-weight:700;margin-top:3px">pipeline drop 0/5</span><span style="display:block;margin-top:9px">L2 Qwen3Guard-Gen-8B (opt-in) — benign FP 2/5 → BLOCK disqualified</span><span style="display:block;margin-top:9px">L3 AlignmentCheck — false-BLOCK 0/5 · the only BLOCK authority</span><span style="display:block;margin-top:9px;color:var(--muted)">+ grounding verifier · nonce Spotlighting · CaMeL flow gate</span><span style="display:block;color:var(--faint);margin-top:11px;font-size:11px">measured: <span class="mono">docs/guard-fp-measurement.md</span></span></div>
+      </div>
+      <div class="buyer s-lime">
+        <div class="who">② Seal it</div>
+        <div class="pain">Court-verifiable evidence — every layer composable, every report verifiable offline.</div>
+        <div class="art"><b>CRYPTOGRAPHIC SEAL · OFFLINE-VERIFIABLE</b>HMAC-SHA256 + Ed25519 — publishable keyId · non-repudiation<span style="display:block;margin-top:9px">RFC 3161 TSA · CMS chain · multi-TSA (DigiCert + Actalis)</span><span style="display:block;margin-top:9px">C2PA Content Credentials (c2patool Valid) · Sigstore Rekor v2</span><span style="display:block;margin-top:9px;color:var(--muted)">distinguishes forged vs untrusted-anchor — not a forgery alarm on a stale pin</span><span style="display:block;color:var(--faint);margin-top:11px;font-size:11px">verify offline: <span class="mono">node bin/decode-evidence.js</span></span></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -670,7 +690,7 @@ h2.head em {
     <h2 class="head s-lime">Four stages. <em>One signed substrate.</em></h2>
     <div class="timeline">
       <div class="pillar s-teal"><div class="step">01 · FETCH</div><div class="name">Bright Data</div><ul><li>· Web Unlocker (MCP+REST)</li><li>· SERP API · structured</li><li>· Browser API · CDP</li><li>· Datasets · Crawl</li><li>· smart router</li></ul></div>
-      <div class="pillar s-violet"><div class="step">02 · FORGE</div><div class="name">2-layer screen</div><ul><li>· SHA-256 dedup</li><li>· 78 prompt-level rules</li><li>· 32 web-injection rules</li><li>· jailbreak + harm + PII</li><li>· BLOCK before LLM</li></ul></div>
+      <div class="pillar s-violet"><div class="step">02 · FORGE + SCREEN</div><div class="name">layered L1→L3</div><ul><li>· SHA-256 dedup</li><li>· L1: 78 DJL + 32 prefilter</li><li>· REVIEW-only on ingest</li><li>· L2 Qwen3Guard (opt-in)</li><li>· L3 AlignmentCheck BLOCKs</li></ul></div>
       <div class="pillar s-amber"><div class="step">03 · CLASSIFY</div><div class="name">4 lenses</div><ul><li>· GTM · Finance</li><li>· Security · Supply-chain</li><li>· AI/ML API</li><li>· in parallel</li><li>· severity + signals</li></ul></div>
       <div class="pillar s-lime"><div class="step">04 · PROVE</div><div class="name">Seal</div><ul><li>· Ed25519 signature</li><li>· RFC 3161 · DigiCert</li><li>· C2PA · Rekor v2</li><li>· Risk Score 0–100</li><li>· openssl/c2patool-verifiable</li></ul></div>
     </div>
@@ -702,7 +722,7 @@ h2.head em {
         <pre>{ id:<span class="s">"DJL-PI-001"</span>, re:<span class="n">/ignore previous instructions/i</span>, sev:<span class="n">9</span> },
 { id:<span class="s">"DJL-HARM-011"</span>, re:<span class="n">/(?:kill myself|suicidarme)/i</span>, sev:<span class="n">10</span> },
 { id:<span class="s">"SSRF-1"</span>, re:<span class="n">/169\.254\.169\.254/</span>, severity:<span class="n">9</span> },
-<span class="c">// 78 DJL + 32 web · ≥ 8 → BLOCK pre-LLM</span></pre>
+<span class="c">// 78 DJL + 32 web · L1 REVIEW-only · L3 BLOCKs</span></pre>
         <div class="ft"><span class="m">110 pre-LLM rules (78 DJL + 32 prefilter) · 78/78 fixture coverage</span><span class="l">deterministic regex</span></div></div>
 
       <div class="codecard s-amber"><div class="hd"><span class="name">CLASSIFY</span><span class="tag">src/pipeline.js</span></div>
@@ -726,8 +746,8 @@ $ openssl ts -reply -in synthex.tsr -text
 <section class="scene s-violet" style="--glow: rgba(151,117,250,0.10)">
   <div class="wrap">
     <div class="kicker center"><span class="dot"></span> THE EDGE · BEFORE THE LLM</div>
-    <div class="big">Injection in a scraped page reaches the LLM in <span class="r">milliseconds</span>.<br/>Synthex blocks it <span class="g">before the first token</span>.</div>
-    <div class="note">110 deterministic rules in 2 layers (32 web + 78 prompt) · 0 LLM tokens spent on a blocked payload</div>
+    <div class="big">Injection in a scraped page reaches the LLM in <span class="r">milliseconds</span>.<br/>Synthex screens it <span class="g">in layers</span> — a doc that <span class="g">executes</span> an attack never reaches the classifier.</div>
+    <div class="note">L1 regex REVIEW-only (pipeline drop 0/5) → L2 Qwen3Guard (benign FP 2/5) → L3 AlignmentCheck · describing-vs-executing (false-BLOCK 0/5 · the BLOCK authority)</div>
   </div>
 </section>
 
