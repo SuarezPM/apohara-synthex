@@ -436,13 +436,16 @@ function pageBroker(doc, ev, epssMap = null) {
   pageHeader(doc, "Risk Snapshot", "Broker / Underwriter");
   sectionTitle(doc, "Synthex Risk Score (CVSS 0–10 severity scale · NIST AI RMF / EU AI Act framing · mapping, not endorsement)");
 
-  // Gauge numérico grande, coloreado por banda.
+  // Gauge numérico grande, coloreado por banda. This is the COMPOSITE axis (0–100 blend of
+  // severity + block-volume). It is a DIFFERENT metric from the verdict's lead-finding CVSS band
+  // below — labeled distinctly so a low composite + a medium lead finding never read as a
+  // contradiction (e.g. Composite 35/100 · LOW vs Lead finding MEDIUM · CVSS 5.0).
   const x = doc.page.margins.left;
   const bandColor = r.band === "HIGH" ? COLORS.crit : r.band === "MEDIUM" ? COLORS.warn : COLORS.ok;
   doc.font("Helvetica-Bold").fontSize(64).fillColor(bandColor).text(String(r.score), x, doc.y);
   const numBottom = doc.y;
   doc.font("Helvetica").fontSize(12).fillColor(COLORS.muted).text("/ 100", x + 96, numBottom - 30);
-  doc.font("Helvetica-Bold").fontSize(16).fillColor(bandColor).text(`${r.band} RISK`, x + 96, numBottom - 12);
+  doc.font("Helvetica-Bold").fontSize(16).fillColor(bandColor).text(`Composite · ${r.band}`, x + 96, numBottom - 12);
   doc.fillColor(COLORS.ink).moveDown(0.6);
 
   // Barra de progreso 0..100.
@@ -488,9 +491,18 @@ function pageBroker(doc, ev, epssMap = null) {
   const out = (ev.payload?.verdict && Array.isArray(ev.payload?.questions))
     ? { verdict: ev.payload.verdict, questions: ev.payload.questions }
     : synthesizeOutput(ev.payload ?? {});
+  // The verdict band is the LEAD-FINDING CVSS-severity axis (maxSev ≥7 HIGH / ≥4 MEDIUM / else
+  // LOW) — a DIFFERENT scale from the composite gauge above (0–100 ≥70/≥40). Label the section
+  // and caption the lead severity so the two bands can never read as a contradiction. The verdict
+  // string itself is sealed (payload.verdict) and rendered verbatim — we do not edit its bytes.
+  const leadBand = r.maxSev >= 7 ? "HIGH" : r.maxSev >= 4 ? "MEDIUM" : "LOW";
+  const leadColor = r.maxSev >= 8 ? COLORS.crit : r.maxSev >= 5 ? COLORS.warn : COLORS.ok;
   doc.moveDown(0.8);
-  sectionTitle(doc, "Verdict");
-  doc.font("Helvetica-Bold").fontSize(11).fillColor(bandColor).text(out.verdict, { width: doc.page.width - 100 });
+  sectionTitle(doc, "Verdict — lead finding (CVSS severity)");
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(leadColor)
+    .text(`Lead finding: ${leadBand} · CVSS ${Number(r.maxSev).toFixed(1)}  (composite gauge above is a separate 0–100 blend)`,
+      { width: doc.page.width - 100 });
+  doc.font("Helvetica-Bold").fontSize(11).fillColor(leadColor).text(out.verdict, { width: doc.page.width - 100 });
   doc.fillColor(COLORS.ink).moveDown(0.6);
   sectionTitle(doc, "3 questions this evidence raises");
   doc.font("Helvetica").fontSize(10).fillColor(COLORS.ink);
