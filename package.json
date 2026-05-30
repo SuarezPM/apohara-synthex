@@ -36,7 +36,7 @@
     "test": "node --test",
     "demo": "node demo/demo.js",
     "cli": "node bin/synthex.mjs",
-    "sample": "node scripts/gen-sample-report.mjs",
+    "sample": "EVIDENCE_SCHEMA_V2=0 node scripts/gen-sample-report.mjs",
     "bench:djl": "node test/djl-latency.bench.js",
     "start": "node server.js",
     "lint:slides": "node scripts/lint-slides-citations.mjs",

@@ -77,10 +77,12 @@ const demoAlignment = async (text) => {
 /** Corre el demo y devuelve el Evidence Report. requestTsa=false en tests para rapidez.
  *  emitter (opcional) se reenvía al pipeline para el stream SSE de la UI en modo demo.
  *  L2/L3 se inyectan como stubs deterministas (sin red); grounding corre real (puro JS). */
-export async function runDemo({ requestTsa = true, emitter, lens = "gtm", signingKey, signerIdentity } = {}) {
+export async function runDemo({ requestTsa = true, emitter, lens = "gtm", signingKey, signerIdentity, sign = true } = {}) {
   // El demo auto-firma con una clave Ed25519 EFÍMERA si el operador no configuró una, así Scene 1
-  // muestra el SELLO COMPLETO (Ed25519 + HMAC + TSA) end-to-end sin setup previo.
-  const demoSigningKey = signingKey ?? generateKeyPair().privateKeyPem;
+  // muestra el SELLO COMPLETO (Ed25519 + HMAC + TSA) end-to-end sin setup previo. `sign:false`
+  // produce un sello symmetric-only (sin Ed25519) — lo usa gen-sample-report para regenerar el
+  // sample v1-legacy de back-compat (HMAC + TSA, sin firma asimétrica).
+  const demoSigningKey = sign ? (signingKey ?? generateKeyPair().privateKeyPem) : undefined;
   return runPipeline("Competitor X", {
     lens,
     fetcher: async () => CACHED_DOCS,

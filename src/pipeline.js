@@ -9,6 +9,7 @@ import { screen as injectionGuardScreen, heuristicScreen, POLICY_BUNDLE_VERSION 
 import { classify as defaultClassify } from "./classify/aiml-client.js";
 import { alignmentCheck as defaultAlignmentCheck, ALIGNMENT_CHECK_VERSION } from "./classify/alignment-check.js";
 import { ground, GROUNDING_WINDOW } from "./classify/grounding.js";
+import { synthesizeOutput } from "./prove/output.js";
 import { buildEvidence } from "./prove/evidence-report.js";
 import { sha256 } from "./prove/hmac.js";
 import { withSpan, recordTokens, recordBlocked, recordSealed, startTelemetry } from "./telemetry/otel.js";
@@ -386,6 +387,11 @@ export async function runPipeline(target, opts = {}) {
   // 2026 SDK, not to be confused with the v3 schema version).
   // (fetchedAt declared right after FORGE so L3 rows share the same timestamp.)
   const blockedForPayload = blocked.map((d) => ({ url: d.url, reason: d.reason, layer: d.layer }));
+  // 2.6 — closing synthesis: "3 questions this evidence raises" + a one-line verdict, derived
+  // DETERMINISTICALLY from the grounded findings + blocked + lens (no LLM). SEALED into the
+  // payload so they ride the same canonical pre-image as every other field (a verifier can
+  // recompute them from the sealed data — they add no information not already attested).
+  const { questions, verdict } = synthesizeOutput({ findings: groundedFindings, blocked: blockedForPayload, lens });
   // Resolve per-layer policy + decision-row stage/bundle in a single map (DRY).
   const _layerMeta = {
     djl: { stage: "DJL", bundle: DJL_POLICY_BUNDLE_VERSION },
@@ -417,6 +423,8 @@ export async function runPipeline(target, opts = {}) {
         dedup,
         blocked: blockedForPayload,
         findings: groundedFindings,
+        questions,
+        verdict,
         tokens_saved: tokensSaved,
         policy_bundle_version: {
           djl: DJL_POLICY_BUNDLE_VERSION,
@@ -479,6 +487,8 @@ export async function runPipeline(target, opts = {}) {
         dedup,
         blocked: blockedForPayload,
         findings: groundedFindings,
+        questions,
+        verdict,
       };
   const evidence = await timed("PROVE", async ({ record }) => {
     const ev = await buildEvidence(payload, { hmacKey, requestTsa, signingKey, signerIdentity });

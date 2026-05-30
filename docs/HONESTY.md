@@ -290,3 +290,11 @@ They share a word in their name and nothing else. The first protects the **HTTP 
 
 - ✓ Only standard STIX 2.1 vocabulary (`indicator`, `report`, `bundle`) + the standard `external_references` extension point; no invented object types, no smuggled fields. `confidence` is derived from finding `severity` (×10, clamped 0–100); the `pattern` is a valid `[url:value = '…']`. Pure JSON, zero new deps.
 - ✗ Not a threat-feed subscription or a TAXII server — it is a one-shot export of one report. The `external_references` link is a **pointer to the sealed evidence**, not an endorsement of the indicators by any authority.
+
+### 10.2 Closing synthesis — "3 questions" + verdict (item 2.6, SEALED)
+
+The Evidence Report closes with a one-line **verdict** + **"3 questions this evidence raises"** (`src/prove/output.js synthesizeOutput`), rendered on the Risk Snapshot page and **sealed into `payload.{verdict,questions}`** (covered by the canonical pre-image like every other field).
+
+- ✓ **Deterministic, recomputable.** Derived ONLY from the sealed findings + blocked count + lens — no LLM, no new info. A verifier can recompute it from the same payload, so sealing it cannot smuggle an unverifiable claim. The verdict band uses the same CVSS-scaled severity as the Risk Score (§4).
+- ✓ **Back-compat preserved.** The committed `samples/synthex-evidence-report.json` remains the **v1-legacy back-compat fixture** (schema_version undefined, real TSA token, symmetric-only / no Ed25519) — it is regenerated via `npm run sample` (`EVIDENCE_SCHEMA_V2=0` + `runDemo({sign:false})`), now carrying `questions`/`verdict`. Reports generated *after* this item carry the fields; older fixtures verify as themselves.
+- ✗ Not an analyst's judgement. The questions are a deterministic framing device to prompt human review, not a substitute for it; the verdict is a severity summary, not a recommendation.

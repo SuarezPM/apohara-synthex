@@ -9,6 +9,7 @@
 // fórmula publicada en la propia página — NO una calificación de un tercero ni de Munich Re.
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
+import { synthesizeOutput } from "./output.js";
 
 const COLORS = { brand: "#5b21b6", ok: "#15803d", warn: "#b45309", crit: "#b91c1c", muted: "#6b7280", ink: "#111827", line: "#e5e7eb" };
 const sevColor = (s) => (s >= 8 ? COLORS.crit : s >= 5 ? COLORS.warn : COLORS.ok);
@@ -334,6 +335,21 @@ function pageBroker(doc, ev) {
     "or endorsed this number. See docs/compliance-mapping.md.",
     x + 10, doc.y + 2, { width: doc.page.width - 120 });
   doc.fillColor(COLORS.ink).y += 8;
+
+  // 2.6 — closing synthesis: the one-line verdict + the 3 questions this evidence raises.
+  // Read from the sealed payload when present; recompute deterministically for legacy reports.
+  const out = (ev.payload?.verdict && Array.isArray(ev.payload?.questions))
+    ? { verdict: ev.payload.verdict, questions: ev.payload.questions }
+    : synthesizeOutput(ev.payload ?? {});
+  doc.moveDown(0.8);
+  sectionTitle(doc, "Verdict");
+  doc.font("Helvetica-Bold").fontSize(11).fillColor(bandColor).text(out.verdict, { width: doc.page.width - 100 });
+  doc.fillColor(COLORS.ink).moveDown(0.6);
+  sectionTitle(doc, "3 questions this evidence raises");
+  doc.font("Helvetica").fontSize(10).fillColor(COLORS.ink);
+  out.questions.slice(0, 3).forEach((q, i) => {
+    doc.text(`${i + 1}.  ${q}`, { width: doc.page.width - 100 }).moveDown(0.25);
+  });
 }
 
 function pageDelta(doc, ev) {

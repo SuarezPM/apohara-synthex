@@ -3,7 +3,12 @@
 // el snapshot cacheado del demo. Antes de escribir el PDF, verifica hashOk+hmacOk para que el
 // sample quede atado a la garantía (no es solo "un PDF con páginas").
 //
-//   node scripts/gen-sample-report.mjs        # → samples/synthex-evidence-report.{pdf,json}
+// El sample es además el FIXTURE v1-legacy de back-compat (test/prove/back-compat-matrix,
+// tsa-cms-verify AC6, tsa-cert-validity, ocsp): debe quedar schema_version=undefined (v1) +
+// TSA real + symmetric-only (SIN Ed25519). Por eso corre con EVIDENCE_SCHEMA_V2=0 (rama v1) y
+// runDemo({sign:false}). Comando canónico: `npm run sample` (ya incluye el env).
+//
+//   EVIDENCE_SCHEMA_V2=0 node scripts/gen-sample-report.mjs   # → samples/synthex-evidence-report.{pdf,json}
 import { writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -15,8 +20,10 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(repoRoot, "samples");
 const hmacKey = process.env.SYNTHEX_HMAC_KEY || "synthex-demo";
 
-const ev = await runDemo({ requestTsa: true });
-const v = verifyEvidence(ev, { hmacKey });
+// sign:false → symmetric-only seal (HMAC + TSA, no Ed25519) so the sample stays the v1
+// back-compat fixture. Run under EVIDENCE_SCHEMA_V2=0 so the payload is the legacy v1 shape.
+const ev = await runDemo({ requestTsa: true, sign: false });
+const v = await verifyEvidence(ev, { hmacKey });
 if (!v.hashOk || !v.hmacOk) {
   console.error("✗ verificación falló — NO se escribe el sample:", v);
   process.exit(1);
