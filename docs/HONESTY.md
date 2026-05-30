@@ -300,6 +300,14 @@ They share a word in their name and nothing else. The first protects the **HTTP 
 - ✓ **Red-team FP / control discipline + fail-safe.** A lens that the reasoner cannot answer (no key / timeout / non-200) **degrades to risk 0** — a dead lens can NEVER inflate the verdict (verified by test). The **control-doc FP** (how many lenses scream high-risk on a NEUTRAL document — should be low) is the red-team analogue of the L2/L3 FP gate; the `--offline` path is a **deterministic stub** (labelled `OFFLINE STUB`, like the demo) for reproducible Scene 4 with no secrets, while the live path runs the real `deepseek-v4-pro`. Measured live on the S-1 fixture: 4–5 lenses return high risk → verdict `DO NOT PROCEED` (a going-concern S-1 should score high); a benign control document should NOT.
 - ✗ Not financial advice or an underwriting decision. It is a structured adversarial reading to surface board-level questions, sealed for audit — a human makes the call.
 
+### 10.6 Bright Data Web Scraper dataset adapter — async trigger→poll→collect (item 2.7, D8)
+
+`src/fetch/dataset-client.js` gains the **real async flow**: `trigger()` (→ `snapshot_id`), `pollProgress()` (snapshot status), and `collect()` (BOUNDED poll until `ready`, then fetch). `collect()` returns the seal-ready envelope `{snapshotId, surface, datasetId, fetchedAt, rows}` — the four fields the pipeline seals. `MAX_INPUTS=2` is a hard BILLING cap; the poll is bounded by `maxAttempts` (never infinite).
+
+- ✓ **Gate-before-trust, live-confirmed.** `scripts/probe-bd-dataset.mjs` (1 input only) confirmed the async surface live: `OK surface=datasets/v3/trigger dataset_id=gd_m6gjtfmeh43we6cqc snapshot_id=s_… progress=running`. The trigger→poll→fetch cycle is real, not a stub.
+- ⚠️ **`discover_new` is dataset-dependent — honest scope.** The available dataset (`gd_m6gjtfmeh43we6cqc`) is a scraper/crawl dataset; it does NOT expose the `discover_new` discovery collector, so the probe fell back to a plain async `trigger` (which works). The `triggerDiscoverNew()` wrapper + `type=discover_new` query are built and offline-tested, but the live discovery-collector path requires a dataset that supports it — we **declare** this rather than claim Scene-3 `discover_new` ingest on a dataset that can't do it.
+- ✗ The adapter is wired and tested; the end-to-end pipeline ingest of a `discover_new` snapshot (Scene 3) is gated on a discovery-capable dataset_id and is NOT claimed shipped. No fabricated discovery results.
+
 ### 10.5 Cognee memory — local OSS default; cloud probed + CUT (item 2.3)
 
 Synthex memory (`src/memory/cognee-client.js`) defaults to **local OSS Cognee** (Apache-2.0): zero-lock-in, full data-residency, the stdio MCP path. A cloud backend would be an explicit opt-in.
