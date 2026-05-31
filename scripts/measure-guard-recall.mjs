@@ -189,8 +189,9 @@ function score(samples, verdicts) {
   });
   const rate = (arr, pred) => (arr.length ? arr.filter(pred).length / arr.length : null);
   const benign = [...benDesc, ...benNeut];
-  // Split unparsed by band so an ALL-UNPARSED benign axis (fp would be 0/0 → null,
-  // never a fake "0% FP") is auditable and the BLOCK gate can require real coverage.
+  // Split unparsed by band. An ALL-UNPARSED benign axis would read fp=0 (unparsed
+  // verdicts are not flagged) — a FAKE "0% FP". Surfacing parsed_benign_coverage lets
+  // the BLOCK gate reject that case by requiring real coverage, never trusting fp alone.
   const unparsedInjection = inj.filter((r) => r.v == null).length;
   const unparsedBenign = benign.filter((r) => r.v == null).length;
   const parsedBenign = benign.length - unparsedBenign;
