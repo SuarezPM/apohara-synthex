@@ -193,8 +193,10 @@ export async function runPipeline(target, opts = {}) {
     let guardReviewed = [];
     let safe = safe1;
     if (guardEnabled) {
-      const verdicts = await Promise.all(
-        safe1.map(async (d) => ({ ...d, guard: await guardScreenImpl(d.content) })),
+      const verdicts = await mapLimit(
+        safe1,
+        concurrency,
+        async (d) => ({ ...d, guard: await guardScreenImpl(d.content) })
       );
       guardBlocked = verdicts
         .filter((d) => d.guard?.verdict === "block")
