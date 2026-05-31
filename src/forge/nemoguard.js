@@ -58,10 +58,16 @@ export function renderNemoGuardMessages(text) {
  */
 export function parseNemoGuardCompletion(text) {
   const raw = String(text ?? "");
-  const m = raw.match(/["']?User[\s_]*Safety["']?\s*[:=]\s*["']?(safe|unsafe)\b/i);
+  // M-1: strip any <think>…</think> reasoning block FIRST so a "User Safety: …" mention inside the
+  // model's reasoning can't fool the verdict match (mirrors parseQwen3GuardCompletion).
+  const body = raw.replace(/<think>[\s\S]*?<\/think>/gi, " ");
+  const m = body.match(/["']?User[\s_]*Safety["']?\s*[:=]\s*["']?(safe|unsafe)\b/i);
   if (!m) return { safety: null, categories: [], verdict: "allow" };
   const safety = m[1].toLowerCase();
-  const catRaw = raw.match(/["']?Safety[\s_]*Categories["']?\s*[:=]\s*["']?([^"'}\n\r]*)/i)?.[1] ?? "";
+  // L-2: categories are only meaningful for an UNSAFE verdict — never seal a category on a "safe".
+  const catRaw = safety === "unsafe"
+    ? (body.match(/["']?Safety[\s_]*Categories["']?\s*[:=]\s*["']?([^"'}\n\r]*)/i)?.[1] ?? "")
+    : "";
   const categories = catRaw
     .split(",")
     .map((c) => c.trim())
