@@ -117,13 +117,13 @@ export const COMPLIANCE_FRAMEWORKS = Object.freeze([
         id: "NIST-AI-RMF-MEASURE-2.5",
         title: "MEASURE 2.5",
         requirement:
-          "Evaluate AI system validity and reliability (robustness) and document the results of " +
+          "Evaluate AI system validity and reliability and document the generalizability limits of " +
           "such evaluations.",
         synthex_mapping:
           "The 3-tier injection defense measures and records the catch on every scraped document; " +
           "see the Security Briefing page.",
         rag_status: "green",
-        basis: "Robustness against injection is measured and recorded per scraped document.",
+        basis: "Injection-defense efficacy is measured + recorded per scraped doc (validity/reliability evidence).",
       },
       {
         id: "NIST-AI-RMF-MANAGE",
@@ -146,7 +146,7 @@ export const COMPLIANCE_FRAMEWORKS = Object.freeze([
     controls: [
       {
         id: "NYDFS-500-AUDIT-TRAIL",
-        title: "23 NYCRR 500.06 — Audit trail",
+        title: "23 NYCRR 500.6 — Audit trail",
         requirement:
           "Maintain systems that include audit trails designed to detect and respond to " +
           "cybersecurity events, retained as required.",
@@ -226,14 +226,13 @@ export const COMPLIANCE_FRAMEWORKS = Object.freeze([
     controls: [
       {
         id: "ASI01",
-        title: "ASI01 — Agentic AI Threat (anchor)",
-        // NOTE: the per-id titles/scope of the 2026 Agentic list are not asserted here verbatim
-        // beyond the id; only confirmed facts (edition year + id grammar) are stated. The control
-        // narrative is framed as Synthex's own mapping, not a quote of the OWASP entry text.
-        // TODO(verify): pin the official ASI01 entry title before quoting it verbatim.
+        title: "ASI01 — Agent Goal Hijack",
+        // Verified verbatim (2026-05-30, primary source) against the OWASP GenAI Security Project /
+        // Agentic Security Initiative (ASI) "Top 10 for Agentic Applications" (2026), ASI01
+        // (reference incident: EchoLeak). genai.owasp.org.
         requirement:
-          "Address risks unique to autonomous agents acting on untrusted data and tools — the core " +
-          "threat this dataset's anchor id tracks.",
+          "Mitigate hijacking of an autonomous agent's goal via untrusted data or instructions in the " +
+          "content it ingests (e.g. indirect prompt injection that redirects the agent's objective).",
         synthex_mapping:
           "A CaMeL-style flow gate constrains react/Cognee actions, and scraped content is sealed " +
           "as evidence before any agent acts on it.",
