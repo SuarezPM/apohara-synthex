@@ -11,8 +11,11 @@
   in-the-wild) by adapting PUBLISHED techniques: OWASP LLM01, OWASP Agentic ASI, MITRE ATLAS
   AML.T0051, and the format-manipulation transforms in "Bag of Tricks for Subverting Reasoning-based
   Safety Guardrails" (arXiv:2510.11570). Each sample is labeled on the **describing-vs-executing**
-  axis: 370 `injection` (executing → expected BLOCK) · 136 `benign-describing` + 104 `benign-neutral`
-  (→ expected ALLOW, the false-positive trap) · 37 `borderline` (→ expected REVIEW).
+  axis: 370 `injection` (executing → expected BLOCK) · 131 `benign-describing` + 109 `benign-neutral`
+  (→ expected ALLOW, the false-positive trap) · 37 `borderline` (→ expected REVIEW). These
+  describing/neutral counts are the **per-sample attribution** the harness computes (see below),
+  not the cell-level approximation in `MANIFEST.json` (which tags each *cell* with a single subtype
+  and so reports 132/108); the benign total (240) and every other band are identical.
 - **Guards** — the two open guards **gate-confirmed live + accessible** on our Featherless account
   (2026-05-30): `Qwen/Qwen3Guard-Gen-8B` (its official moderation template, via raw `/completions`)
   and `nvidia/Llama-3.1-Nemotron-Safety-Guard-8B-v3` (a vanilla content-safety prompt via

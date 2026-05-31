@@ -44,6 +44,14 @@ test("NemoGuard route: a chatted reply (no verdict) fails open to the heuristic"
   assert.equal(r.source, "heuristic");
 });
 
+test("NemoGuard route: a trailing space on the model id still routes to NemoGuard", async () => {
+  // A whitespace slip must not silently fall to Qwen then degrade to the heuristic.
+  const r = await screen("a benign product page", opts('{"User Safety": "safe"}', { guardModel: `${NEMOGUARD_MODEL_ID} ` }));
+  assert.equal(r.verdict, "allow");
+  assert.equal(r.source, "featherless");
+  assert.equal(r.guard_model, NEMOGUARD_MODEL_ID); // sealed as the trimmed id
+});
+
 test("default Featherless model is still Qwen3Guard (back-compat — NemoGuard is opt-in by model id)", async () => {
   // no guardModel → defaults to Qwen3Guard, which uses /completions (choices[].text). A safe verdict there.
   const r = await screen("benign", {

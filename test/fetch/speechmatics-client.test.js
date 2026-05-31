@@ -197,6 +197,29 @@ test("speechmatics: buildEnvelope flattens results and joins text", () => {
   assert.equal(env.language, "en");
 });
 
+test("speechmatics: buildEnvelope skips empty content — no double space in transcript_text", () => {
+  const env = buildEnvelope("jEmpty", {
+    results: [
+      { type: "word", start_time: 0, end_time: 1, alternatives: [{ content: "a" }] },
+      { type: "word", start_time: 1, end_time: 1, alternatives: [{ content: "" }] },
+      { type: "word", start_time: 1, end_time: 2, alternatives: [{ content: "b" }] },
+    ],
+  });
+  assert.equal(env.transcript_text, "a b"); // not "a  b"
+  assert.equal(env.words.length, 3); // words[] unchanged — empty word still recorded
+});
+
+test("speechmatics: buildEnvelope leading punctuation does not produce a leading space", () => {
+  const env = buildEnvelope("jLead", {
+    results: [
+      { type: "punctuation", start_time: 0, end_time: 0, alternatives: [{ content: "." }] },
+      { type: "word", start_time: 0, end_time: 1, alternatives: [{ content: "Hi" }] },
+    ],
+  });
+  assert.equal(env.transcript_text, "Hi"); // not ". Hi"
+  assert.equal(env.words.length, 2); // words[] unchanged — punctuation still recorded
+});
+
 // ─── LIVE smoke test (opt-in) ────────────────────────────────────────────────
 // Requires SPEECHMATICS_LIVE=1 + SPEECHMATICS_API_KEY + a real audio file path in SPEECHMATICS_AUDIO.
 // Skipped by default — never hits the real endpoint in CI.

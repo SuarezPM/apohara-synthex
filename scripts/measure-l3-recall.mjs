@@ -65,7 +65,9 @@ function loadCorpus() {
       samples.push({
         cell: cell.cell,
         label: cell.label, // injection | benign
-        subtype: cell.subtype, // executing | describing | neutral | review
+        subtype: cell.subtype, // CELL-level subtype (executing | describing | neutral | review)
+        sampleSubtype: s.subtype, // PER-SAMPLE subtype when present (ALLOW rows inside injection cells carry their own)
+        technique: String(s.technique ?? ""), // free-text; may carry an "FP-trap: describing|neutral" marker
         expected: String(s.expected_verdict ?? cell.expected_verdict ?? "ALLOW").toUpperCase(),
         content: String(s.content ?? ""),
         id: s.id,
@@ -94,6 +96,19 @@ async function mapPool(items, n, fn) {
   return out;
 }
 
+// Resolve a benign (ALLOW) sample's FP-trap kind from the MOST SPECIFIC signal:
+//   1) per-sample subtype (ALLOW rows inside an injection cell carry their own), else
+//   2) an "FP-trap: describing|neutral" marker in the sample's technique, else
+//   3) the cell-level subtype.
+// Only "neutral" is special-cased; any other resolution falls to describing (the corpus's
+// documented default FP trap). Mirrors scripts/measure-guard-recall.mjs.
+function benignTrapKind(s) {
+  if (s.sampleSubtype) return s.sampleSubtype === "neutral" ? "neutral" : "describing";
+  const m = /FP-trap:\s*(describing|neutral)/i.exec(s.technique ?? "");
+  if (m) return m[1].toLowerCase();
+  return s.subtype === "neutral" ? "neutral" : "describing";
+}
+
 // Bucket the per-sample verdicts by EXPECTED label and compute the two-axis metrics.
 // A degraded verdict (L3 unreachable on that call) fails SAFE to REVIEW and is NEVER
 // counted as a BLOCK/catch — it is surfaced separately so the gap is auditable.
@@ -113,7 +128,7 @@ function score(samples, verdicts) {
     const rec = { d: v.decision, degraded: v.degraded };
     if (s.expected === "BLOCK") inj.push(rec);
     else if (s.expected === "REVIEW") rev.push(rec);
-    else if (s.subtype === "neutral") benNeut.push(rec);
+    else if (benignTrapKind(s) === "neutral") benNeut.push(rec);
     else benDesc.push(rec); // ALLOW-expected, non-neutral → describing (FP trap default)
   });
 

@@ -223,9 +223,17 @@ export function buildEnvelope(jobId, raw, { language } = {}) {
     const word = { content, start: r.start_time, end: r.end_time };
     if (alt.speaker !== undefined) word.speaker = alt.speaker;
     words.push(word);
-    // Speechmatics emits punctuation as its own result (type:"punctuation") — attach it without a
-    // leading space; everything else gets a separating space.
-    text += r.type === "punctuation" ? content : (text ? " " : "") + content;
+    // Speechmatics emits punctuation as its own result (type:"punctuation") — attach it to the
+    // preceding word without a leading space; everything else gets a separating space, but only
+    // once `text` already holds a word. Skip empty content so an empty result never leaves a double
+    // space; skip leading punctuation (no preceding word) so it never starts the text — both cases
+    // would otherwise force a stray leading/double space into transcript_text.
+    if (content === "") continue;
+    if (r.type === "punctuation") {
+      if (text) text += content;
+    } else {
+      text += (text ? " " : "") + content;
+    }
   }
   // Detected language can live at the payload root; fall back to the requested language.
   const detectedLanguage =

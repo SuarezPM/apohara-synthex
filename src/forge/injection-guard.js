@@ -307,9 +307,13 @@ export async function screen(text, opts = {}) {
     // 647-sample corpus, docs/guard-recall-measurement.md) speaks a content-safety prompt via
     // /chat/completions; Qwen3Guard needs its moderation template via raw /completions. Default
     // stays Qwen3Guard for back-compat.
-    const model = opts.guardModel ?? process.env.SYNTHEX_GUARD_MODEL ?? QWEN3GUARD_MODEL_ID;
+    // Normalize the routing id so a trailing space / stray whitespace slip on
+    // SYNTHEX_GUARD_MODEL still routes to NemoGuard instead of silently
+    // degrading through Qwen to the heuristic. The trimmed id is the one we
+    // route AND seal downstream.
+    const model = (opts.guardModel ?? process.env.SYNTHEX_GUARD_MODEL ?? QWEN3GUARD_MODEL_ID).trim();
     if (model === NEMOGUARD_MODEL_ID) return _screenNemoGuard(text, { ...opts, url, guardModel: model });
-    return _screenFeatherless(text, { ...opts, url });
+    return _screenFeatherless(text, { ...opts, url, guardModel: model });
   }
   return _screenClassifier(text, { ...opts, url });
 }

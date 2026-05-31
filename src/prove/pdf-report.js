@@ -11,6 +11,7 @@
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { existsSync } from "node:fs";
+import { Buffer } from "node:buffer";
 
 import { THEME, FONTS, FONT_FILES, PAGE, reportIdOf } from "./report/theme.js";
 import { drawFooters, makeFooterRegistry } from "./report/components.js";
@@ -75,12 +76,26 @@ export async function buildPDFReport(evidence, opts = {}) {
     color: { dark: THEME.PAPER.ink, light: "#FFFFFF" },
   });
 
+  // Determinism: PDFKit stamps a live CreationDate (`new Date()`) and derives the /ID by md5-hashing
+  // the info dict — so the same evidence would render byte-different bytes every run. We pin both to a
+  // FIXED instant derived from evidence.sealedAt (constant fallback for unsealed inputs), making the
+  // Info dict, the XMP metadata, and the /ID reproducible. This is a pure rendering fix: the seal is on
+  // the evidence JSON, never on these PDF bytes.
+  const pinnedDate = new Date(Number.isFinite(Date.parse(sealedAt)) ? sealedAt : "2020-01-01T00:00:00.000Z");
+
   // bufferPages:true → footers en pasada final sin auto-paginado. autoFirstPage:false → control
   // explícito del orden de páginas (sin página fantasma inicial). Márgenes desde el theme.
   const doc = new PDFDocument({
     size: PAGE.size, margins: PAGE.margins, bufferPages: true, autoFirstPage: false,
-    info: { Title: "Synthex Evidence Report", Author: "Apohara Synthex" },
+    info: {
+      Title: "Synthex Evidence Report", Author: "Apohara Synthex",
+      CreationDate: pinnedDate, ModDate: pinnedDate,
+    },
   });
+  // Pin the trailer /ID to the content hash (16 bytes) so identical evidence yields identical bytes,
+  // overriding PDFKit's md5-of-info default. contentHash is hex; fall back to the report id otherwise.
+  const idHex = /^[0-9a-fA-F]{32,}$/.test(String(contentHash ?? "")) ? String(contentHash).slice(0, 32) : null;
+  doc._id = idHex ? Buffer.from(idHex, "hex") : Buffer.from(reportId.padEnd(16, "0").slice(0, 16), "utf8");
   registerFonts(doc);
 
   const chunks = [];
