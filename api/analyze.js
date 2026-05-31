@@ -3,6 +3,7 @@
 // Si faltan, cae a modo DEMO (snapshot cacheado), etiquetado honestamente (no se simula live).
 import { runPipeline } from "../src/pipeline.js";
 import { verifyEvidence } from "../src/prove/evidence-report.js";
+import { resolveSigningKey } from "../src/prove/asymmetric.js";
 import { httpFetcher } from "../src/fetch/http-client.js";
 import { runDemo } from "../demo/demo.js";
 import { assertSafeTarget, rateLimit, clientIp } from "../src/guard.js";
@@ -33,7 +34,9 @@ export default async function handler(req, res) {
       try { assertSafeTarget(target); }
       catch (e) { return res.status(400).json({ error: e.message }); }
       verifyKey = process.env.SYNTHEX_HMAC_KEY || "synthex-dev";
-      const opts = { lens, fetcher: httpFetcher(), hmacKey: verifyKey, requestTsa: true };
+      // H-2 — seal the real Ed25519 on the live prod path too: resolve the signing key (env → XDG).
+      // In serverless this signs when SYNTHEX_SIGNING_KEY is set in the project env; null → symmetric.
+      const opts = { lens, fetcher: httpFetcher(), hmacKey: verifyKey, requestTsa: true, signingKey: resolveSigningKey() };
       // Si el playground pidió tier, inyectamos classifier custom con el model resuelto.
       if (modelOverride) {
         opts.classifier = (text, l, copts = {}) => classify(text, l, { ...copts, model: modelOverride });

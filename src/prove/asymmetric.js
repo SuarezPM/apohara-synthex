@@ -189,8 +189,12 @@ export function resolveSigningKey({ env = process.env, fs = null } = {}) {
   }
   const explicitPath = env.SYNTHEX_SIGNING_KEY_FILE;
   if (typeof explicitPath === "string" && explicitPath.length > 0) {
-    const f = fs ?? { readFileSync };
-    return f.readFileSync(explicitPath, "utf8");
+    try {
+      const f = fs ?? { readFileSync };
+      return f.readFileSync(explicitPath, "utf8");
+    } catch {
+      return null; // M-3: misconfig (typo/perms/deleted) → documented null→symmetric fallback, never a crash
+    }
   }
   // XDG default
   const xdg = env.XDG_CONFIG_HOME || (env.HOME ? `${env.HOME}/.config` : null);

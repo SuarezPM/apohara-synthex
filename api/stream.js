@@ -4,6 +4,7 @@
 // Mismo guard (rate-limit + SSRF) y modos live/demo que /api/analyze.
 import { runPipeline } from "../src/pipeline.js";
 import { verifyEvidence } from "../src/prove/evidence-report.js";
+import { resolveSigningKey } from "../src/prove/asymmetric.js";
 import { httpFetcher } from "../src/fetch/http-client.js";
 import { runDemo } from "../demo/demo.js";
 import { assertSafeTarget, rateLimit, clientIp } from "../src/guard.js";
@@ -47,6 +48,7 @@ export default async function handler(req, res) {
       send("mode", { mode, tier: tier ?? "default", model: modelOverride ?? "default", target, lens });
       const opts = {
         lens, fetcher: httpFetcher(), hmacKey: verifyKey, requestTsa: true,
+        signingKey: resolveSigningKey(), // H-2 — Ed25519 on the live SSE path too (null → symmetric)
         emitter: (evt) => send("stage", evt),
       };
       if (modelOverride) {
