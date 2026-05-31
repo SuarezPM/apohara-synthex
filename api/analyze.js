@@ -13,6 +13,14 @@ import { pickModel } from "../src/classify/tiers.js";
 export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   try {
     const { target, lens = "all", tier } = (req.body && typeof req.body === "object" ? req.body : {});
