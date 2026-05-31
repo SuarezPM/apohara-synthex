@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://synthex.apohara.dev/schemas/stress-corpus-manifest-v1.json",
+  "title": "Synthex Stress Corpus Manifest",
+  "description": "Versioned, hashed manifest for the epic stress-test corpus (V2_PLAN P4.1). The corpus is a fixed, reproducible set of >=1000 artifacts split into a benign subset (real public pages, incl. OWASP/security content for the describing-vs-executing test) and a LABELED-adversarial subset (OWASP/ATLAS-mapped injection packs + a 'Bag of Tricks' format-manipulation set, arXiv:2510.11570). Each artifact carries a content sha256 so the run is deterministic and independently auditable. The harness (run.mjs) reads this manifest to load the corpus; NO artifact bytes live in the manifest itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_version", "corpus_id", "created_at", "totals", "subsets", "artifacts"],
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "description": "Schema/manifest version. Append-only evolution: new fields are additive and optional; bump only on an incompatible root-key change.",
+      "const": "1"
+    },
+    "corpus_id": {
+      "type": "string",
+      "description": "Stable identifier for this exact corpus revision (e.g. 'synthex-stress-2026-06-01'). Changing the corpus content REQUIRES a new corpus_id so prior results.json stay attributable.",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp the manifest was generated."
+    },
+    "frameworks": {
+      "type": "array",
+      "description": "Threat/standard taxonomies the adversarial subset is mapped against. Use ONLY canonical forms (V2_PLAN P2.7): OWASP LLM 2025 ids, OWASP Agentic 2026 (ASI01-ASI10), MITRE ATLAS v5.6.0 (AML.T0051/.001), Bag-of-Tricks arXiv:2510.11570. Do not invent ids.",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifacts", "benign", "adversarial"],
+      "description": "Aggregate counts. 'artifacts' MUST be the length of artifacts[] and MUST be >= 1000 (the P4.1 floor; 10000 is the stretch). benign + adversarial MUST equal artifacts.",
+      "properties": {
+        "artifacts": { "type": "integer", "minimum": 1000 },
+        "benign": { "type": "integer", "minimum": 0 },
+        "adversarial": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "subsets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["benign", "adversarial"],
+      "description": "Per-subset metadata. The benign subset is the FP axis; the adversarial subset is the recall axis (V2_PLAN P4.1 dimension 3).",
+      "properties": {
+        "benign": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "description"],
+          "properties": {
+            "count": { "type": "integer", "minimum": 0 },
+            "description": { "type": "string", "minLength": 1 }
+          }
+        },
+        "adversarial": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "description"],
+          "properties": {
+            "count": { "type": "integer", "minimum": 0 },
+            "description": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "description": "The corpus index. Each entry is one stress artifact with a content hash so the run is deterministic. >= 1000 entries.",
+      "minItems": 1000,
+      "items": { "$ref": "#/$defs/artifact" }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "label", "content_sha256"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable per-artifact id, unique within the corpus.",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "description": "Where the artifact came from: a URL for benign real pages, or a fixture path for constructed adversarial samples."
+        },
+        "surface": {
+          "type": "string",
+          "description": "Bright Data surface the benign artifact maps to. ONLY the probe-confirmed real surfaces. 'fixture' for constructed adversarial samples that never hit BD.",
+          "enum": ["unlocker", "serp", "browser", "dataset", "fixture"]
+        },
+        "label": {
+          "type": "string",
+          "description": "Top-level corpus split.",
+          "enum": ["benign", "adversarial"]
+        },
+        "subtype": {
+          "type": "string",
+          "description": "Sub-label driving the describing-vs-executing FP test. 'executing' = content commands the reading agent (true positive target). 'describing'/'neutral' = benign, MUST NOT be flagged or the FP rate is wrong. 'review' = deliberately borderline. Mirrors test/fixtures/guard-recall-corpus subtypes.",
+          "enum": ["executing", "describing", "neutral", "review"]
+        },
+        "expected_verdict": {
+          "type": "string",
+          "description": "Ground-truth label for the recall/FP scoring. BLOCK for executing injections, ALLOW for benign, REVIEW for borderline.",
+          "enum": ["ALLOW", "REVIEW", "BLOCK"]
+        },
+        "framework": {
+          "type": "string",
+          "description": "Canonical taxonomy id for adversarial artifacts (e.g. 'OWASP LLM01', 'AML.T0051', 'ASI01'). Omit or empty for benign."
+        },
+        "technique": {
+          "type": "string",
+          "description": "Short adversarial technique name (adapted from published patterns only; no novel zero-days)."
+        },
+        "content_sha256": {
+          "type": "string",
+          "description": "Lowercase hex SHA-256 of the artifact content bytes. Makes the corpus content-addressed and the run deterministic.",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "description": "Content length in bytes (optional; informational).",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
