@@ -672,7 +672,7 @@ h2.head em {
       <div class="buyer s-violet">
         <div class="who">① Screen it</div>
         <div class="pain">Layered injection defense — the poison never reaches the classifier. Every layer's false-positive is <em>measured</em>, not asserted.</div>
-        <div class="art"><b>DEFENSE IN DEPTH · FP MEASURED</b>L1 regex (78 DJL + 32 prefilter) — REVIEW-only on ingest<span style="display:block;color:var(--lime);font-weight:700;margin-top:3px">pipeline drop 0/5</span><span style="display:block;margin-top:9px">L2 Qwen3Guard-Gen-8B (opt-in) — benign FP 2/5–3/5 → BLOCK disqualified</span><span style="display:block;margin-top:9px">L3 AlignmentCheck — false-BLOCK 0/5 · the only BLOCK authority</span><span style="display:block;margin-top:9px;color:var(--muted)">+ grounding verifier · nonce Spotlighting · CaMeL flow gate</span><span style="display:block;color:var(--faint);margin-top:11px;font-size:11px">measured: <span class="mono">docs/guard-fp-measurement.md</span></span></div>
+        <div class="art"><b>DEFENSE IN DEPTH · FP MEASURED</b>L1 regex (78 DJL + 32 prefilter) — REVIEW-only on ingest<span style="display:block;color:var(--lime);font-weight:700;margin-top:3px">pipeline drop 0/5</span><span style="display:block;margin-top:9px">L2 Qwen3Guard-Gen-8B (opt-in) — benign FP 2/5–3/5 → BLOCK disqualified</span><span style="display:block;margin-top:9px">L3 AlignmentCheck — false-BLOCK 0/5 · the FP-killer (default BLOCK authority)</span><span style="display:block;margin-top:9px;color:var(--muted)">+ grounding verifier · nonce Spotlighting · CaMeL flow gate</span><span style="display:block;color:var(--faint);margin-top:11px;font-size:11px">measured: <span class="mono">docs/guard-fp-measurement.md</span></span></div>
       </div>
       <div class="buyer s-lime">
         <div class="who">② Seal it</div>
@@ -747,7 +747,7 @@ $ openssl ts -reply -in synthex.tsr -text
   <div class="wrap">
     <div class="kicker center"><span class="dot"></span> THE EDGE · BEFORE THE LLM</div>
     <div class="big">Injection in a scraped page reaches the LLM in <span class="r">milliseconds</span>.<br/>Synthex screens it <span class="g">in layers</span> — a doc that <span class="g">executes</span> an attack never reaches the classifier.</div>
-    <div class="note">L1 regex REVIEW-only (pipeline drop 0/5) → L2 Qwen3Guard (benign FP 2/5–3/5) → L3 AlignmentCheck · describing-vs-executing (false-BLOCK 0/5 · the BLOCK authority)</div>
+    <div class="note">L1 regex REVIEW-only (pipeline drop 0/5) → L2 Qwen3Guard (benign FP 2/5–3/5) → L3 AlignmentCheck · describing-vs-executing (false-BLOCK 0/5 · the FP-killer)</div>
   </div>
 </section>
 
