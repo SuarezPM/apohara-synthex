@@ -7,3 +7,8 @@
 **Vulnerability:** The `assertSafeTarget` URL guard could be bypassed by supplying an array of targets instead of a single string. When an array like `["https://safe.com", "http://127.0.0.1"]` is coerced to a string via `String(target)`, it becomes `"https://safe.com,http://127.0.0.1"`. This causes `new URL()` to parse `safe.com,http` as the hostname, entirely bypassing the private IP regex checks. Because `runPipeline` natively supports an array of targets, the pipeline would proceed to fetch the internal IP.
 **Learning:** Type coercion can be weaponized to defeat validation logic. When building validation functions that feed into sinks that accept multiple types (e.g. string or array), the validation must handle array inputs explicitly rather than relying on implicit string coercion.
 **Prevention:** Explicitly check for `Array.isArray(target)` and apply validation to each element individually before proceeding.
+
+## 2026-06-01 - [Risk Score M5: Ignore Non-Security Lenses]
+**Vulnerability:** The Risk Score was incorrectly considering findings from non-security lenses (like GTM and finance) when calculating the max severity, leading to artificially inflated security risk scores when a critical business event happened.
+**Learning:** Security scoring logic must strictly filter findings by the relevant lens (`security`) to avoid blending business intelligence with actual security risks. The risk score was intended for CISOs but the math included business metrics.
+**Prevention:** Always filter findings array by `lens === 'security'` before assessing severity metrics like `maxSev` in the score calculation.

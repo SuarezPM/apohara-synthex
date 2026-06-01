@@ -27,7 +27,7 @@ function allRows(findings) {
 export function riskScore(evidence) {
   const findings = evidence?.payload?.findings ?? [];
   const blocked = (evidence?.payload?.blocked ?? []).length;
-  const sevs = allRows(findings).map((r) => Number(r.severity) || 0);
+  const sevs = allRows(findings).filter((r) => r.lens === 'security').map((r) => Number(r.severity) || 0);
   const maxSev = sevs.length ? Math.max(...sevs) : 0;
   const blockTerm = (Math.min(blocked, 5) / 5) * 10;
   const score = Math.round((maxSev * 0.7 + blockTerm * 0.3) * 10);

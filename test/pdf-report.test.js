@@ -105,7 +105,7 @@ test("riskScore T9/L4: maxSev=8, blocked=2 → score=68 (NOT 62 — Kiro audit w
   const ev = baseEvidence({
     payload: {
       blocked: [{ url: "https://x", reason: "x" }, { url: "https://y", reason: "y" }],
-      findings: [{ url: "a", severity: 8, summary: "x", signals: [] }],
+      findings: [{ url: "a", lens: "security", severity: 8, summary: "x", signals: [] }],
     },
   });
   const r = riskScore(ev);
