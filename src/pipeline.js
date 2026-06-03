@@ -305,7 +305,7 @@ export async function runPipeline(target, opts = {}) {
         pushDecision({
           stage: "ALIGNMENT_CHECK",
           url: d.url,
-          contentHash: sha256(String(d.content ?? "")).toString("hex"),
+          contentHash: d.contentHash,
           outcome: v.decision, // ALLOW | REVIEW | BLOCK
           rationale: String(v.rationale ?? "").slice(0, 280), // truncated for the seal
           confidence: v.confidence,
@@ -459,7 +459,7 @@ export async function runPipeline(target, opts = {}) {
           ...blocked.map((d) => ({
             stage: _layerMeta[d.layer].stage,
             url: d.url,
-            contentHash: sha256(String(d.content ?? "")).toString("hex"),
+            contentHash: d.contentHash,
             rule_matched: [d.reason],
             outcome: "BLOCK",
             layer: d.layer,
@@ -472,7 +472,7 @@ export async function runPipeline(target, opts = {}) {
           ...[...djlReviewed, ...prefReviewed].map((d) => ({
             stage: _layerMeta[d.layer].stage,
             url: d.url,
-            contentHash: sha256(String(d.content ?? "")).toString("hex"),
+            contentHash: d.contentHash,
             rule_matched: [d.reason],
             outcome: "REVIEW",
             layer: d.layer,
@@ -484,7 +484,7 @@ export async function runPipeline(target, opts = {}) {
           ...guardReviewed.map((d) => ({
             stage: "INJECTION_GUARD",
             url: d.url,
-            contentHash: sha256(String(d.content ?? "")).toString("hex"),
+            contentHash: d.contentHash,
             rule_matched: [d.guard.label ?? "INJECTION_GUARD_REVIEW"],
             outcome: "REVIEW",
             layer: "injection-guard",
