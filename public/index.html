@@ -40,6 +40,7 @@ body {
 ::-webkit-scrollbar { width: 9px; } ::-webkit-scrollbar-track { background: var(--void); }
 ::-webkit-scrollbar-thumb { background: rgba(37,177,63,0.3); border-radius: 2px; } ::-webkit-scrollbar-thumb:hover { background: var(--lime); }
 a { color: var(--lime); text-decoration: none; }
+a:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; border-radius: 2px; }
 .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
 section { padding: 100px 0; }
 .divline { border-bottom: 1px solid var(--line); }
@@ -584,7 +585,7 @@ h2.head em {
 
 <header class="topbar">
   <div class="wrap">
-    <div class="brand"><span class="diamond" aria-hidden="true"></span><span class="wordmark"><span class="wm-prefix">APOHARA</span><span class="wm-name">SYNTHEX</span></span></div>
+    <a href="#" class="brand" aria-label="Scroll to top"><span class="diamond" aria-hidden="true"></span><span class="wordmark"><span class="wm-prefix">APOHARA</span><span class="wm-name">SYNTHEX</span></span></a>
     <div class="meta">Web Data UNLOCKED · <a href="https://github.com/SuarezPM/apohara-synthex" target="_blank" rel="noopener">github</a></div>
   </div>
 </header>
@@ -887,8 +888,8 @@ $ openssl ts -reply -in synthex.tsr -text
         <button class="lens" data-lens="supply-chain" aria-pressed="false">Supply-chain</button>
         <button class="lens" data-lens="all" aria-pressed="true">All 4</button>
       </div>
-      <label class="flabel" for="tier" style="margin-top:18px;display:block">Model tier <span style="color:var(--muted);font-weight:400">— cost/quality tradeoff</span></label>
-      <div class="lenses" id="tiers" role="group" aria-label="Model tier">
+      <div class="flabel" id="tier-label" style="margin-top:18px;display:block">Model tier <span style="color:var(--muted);font-weight:400">— cost/quality tradeoff</span></div>
+      <div class="lenses" id="tiers" role="group" aria-labelledby="tier-label">
         <button class="lens" data-tier="flash" aria-pressed="true">DeepSeek V4 Flash · default</button>
         <button class="lens" data-tier="pro" aria-pressed="false">DeepSeek V4 Pro · thinking</button>
       </div>
