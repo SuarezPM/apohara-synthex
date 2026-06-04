@@ -4,6 +4,11 @@
 import { pickModel, MODEL_TIERS, DEFAULT_TIER } from "./tiers.js";
 import { validateClassification } from "./schema.js";
 import { spotlight, spotlightInstruction } from "./spotlight.js";
+import createDOMPurify from "dompurify";
+import { JSDOM } from "jsdom";
+
+const window = new JSDOM("").window;
+const DOMPurify = createDOMPurify(window);
 
 const DEFAULT_BASE = process.env.AIML_BASE_URL || "https://api.aimlapi.com/v1";
 // AIML_MODEL env conserva back-compat: si está set, gana sobre tier.
@@ -88,8 +93,8 @@ export function parseClassification(content, lens) {
   return {
     lens,
     severity,
-    summary: rawSummary,
-    signals: Array.isArray(parsed.signals) ? parsed.signals.filter((s) => typeof s === "string") : [],
+    summary: DOMPurify.sanitize(rawSummary),
+    signals: Array.isArray(parsed.signals) ? parsed.signals.filter((s) => typeof s === "string").map((s) => DOMPurify.sanitize(s)) : [],
   };
 }
 
