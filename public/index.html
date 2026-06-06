@@ -180,8 +180,10 @@ input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: v
 .ok { color: var(--lime); } .crit { color: var(--red); } .dim { color: var(--muted); }
 .custody { font-family: var(--mono); font-size: 11px; color: var(--muted); word-break: break-all; border-top: 1px solid var(--line); padding-top: 13px; }
 .finding { border-top: 1px solid var(--line); padding: 12px 0; } .finding .sev { font-family: var(--mono); font-weight: 700; } .finding .sig { color: var(--muted); font-size: 12px; margin-top: 3px; }
-.dl { margin-top: 16px; padding: 14px 20px; border: 1px solid var(--lime); background: transparent; color: var(--bone); border-radius: 7px; font-family: var(--mono); font-size: 13px; cursor: pointer; }
+.dl { margin-top: 16px; padding: 14px 20px; border: 1px solid var(--lime); background: transparent; color: var(--bone); border-radius: 7px; font-family: var(--mono); font-size: 13px; cursor: pointer; transition: .2s var(--ease); }
 .dl:hover { background: rgba(37,177,63,0.12); } .dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.dl:disabled { opacity: .55; cursor: progress; }
+@keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }
 .err { color: var(--red); font-size: 14px; margin-top: 12px; } .hidden { display:none; }
 
 /* honesty + competitive */
@@ -1149,9 +1151,17 @@ $ openssl ts -reply -in synthex.tsr -text
     catch (e) { $("#err").textContent = e.message; $("#err").classList.remove("hidden"); }
     finally { btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = "Analyze & Seal"; running = false; } });
   $("#dl").addEventListener("click", async () => { if (!lastEvidence) return;
-    const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
-    if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
-    const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href); });
+    const btn = $("#dl"); btn.disabled = true; btn.setAttribute("aria-busy", "true");
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = `<svg class="spin" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:8px"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>Generating PDF...`;
+    try {
+      const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
+      if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
+      const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href);
+    } finally {
+      btn.disabled = false; btn.removeAttribute("aria-busy"); btn.innerHTML = origHtml;
+    }
+  });
 
   // ── reveal-on-scroll + count-up (atmospheric, non-blocking) ─────────────
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
