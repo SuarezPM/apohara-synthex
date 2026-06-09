@@ -156,7 +156,9 @@ input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: v
 .lens { padding: 9px 15px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 12px; cursor: pointer; transition: .2s var(--ease); }
 .lens:hover { border-color: var(--lime); color: var(--bone); } .lens:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
 .lens[aria-pressed=true] { background: var(--lime); border-color: var(--lime); color: #06140a; font-weight: 700; }
-.run { width:100%; padding: 15px; border:0; border-radius: 7px; background: var(--lime); color:#06140a; font-family: var(--mono); font-weight: 700; font-size: 14px; cursor: pointer; transition: .2s var(--ease); }
+.run { width:100%; padding: 15px; border:0; border-radius: 7px; background: var(--lime); color:#06140a; font-family: var(--mono); font-weight: 700; font-size: 14px; cursor: pointer; transition: .2s var(--ease); display: flex; justify-content: center; align-items: center; gap: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { animation: spin 1s linear infinite; }
 .run:hover { background: var(--lime-2); } .run:active { transform: translateY(1px); } .run:disabled { opacity: .55; cursor: progress; }
 .run:focus-visible { outline: 2px solid var(--bone); outline-offset: 2px; }
 .lane { display:grid; gap: 9px; margin-top: 24px; }
@@ -1143,11 +1145,11 @@ $ openssl ts -reply -in synthex.tsr -text
     }
     targetEl.removeAttribute("aria-invalid");
     running = true;
-    const btn = $("#run"); btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = "Running pipeline…";
+    const btn = $("#run"); btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.innerHTML = '<svg class="spinner" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg> Running pipeline…';
     $("#panel").classList.remove("hidden"); $("#evidence").classList.add("hidden"); $("#err").classList.add("hidden"); $("#dl").classList.add("hidden"); resetLane();
     try { await streamPipeline($("#target").value.trim()); }
     catch (e) { $("#err").textContent = e.message; $("#err").classList.remove("hidden"); }
-    finally { btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = "Analyze & Seal"; running = false; } });
+    finally { btn.disabled = false; btn.removeAttribute("aria-busy"); btn.innerHTML = "Analyze &amp; Seal"; running = false; } });
   $("#dl").addEventListener("click", async () => { if (!lastEvidence) return;
     const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
     if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }

@@ -1,1 +1,4 @@
 ## 2026-05-29 - Adding Form Usability to Live Console\n**Learning:** The live console in public/index.html was not wrapped in a formal <form> tag, which meant natural keyboard navigation (pressing Enter to submit) didn't work. The input also lacked guidance (placeholder) and validation (empty submissions were allowed), leading to a frustrating experience. Adding aria-busy to the submit button provides critical screen-reader feedback during the long-running async pipeline execution.\n**Action:** When working with custom JS-driven "forms" that don't use standard HTML <form> submission, always ensure keyboard events (keydown Enter) are manually wired to trigger the primary action, and manage aria-busy state on buttons for async operations.
+## 2026-06-09 - Adding loading spinner to async submit button
+**Learning:** Users respond better to visual async indicators like spinners over just text changes.
+**Action:** Always add visual indicators for long running async tasks.
