@@ -193,9 +193,15 @@ export async function runPipeline(target, opts = {}) {
     let guardReviewed = [];
     let safe = safe1;
     if (guardEnabled) {
-      const verdicts = await Promise.all(
-        safe1.map(async (d) => ({ ...d, guard: await guardScreenImpl(d.content) })),
-      );
+      // ⚡ Bolt optimization: Bounded concurrency instead of unbounded Promise.all
+      // The L2 injection-guard hits a network-bound LLM API (local or remote).
+      // Sequential processing is too slow, but unbounded `Promise.all` can cause rate limit failures
+      // on multi-document payloads. We replace it with `mapLimit` using the same `concurrency`
+      // limit used elsewhere in the pipeline.
+      const verdicts = await mapLimit(safe1, concurrency, async (d) => ({
+        ...d,
+        guard: await guardScreenImpl(d.content),
+      }));
       guardBlocked = verdicts
         .filter((d) => d.guard?.verdict === "block")
         .map((d) => ({ ...d, reason: d.guard.label ?? "INJECTION_GUARD", layer: "injection-guard" }));
