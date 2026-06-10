@@ -149,6 +149,7 @@ input[type=text] { width:100%; padding: 14px; background: var(--void); border: 1
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
 }
+@keyframes spin { 100% { transform: rotate(360deg); } }
 input[type=text][aria-invalid="true"] { border-color: var(--red); outline: 1px solid var(--red); }
 input[type=text][aria-invalid="true"]:focus-visible { outline: 2px solid var(--red); }
 input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: var(--lime); }
@@ -879,7 +880,8 @@ $ openssl ts -reply -in synthex.tsr -text
     <p class="lede" style="text-align:center;margin:10px auto 0;font-size:13px">Rather not run it? <a href="https://github.com/SuarezPM/apohara-synthex/blob/main/samples/synthex-hero-report.pdf" target="_blank" rel="noopener" style="text-decoration:underline">See a real 9-page Evidence Report from a live injection-catch — sample PDF</a> — sealed with Ed25519 + RFC&nbsp;3161 TSA + Sigstore Rekor + a c2patool-validated C2PA card.</p>
     <div class="console">
       <label class="flabel" for="target">Target — URL or term <span aria-hidden="true" style="color:var(--red)">*</span></label>
-      <input id="target" type="text" value="https://en.wikipedia.org/wiki/Bright_Data" autocomplete="off" spellcheck="false" placeholder="https://example.com/ or search term" required />
+      <input id="target" type="text" value="https://en.wikipedia.org/wiki/Bright_Data" autocomplete="off" spellcheck="false" placeholder="https://example.com/ or search term" required aria-errormessage="target-err" />
+      <div id="target-err" class="err hidden" style="margin-top: 6px; font-size: 13px;" aria-live="polite"></div>
       <div class="lenses" id="lenses" role="group" aria-label="Lens">
         <button class="lens" data-lens="gtm" aria-pressed="false">GTM</button>
         <button class="lens" data-lens="finance" aria-pressed="false">Finance</button>
@@ -1136,14 +1138,18 @@ $ openssl ts -reply -in synthex.tsr -text
     const targetEl = $("#target");
     if (targetEl.value.trim() === "") {
       targetEl.setAttribute("aria-invalid", "true");
+      $("#target-err").textContent = "Please enter a URL or search term.";
+      $("#target-err").classList.remove("hidden");
       targetEl.focus();
       targetEl.style.animation = "shake 0.3s var(--ease)";
       setTimeout(() => { targetEl.style.animation = ""; }, 300);
       return;
     }
     targetEl.removeAttribute("aria-invalid");
+    $("#target-err").classList.add("hidden");
     running = true;
-    const btn = $("#run"); btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = "Running pipeline…";
+    const btn = $("#run"); btn.disabled = true; btn.setAttribute("aria-busy", "true");
+    btn.innerHTML = `<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;vertical-align:-3px;margin-right:8px;animation:spin 1s linear infinite"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>Running pipeline…`;
     $("#panel").classList.remove("hidden"); $("#evidence").classList.add("hidden"); $("#err").classList.add("hidden"); $("#dl").classList.add("hidden"); resetLane();
     try { await streamPipeline($("#target").value.trim()); }
     catch (e) { $("#err").textContent = e.message; $("#err").classList.remove("hidden"); }
