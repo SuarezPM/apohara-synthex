@@ -193,8 +193,13 @@ export async function runPipeline(target, opts = {}) {
     let guardReviewed = [];
     let safe = safe1;
     if (guardEnabled) {
-      const verdicts = await Promise.all(
-        safe1.map(async (d) => ({ ...d, guard: await guardScreenImpl(d.content) })),
+      // ⚡ Bolt: Use bounded concurrency (mapLimit) instead of unbounded Promise.all.
+      // This prevents rate limit saturation and memory spikes when processing large payloads
+      // (multi-document or large crawls) against the L2 external provider, matching the FETCH/CLASSIFY pattern.
+      const verdicts = await mapLimit(
+        safe1,
+        concurrency,
+        async (d) => ({ ...d, guard: await guardScreenImpl(d.content) }),
       );
       guardBlocked = verdicts
         .filter((d) => d.guard?.verdict === "block")
