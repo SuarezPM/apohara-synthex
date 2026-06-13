@@ -7,3 +7,8 @@
 **Vulnerability:** The `assertSafeTarget` URL guard could be bypassed by supplying an array of targets instead of a single string. When an array like `["https://safe.com", "http://127.0.0.1"]` is coerced to a string via `String(target)`, it becomes `"https://safe.com,http://127.0.0.1"`. This causes `new URL()` to parse `safe.com,http` as the hostname, entirely bypassing the private IP regex checks. Because `runPipeline` natively supports an array of targets, the pipeline would proceed to fetch the internal IP.
 **Learning:** Type coercion can be weaponized to defeat validation logic. When building validation functions that feed into sinks that accept multiple types (e.g. string or array), the validation must handle array inputs explicitly rather than relying on implicit string coercion.
 **Prevention:** Explicitly check for `Array.isArray(target)` and apply validation to each element individually before proceeding.
+
+## 2026-06-13 - XSS via unescaped single quotes
+**Vulnerability:** The `escapeHtml` helper function in `public/index.html` failed to escape single quotes (`'`), which allowed for potential attribute-based and standard XSS.
+**Learning:** Escaping only double quotes, ampersands, and angle brackets is insufficient when user-controlled data can be interpolated into single-quoted HTML attributes or other contexts.
+**Prevention:** Always escape single quotes (`'` to `&#39;`) in addition to `&`, `<`, `>`, and `"` when manually sanitizing HTML strings.
