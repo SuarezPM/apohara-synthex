@@ -193,9 +193,11 @@ export async function runPipeline(target, opts = {}) {
     let guardReviewed = [];
     let safe = safe1;
     if (guardEnabled) {
-      const verdicts = await Promise.all(
-        safe1.map(async (d) => ({ ...d, guard: await guardScreenImpl(d.content) })),
-      );
+      // ⚡ Bolt: Use bounded concurrency (mapLimit) instead of unbounded Promise.all
+      // for injection-guard API calls to avoid saturating limits on large datasets.
+      const verdicts = await mapLimit(safe1, concurrency, async (d) => ({
+        ...d, guard: await guardScreenImpl(d.content)
+      }));
       guardBlocked = verdicts
         .filter((d) => d.guard?.verdict === "block")
         .map((d) => ({ ...d, reason: d.guard.label ?? "INJECTION_GUARD", layer: "injection-guard" }));
