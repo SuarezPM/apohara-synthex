@@ -181,7 +181,7 @@ input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: v
 .custody { font-family: var(--mono); font-size: 11px; color: var(--muted); word-break: break-all; border-top: 1px solid var(--line); padding-top: 13px; }
 .finding { border-top: 1px solid var(--line); padding: 12px 0; } .finding .sev { font-family: var(--mono); font-weight: 700; } .finding .sig { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .dl { margin-top: 16px; padding: 14px 20px; border: 1px solid var(--lime); background: transparent; color: var(--bone); border-radius: 7px; font-family: var(--mono); font-size: 13px; cursor: pointer; }
-.dl:hover { background: rgba(37,177,63,0.12); } .dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.dl:hover:not(:disabled) { background: rgba(37,177,63,0.12); } .dl:disabled { opacity: .55; cursor: progress; } .dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
 .err { color: var(--red); font-size: 14px; margin-top: 12px; } .hidden { display:none; }
 
 /* honesty + competitive */
@@ -1148,10 +1148,22 @@ $ openssl ts -reply -in synthex.tsr -text
     try { await streamPipeline($("#target").value.trim()); }
     catch (e) { $("#err").textContent = e.message; $("#err").classList.remove("hidden"); }
     finally { btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = "Analyze & Seal"; running = false; } });
-  $("#dl").addEventListener("click", async () => { if (!lastEvidence) return;
-    const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
-    if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
-    const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href); });
+  $("#dl").addEventListener("click", async (e) => { if (!lastEvidence) return;
+    const btn = e.currentTarget;
+    const originalText = btn.innerHTML;
+    try {
+      btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:8px"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Generating PDF...`;
+      const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
+      if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
+      const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href);
+    } finally {
+      btn.disabled = false;
+      btn.removeAttribute("aria-busy");
+      btn.innerHTML = originalText;
+    }
+  });
 
   // ── reveal-on-scroll + count-up (atmospheric, non-blocking) ─────────────
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
