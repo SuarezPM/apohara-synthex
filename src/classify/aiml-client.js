@@ -71,6 +71,10 @@ const ALLOWED_TIERS = new Set(Object.keys(MODEL_TIERS));
  * Normaliza la salida del modelo a {lens, severity 0-10, summary, signals[]}.
  * Defensive: descarta claves inesperadas + neutraliza respuestas de refusal (AI-1).
  */
+function stripHtml(str) {
+  return String(str).replace(/<[^>]*>/g, '');
+}
+
 export function parseClassification(content, lens) {
   let parsed;
   try {
@@ -88,8 +92,8 @@ export function parseClassification(content, lens) {
   return {
     lens,
     severity,
-    summary: rawSummary,
-    signals: Array.isArray(parsed.signals) ? parsed.signals.filter((s) => typeof s === "string") : [],
+    summary: stripHtml(rawSummary),
+    signals: Array.isArray(parsed.signals) ? parsed.signals.filter((s) => typeof s === "string").map(stripHtml) : [],
   };
 }
 
