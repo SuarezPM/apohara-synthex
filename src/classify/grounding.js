@@ -120,7 +120,8 @@ export function ground(finding, source, opts = {}) {
     : Math.min(src.length, MAX_CHARS);
 
   const windowFigures = extractFigures(src.slice(0, charsSeen));
-  const sourceFigures = extractFigures(src);
+  // ⚡ Bolt optimization: Avoid redundant regex evaluation when the entire document fits in the window.
+  const sourceFigures = charsSeen >= src.length ? windowFigures : extractFigures(src);
 
   const signals = Array.isArray(finding?.signals) ? finding.signals : [];
   const kept = [];
