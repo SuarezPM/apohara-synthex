@@ -37,25 +37,6 @@ export function mcpText(result) {
   return result?.content?.map((c) => c?.text ?? "").join("\n") ?? "";
 }
 
-/** FETCH por defecto: usa Bright Data real. Si target es URL, scrapea directo; si no, busca. */
-async function defaultFetch(target, { maxResults = 3 } = {}) {
-  const client = new BrightDataClient();
-  await client.connect();
-  try {
-    if (/^https?:\/\//i.test(target)) {
-      return [{ url: target, content: mcpText(await client.scrapeMarkdown(target)) }];
-    }
-    // TODO(verificar con BD real): parseo de URLs del resultado de search_engine.
-    const search = mcpText(await client.searchEngine(target));
-    const urls = [...search.matchAll(/https?:\/\/[^\s)\]]+/g)].map((m) => m[0]).slice(0, maxResults);
-    const docs = [];
-    for (const url of urls) docs.push({ url, content: mcpText(await client.scrapeMarkdown(url)) });
-    return docs.length ? docs : [{ url: target, content: search }];
-  } finally {
-    await client.close();
-  }
-}
-
 /**
  * map con límite de concurrencia: corre `fn` sobre `items` con a lo sumo `limit` en vuelo a la vez,
  * preservando el orden de resultados. Acota las ráfagas que saturarían los rate-limits de Bright
@@ -73,6 +54,30 @@ async function mapLimit(items, limit, fn) {
   };
   await Promise.all(Array.from({ length: cap }, worker));
   return results;
+}
+
+/** FETCH por defecto: usa Bright Data real. Si target es URL, scrapea directo; si no, busca. */
+async function defaultFetch(target, { maxResults = 3, concurrency = 6 } = {}) {
+  const client = new BrightDataClient();
+  await client.connect();
+  try {
+    if (/^https?:\/\//i.test(target)) {
+      return [{ url: target, content: mcpText(await client.scrapeMarkdown(target)) }];
+    }
+    // TODO(verificar con BD real): parseo de URLs del resultado de search_engine.
+    const search = mcpText(await client.searchEngine(target));
+    const urls = [...search.matchAll(/https?:\/\/[^\s)\]]+/g)].map((m) => m[0]).slice(0, maxResults);
+    // ⚡ Bolt Optimization: Use mapLimit instead of a sequential for-loop to scrape
+    // search result URLs concurrently. Speeds up the FETCH stage significantly while
+    // avoiding unbounded concurrency rate-limits.
+    const docs = await mapLimit(urls, concurrency, async (url) => ({
+      url,
+      content: mcpText(await client.scrapeMarkdown(url))
+    }));
+    return docs.length ? docs : [{ url: target, content: search }];
+  } finally {
+    await client.close();
+  }
 }
 
 /**
@@ -128,7 +133,7 @@ export async function runPipeline(target, opts = {}) {
   const targets = Array.isArray(target) ? target : [target];
   const docs = await timed("FETCH", async ({ record }) => {
     const out = (
-      await mapLimit(targets, concurrency, (t) => (fetcher ? fetcher(t) : defaultFetch(t)))
+      await mapLimit(targets, concurrency, (t) => (fetcher ? fetcher(t) : defaultFetch(t, { concurrency })))
     ).flat();
     record("urls", out.length);
     return out;
@@ -193,8 +198,13 @@ export async function runPipeline(target, opts = {}) {
     let guardReviewed = [];
     let safe = safe1;
     if (guardEnabled) {
-      const verdicts = await Promise.all(
-        safe1.map(async (d) => ({ ...d, guard: await guardScreenImpl(d.content) })),
+      // ⚡ Bolt Optimization: Use mapLimit instead of unbounded Promise.all for Layer-2
+      // guard screens to prevent exhausting rate limits or spiking memory with large
+      // input arrays, applying the learning from Bolt's journal.
+      const verdicts = await mapLimit(
+        safe1,
+        concurrency,
+        async (d) => ({ ...d, guard: await guardScreenImpl(d.content) })
       );
       guardBlocked = verdicts
         .filter((d) => d.guard?.verdict === "block")
