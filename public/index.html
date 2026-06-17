@@ -1095,17 +1095,17 @@ $ openssl ts -reply -in synthex.tsr -text
   const sevColor = (s) => (s >= 8 ? "crit" : s >= 5 ? "" : "ok");
   const stageEl = (st) => $(`.stage[data-st="${st}"]`);
   const resetLane = () => document.querySelectorAll(".stage").forEach((s) => { s.classList.remove("active","done"); s.querySelector(".ms").textContent = ""; });
-  const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+  const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   function applyStage(e) { const el = stageEl(e.stage); if (!el) return;
     if (e.status === "start") el.classList.add("active");
     if (e.status === "done") { el.classList.remove("active"); el.classList.add("done"); if (e.ms != null) el.querySelector(".ms").textContent = `${e.ms} ms`; } }
   function renderFindings(findings) { const box = $("#findings"); box.innerHTML = "";
     for (const f of findings ?? []) { const rows = f.trilens ? Object.entries(f.trilens).map(([l,c]) => ({ lens:l, ...c })) : [f];
       for (const r of rows) { const d = document.createElement("div"); d.className = "finding";
-        d.innerHTML = `<span class="sev ${sevColor(r.severity||0)}">[${(r.lens||"").toUpperCase()}] ${r.severity ?? 0}/10</span> ${escapeHtml(r.summary ?? "")}`
+        d.innerHTML = `<span class="sev ${sevColor(r.severity||0)}">[${escapeHtml((r.lens||"").toUpperCase())}] ${r.severity ?? 0}/10</span> ${escapeHtml(r.summary ?? "")}`
           + (r.signals?.length ? `<div class="sig">signals: ${r.signals.map(escapeHtml).join(" · ")}</div>` : "");
         box.appendChild(d); } } }
-  function setMode(m) { $("#mode").innerHTML = `<span class="badge ${m}">${m.toUpperCase()}</span>`; }
+  function setMode(m) { $("#mode").innerHTML = `<span class="badge ${escapeHtml(m)}">${escapeHtml(m.toUpperCase())}</span>`; }
   function renderResult(data) { const ev = data.evidence, seal = ev.seal||{}, v = data.verify||{}; lastEvidence = ev; setMode(data.mode);
     $("#seal").innerHTML = `<span>hash <b class="${v.hashOk?"ok":"crit"}">${v.hashOk?"OK":"FAIL"}</b></span>`
       + `<span>HMAC <b class="${v.hmacOk?"ok":"dim"}">${v.hmacOk?"OK":"—"}</b></span>`

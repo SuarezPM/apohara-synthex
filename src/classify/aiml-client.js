@@ -71,15 +71,20 @@ const ALLOWED_TIERS = new Set(Object.keys(MODEL_TIERS));
  * Normaliza la salida del modelo a {lens, severity 0-10, summary, signals[]}.
  * Defensive: descarta claves inesperadas + neutraliza respuestas de refusal (AI-1).
  */
+// Helper to strip HTML tags from untrusted boundary inputs (XSS defense-in-depth)
+function stripHtml(s) {
+  return String(s || "").replace(/<\/?[^>]+(>|$)/g, "");
+}
+
 export function parseClassification(content, lens) {
   let parsed;
   try {
     parsed = typeof content === "string" ? JSON.parse(content) : (content ?? {});
   } catch {
-    parsed = { severity: 0, summary: String(content ?? "").slice(0, 240), signals: [] };
+    parsed = { severity: 0, summary: stripHtml(String(content ?? "").slice(0, 240)), signals: [] };
   }
   // Refusal: no leakeamos el texto del refusal al finding.
-  const rawSummary = typeof parsed.summary === "string" ? parsed.summary : "";
+  const rawSummary = typeof parsed.summary === "string" ? stripHtml(parsed.summary) : "";
   if (REFUSAL_PATTERNS.some((re) => re.test(rawSummary))) {
     return { lens, severity: 0, summary: "model declined to classify", signals: [] };
   }
@@ -89,7 +94,7 @@ export function parseClassification(content, lens) {
     lens,
     severity,
     summary: rawSummary,
-    signals: Array.isArray(parsed.signals) ? parsed.signals.filter((s) => typeof s === "string") : [],
+    signals: Array.isArray(parsed.signals) ? parsed.signals.filter((s) => typeof s === "string").map(stripHtml) : [],
   };
 }
 
