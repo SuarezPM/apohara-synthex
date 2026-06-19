@@ -84,12 +84,15 @@ export function parseClassification(content, lens) {
     return { lens, severity: 0, summary: "model declined to classify", signals: [] };
   }
   const severity = Math.max(0, Math.min(10, Number(parsed.severity) || 0));
+  // HTML-encode LLM outputs to prevent downstream XSS
+  const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
   // Whitelist: descartamos claves inesperadas del modelo (defense-in-depth).
   return {
     lens,
     severity,
-    summary: rawSummary,
-    signals: Array.isArray(parsed.signals) ? parsed.signals.filter((s) => typeof s === "string") : [],
+    summary: escapeHtml(rawSummary),
+    signals: Array.isArray(parsed.signals) ? parsed.signals.filter((s) => typeof s === "string").map(escapeHtml) : [],
   };
 }
 
