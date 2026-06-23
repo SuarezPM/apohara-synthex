@@ -17,6 +17,16 @@ test("guard: bloquea SSRF (localhost, loopback, metadata, rangos privados)", () 
   }
 });
 
+test("guard: bloquea bypasses por FQDN y direcciones IPv4-compatibles en IPv6", () => {
+  for (const bad of [
+    "http://localhost.", "http://127.0.0.1.", "http://metadata.google.internal.",
+    "http://localhost%2e", "http://127.0.0.1%2e",
+    "http://[::127.0.0.1]", "http://[::169.254.169.254]", "http://[::10.0.0.1]"
+  ]) {
+    assert.throws(() => assertSafeTarget(bad), /SSRF|privado|interno/i, `debería bloquear ${bad}`);
+  }
+});
+
 test("guard: bloquea IPs ofuscadas (decimal/hex) e IPv6 privado", () => {
   for (const bad of ["http://2130706433/", "http://0x7f000001/", "http://[fe80::1]/", "http://[fc00::1]/", "http://[::]/", "http://[::ffff:127.0.0.1]/", "http://[0:0:0:0:0:ffff:127.0.0.1]/", "http://[::ffff:169.254.169.254]/"]) {
     assert.throws(() => assertSafeTarget(bad), /SSRF|privado|interno/i, `debería bloquear ${bad}`);
