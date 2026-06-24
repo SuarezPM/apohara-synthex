@@ -37,6 +37,15 @@ export function assertSafeTarget(target) {
   let u;
   try { u = new URL(s); } catch { throw new Error("URL inválida"); }
   if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("solo se permite http/https");
+
+  // Normalizar hostname removiendo puntos finales (FQDN) que evaden match estricto.
+  u.hostname = u.hostname.replace(/\.$/, "");
+
+  // Bloquear IPv4 mapeado a IPv6 normalizado por Node.js (ej: [::127.0.0.1] -> [::7f00:1])
+  if (/^\[?::[0-9a-f:]+\]?$/i.test(u.hostname) && !/^\[?::1\]?$/.test(u.hostname) && !/^\[?::\]?$/.test(u.hostname)) {
+    throw new Error("IPv6 normalizado bloqueado (SSRF)");
+  }
+
   // IPs ofuscadas (decimal/octal/hex) que evaden el match textual de rangos privados.
   if (/^\d+$/.test(u.hostname) || /^0x[0-9a-f]+$/i.test(u.hostname)) throw new Error("IP ofuscada bloqueada (SSRF)");
   // IPv6 link-local (fe80::/10) y ULA (fc00::/7) llegan como "[fe80::1]".
