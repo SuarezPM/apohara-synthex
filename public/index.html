@@ -149,6 +149,10 @@ input[type=text] { width:100%; padding: 14px; background: var(--void); border: 1
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
 }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 input[type=text][aria-invalid="true"] { border-color: var(--red); outline: 1px solid var(--red); }
 input[type=text][aria-invalid="true"]:focus-visible { outline: 2px solid var(--red); }
 input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: var(--lime); }
@@ -181,7 +185,7 @@ input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: v
 .custody { font-family: var(--mono); font-size: 11px; color: var(--muted); word-break: break-all; border-top: 1px solid var(--line); padding-top: 13px; }
 .finding { border-top: 1px solid var(--line); padding: 12px 0; } .finding .sev { font-family: var(--mono); font-weight: 700; } .finding .sig { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .dl { margin-top: 16px; padding: 14px 20px; border: 1px solid var(--lime); background: transparent; color: var(--bone); border-radius: 7px; font-family: var(--mono); font-size: 13px; cursor: pointer; }
-.dl:hover { background: rgba(37,177,63,0.12); } .dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.dl:hover:not(:disabled) { background: rgba(37,177,63,0.12); } .dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; } .dl:disabled { opacity: .55; cursor: progress; }
 .err { color: var(--red); font-size: 14px; margin-top: 12px; } .hidden { display:none; }
 
 /* honesty + competitive */
@@ -1148,10 +1152,23 @@ $ openssl ts -reply -in synthex.tsr -text
     try { await streamPipeline($("#target").value.trim()); }
     catch (e) { $("#err").textContent = e.message; $("#err").classList.remove("hidden"); }
     finally { btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = "Analyze & Seal"; running = false; } });
-  $("#dl").addEventListener("click", async () => { if (!lastEvidence) return;
-    const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
-    if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
-    const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href); });
+  $("#dl").addEventListener("click", async (e) => {
+    if (!lastEvidence) return;
+    const btn = e.currentTarget;
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
+    btn.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:8px;animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Generating PDF...`;
+    try {
+      const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
+      if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
+      const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href);
+    } finally {
+      btn.disabled = false;
+      btn.removeAttribute("aria-busy");
+      btn.innerHTML = originalHTML;
+    }
+  });
 
   // ── reveal-on-scroll + count-up (atmospheric, non-blocking) ─────────────
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
