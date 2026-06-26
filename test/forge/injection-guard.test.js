@@ -182,7 +182,14 @@ test("screen: timeout → heuristic fallback (AbortSignal)", async () => {
     timeoutMs: 10,
     fetchImpl: async (_url, opts) => {
       return new Promise((_resolve, reject) => {
-        opts.signal?.addEventListener("abort", () => reject(new Error("AbortError")));
+        const onAbort = () => reject(new Error("AbortError"));
+        if (opts.signal?.aborted) return onAbort();
+        opts.signal?.addEventListener("abort", onAbort, { once: true });
+
+        // This timer represents the long-running request. We need to clear it
+        // when aborted to avoid "Promise resolution pending" warnings.
+        const t = setTimeout(() => reject(new Error("Timeout")), 100);
+        opts.signal?.addEventListener("abort", () => clearTimeout(t), { once: true });
       });
     },
   });
