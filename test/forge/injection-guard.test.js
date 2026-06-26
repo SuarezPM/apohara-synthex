@@ -182,7 +182,11 @@ test("screen: timeout → heuristic fallback (AbortSignal)", async () => {
     timeoutMs: 10,
     fetchImpl: async (_url, opts) => {
       return new Promise((_resolve, reject) => {
-        opts.signal?.addEventListener("abort", () => reject(new Error("AbortError")));
+        const timer = setTimeout(() => {}, 10000); // keep event loop alive
+        opts.signal?.addEventListener("abort", () => {
+          clearTimeout(timer);
+          reject(new Error("AbortError"));
+        });
       });
     },
   });
