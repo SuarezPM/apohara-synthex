@@ -182,7 +182,17 @@ test("screen: timeout → heuristic fallback (AbortSignal)", async () => {
     timeoutMs: 10,
     fetchImpl: async (_url, opts) => {
       return new Promise((_resolve, reject) => {
-        opts.signal?.addEventListener("abort", () => reject(new Error("AbortError")));
+        let timer;
+        const abortHandler = () => {
+          clearTimeout(timer);
+          reject(new Error("AbortError"));
+        };
+        opts.signal?.addEventListener("abort", abortHandler);
+        // keep the event loop alive until abort or a long time to simulate pending fetch
+        timer = setTimeout(() => {
+          opts.signal?.removeEventListener("abort", abortHandler);
+          _resolve({ ok: true, json: async () => ({}) });
+        }, 5000);
       });
     },
   });
