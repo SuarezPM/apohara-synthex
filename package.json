@@ -68,9 +68,12 @@
     "fastmcp": "^3.33.0",
     "pdfkit": "^0.18.0",
     "pkijs": "^3.0.15",
-    "playwright": "^1.60.0",
     "pvutils": "^1.1.3",
     "qrcode": "^1.5.4",
     "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "playwright": "^1.61.1"
   }
 }
