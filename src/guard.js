@@ -37,14 +37,26 @@ export function assertSafeTarget(target) {
   let u;
   try { u = new URL(s); } catch { throw new Error("URL inválida"); }
   if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("solo se permite http/https");
+
+  // Strip trailing dots to prevent localhost. bypass
+  const normalizedHostname = u.hostname.replace(/\.$/, '');
+
   // IPs ofuscadas (decimal/octal/hex) que evaden el match textual de rangos privados.
-  if (/^\d+$/.test(u.hostname) || /^0x[0-9a-f]+$/i.test(u.hostname)) throw new Error("IP ofuscada bloqueada (SSRF)");
+  if (/^\d+$/.test(normalizedHostname) || /^0x[0-9a-f]+$/i.test(normalizedHostname)) throw new Error("IP ofuscada bloqueada (SSRF)");
+
   // IPv6 link-local (fe80::/10) y ULA (fc00::/7) llegan como "[fe80::1]".
-  if (/^\[?(fe80|fc|fd)[0-9a-f:]*\]?$/i.test(u.hostname)) throw new Error("IPv6 privado bloqueado (SSRF)");
-  if (PRIVATE_HOSTS.some((re) => re.test(u.hostname))) throw new Error("destino privado/interno bloqueado (SSRF)");
+  if (/^\[?(fe80|fc|fd)[0-9a-f:]*\]?$/i.test(normalizedHostname)) throw new Error("IPv6 privado bloqueado (SSRF)");
+
+  // Explicitly check for IPv4-mapped/compatible IPv6 addresses like [::ffff:127.0.0.1] or [::7f00:1] (normalized IPv6 loopback format)
+  if (/^\[?(0:0:0:0:0:ffff:|::ffff:)/i.test(normalizedHostname)) throw new Error("IPv4-mapped IPv6 privado bloqueado (SSRF)");
+  // If the host starts with [:: and is not exactly [::1] (which is handled by PRIVATE_HOSTS), block it as it might be a normalized IPv4 format
+  if (/^\[?::[0-9a-f:]+\]?$/i.test(normalizedHostname) && !/^\[?::1\]?$/.test(normalizedHostname)) throw new Error("IPv6 compatible/normalized bloqueado (SSRF)");
+
+  if (PRIVATE_HOSTS.some((re) => re.test(normalizedHostname))) throw new Error("destino privado/interno bloqueado (SSRF)");
+
   const allow = (process.env.SYNTHEX_ALLOWED_DOMAINS || "").split(",").map((s) => s.trim()).filter(Boolean);
-  if (allow.length && !allow.some((d) => u.hostname === d || u.hostname.endsWith("." + d))) {
-    throw new Error(`dominio fuera de la allowlist: ${u.hostname}`);
+  if (allow.length && !allow.some((d) => normalizedHostname === d || normalizedHostname.endsWith("." + d))) {
+    throw new Error(`dominio fuera de la allowlist: ${normalizedHostname}`);
   }
 }
 
