@@ -120,7 +120,9 @@ export function ground(finding, source, opts = {}) {
     : Math.min(src.length, MAX_CHARS);
 
   const windowFigures = extractFigures(src.slice(0, charsSeen));
-  const sourceFigures = extractFigures(src);
+  // Bolt optimization: If charsSeen covers the entire source, reuse windowFigures
+  // to avoid redundant parsing of identical strings.
+  const sourceFigures = charsSeen === src.length ? windowFigures : extractFigures(src);
 
   const signals = Array.isArray(finding?.signals) ? finding.signals : [];
   const kept = [];
