@@ -37,11 +37,17 @@ export function assertSafeTarget(target) {
   let u;
   try { u = new URL(s); } catch { throw new Error("URL inválida"); }
   if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("solo se permite http/https");
+
+  // Normalize hostname: strip FQDN trailing dot to prevent bypass (e.g. localhost.)
+  const normalizedHostname = u.hostname.replace(/\.$/, '');
+
   // IPs ofuscadas (decimal/octal/hex) que evaden el match textual de rangos privados.
-  if (/^\d+$/.test(u.hostname) || /^0x[0-9a-f]+$/i.test(u.hostname)) throw new Error("IP ofuscada bloqueada (SSRF)");
+  if (/^\d+$/.test(normalizedHostname) || /^0x[0-9a-f]+$/i.test(normalizedHostname)) throw new Error("IP ofuscada bloqueada (SSRF)");
   // IPv6 link-local (fe80::/10) y ULA (fc00::/7) llegan como "[fe80::1]".
-  if (/^\[?(fe80|fc|fd)[0-9a-f:]*\]?$/i.test(u.hostname)) throw new Error("IPv6 privado bloqueado (SSRF)");
-  if (PRIVATE_HOSTS.some((re) => re.test(u.hostname))) throw new Error("destino privado/interno bloqueado (SSRF)");
+  if (/^\[?(fe80|fc|fd)[0-9a-f:]*\]?$/i.test(normalizedHostname)) throw new Error("IPv6 privado bloqueado (SSRF)");
+  // Block normalized IPv4-mapped IPv6 (Node URL parser converts [::127.0.0.1] to [::7f00:1] and [::ffff:127.0.0.1] to [::ffff:7f00:1])
+  if (/^\[?::(?:ffff:)?7f[0-9a-f]{2}:[0-9a-f]{1,4}\]?$/i.test(normalizedHostname)) throw new Error("IPv6 loopback bloqueado (SSRF)");
+  if (PRIVATE_HOSTS.some((re) => re.test(normalizedHostname))) throw new Error("destino privado/interno bloqueado (SSRF)");
   const allow = (process.env.SYNTHEX_ALLOWED_DOMAINS || "").split(",").map((s) => s.trim()).filter(Boolean);
   if (allow.length && !allow.some((d) => u.hostname === d || u.hostname.endsWith("." + d))) {
     throw new Error(`dominio fuera de la allowlist: ${u.hostname}`);

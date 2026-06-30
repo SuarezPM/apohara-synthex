@@ -7,3 +7,8 @@
 **Vulnerability:** The `assertSafeTarget` URL guard could be bypassed by supplying an array of targets instead of a single string. When an array like `["https://safe.com", "http://127.0.0.1"]` is coerced to a string via `String(target)`, it becomes `"https://safe.com,http://127.0.0.1"`. This causes `new URL()` to parse `safe.com,http` as the hostname, entirely bypassing the private IP regex checks. Because `runPipeline` natively supports an array of targets, the pipeline would proceed to fetch the internal IP.
 **Learning:** Type coercion can be weaponized to defeat validation logic. When building validation functions that feed into sinks that accept multiple types (e.g. string or array), the validation must handle array inputs explicitly rather than relying on implicit string coercion.
 **Prevention:** Explicitly check for `Array.isArray(target)` and apply validation to each element individually before proceeding.
+
+## 2025-02-08 - SSRF Filter Bypass via IPv4-mapped IPv6 and FQDNs
+**Vulnerability:** The SSRF protection in `src/guard.js` could be bypassed using Fully Qualified Domain Names (FQDNs) with a trailing dot (e.g., `localhost.`) or by using IPv4-mapped IPv6 addresses (e.g., `[::127.0.0.1]`).
+**Learning:** Node.js's `URL` parser retains trailing dots on hostnames and standardizes IPv4-mapped IPv6 addresses into a format like `[::7f00:1]`. Because the blocklist used strict text matching (e.g., `/^localhost$/i`), `localhost.` bypassed it. Similarly, the normalized IPv6 format was not included in the blocklist.
+**Prevention:** Always strip trailing dots (`u.hostname.replace(/\.$/, '')`) from the parsed URL before checking against a literal blocklist, and ensure blocklists account for normalized loopback addresses like `[::7f00:1]`.
