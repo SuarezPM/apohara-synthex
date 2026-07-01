@@ -17,6 +17,12 @@ test("guard: bloquea SSRF (localhost, loopback, metadata, rangos privados)", () 
   }
 });
 
+test("guard: bloquea FQDN con punto final (trailing dot) e IPv6 loopback mapeada a IPv4", () => {
+  for (const bad of ["http://localhost./admin", "http://127.0.0.1./admin", "http://[::127.0.0.1]/", "http://[::7f00:1]/", "http://[::ffff:7f00:1]/"]) {
+    assert.throws(() => assertSafeTarget(bad), /SSRF|privado|interno/i, `debería bloquear ${bad}`);
+  }
+});
+
 test("guard: bloquea IPs ofuscadas (decimal/hex) e IPv6 privado", () => {
   for (const bad of ["http://2130706433/", "http://0x7f000001/", "http://[fe80::1]/", "http://[fc00::1]/", "http://[::]/", "http://[::ffff:127.0.0.1]/", "http://[0:0:0:0:0:ffff:127.0.0.1]/", "http://[::ffff:169.254.169.254]/"]) {
     assert.throws(() => assertSafeTarget(bad), /SSRF|privado|interno/i, `debería bloquear ${bad}`);
