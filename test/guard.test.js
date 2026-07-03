@@ -17,6 +17,15 @@ test("guard: bloquea SSRF (localhost, loopback, metadata, rangos privados)", () 
   }
 });
 
+test("guard: bloquea bypass con punto al final en dominio interno", () => {
+  assert.throws(() => assertSafeTarget("http://localhost./admin"), /SSRF|privado|interno/i, "debería bloquear localhost con punto final");
+  assert.throws(() => assertSafeTarget("http://127.0.0.1./admin"), /SSRF|privado|interno/i, "debería bloquear 127.0.0.1 con punto final");
+});
+
+test("guard: bloquea bypass con normalización IPv6-mapped IPv4", () => {
+  assert.throws(() => assertSafeTarget("http://[::127.0.0.1]/"), /SSRF|privado|interno/i, "debería bloquear IPv6 normalizado");
+});
+
 test("guard: bloquea IPs ofuscadas (decimal/hex) e IPv6 privado", () => {
   for (const bad of ["http://2130706433/", "http://0x7f000001/", "http://[fe80::1]/", "http://[fc00::1]/", "http://[::]/", "http://[::ffff:127.0.0.1]/", "http://[0:0:0:0:0:ffff:127.0.0.1]/", "http://[::ffff:169.254.169.254]/"]) {
     assert.throws(() => assertSafeTarget(bad), /SSRF|privado|interno/i, `debería bloquear ${bad}`);
