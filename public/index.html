@@ -152,10 +152,12 @@ input[type=text] { width:100%; padding: 14px; background: var(--void); border: 1
 input[type=text][aria-invalid="true"] { border-color: var(--red); outline: 1px solid var(--red); }
 input[type=text][aria-invalid="true"]:focus-visible { outline: 2px solid var(--red); }
 input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: var(--lime); }
+input[type=text]:disabled { opacity: .55; cursor: not-allowed; }
 .lenses { display:flex; gap:8px; flex-wrap:wrap; margin: 18px 0; }
 .lens { padding: 9px 15px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 12px; cursor: pointer; transition: .2s var(--ease); }
-.lens:hover { border-color: var(--lime); color: var(--bone); } .lens:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.lens:hover:not(:disabled) { border-color: var(--lime); color: var(--bone); } .lens:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
 .lens[aria-pressed=true] { background: var(--lime); border-color: var(--lime); color: #06140a; font-weight: 700; }
+.lens:disabled { opacity: .55; cursor: not-allowed; }
 .run { width:100%; padding: 15px; border:0; border-radius: 7px; background: var(--lime); color:#06140a; font-family: var(--mono); font-weight: 700; font-size: 14px; cursor: pointer; transition: .2s var(--ease); }
 .run:hover { background: var(--lime-2); } .run:active { transform: translateY(1px); } .run:disabled { opacity: .55; cursor: progress; }
 .run:focus-visible { outline: 2px solid var(--bone); outline-offset: 2px; }
@@ -181,7 +183,8 @@ input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: v
 .custody { font-family: var(--mono); font-size: 11px; color: var(--muted); word-break: break-all; border-top: 1px solid var(--line); padding-top: 13px; }
 .finding { border-top: 1px solid var(--line); padding: 12px 0; } .finding .sev { font-family: var(--mono); font-weight: 700; } .finding .sig { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .dl { margin-top: 16px; padding: 14px 20px; border: 1px solid var(--lime); background: transparent; color: var(--bone); border-radius: 7px; font-family: var(--mono); font-size: 13px; cursor: pointer; }
-.dl:hover { background: rgba(37,177,63,0.12); } .dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.dl:hover:not(:disabled) { background: rgba(37,177,63,0.12); } .dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.dl:disabled { opacity: .55; cursor: not-allowed; }
 .err { color: var(--red); font-size: 14px; margin-top: 12px; } .hidden { display:none; }
 
 /* honesty + competitive */
@@ -1144,14 +1147,29 @@ $ openssl ts -reply -in synthex.tsr -text
     targetEl.removeAttribute("aria-invalid");
     running = true;
     const btn = $("#run"); btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = "Running pipeline…";
+    targetEl.disabled = true;
+    const lenses = document.querySelectorAll(".lens");
+    lenses.forEach(l => { l.disabled = true; });
     $("#panel").classList.remove("hidden"); $("#evidence").classList.add("hidden"); $("#err").classList.add("hidden"); $("#dl").classList.add("hidden"); resetLane();
     try { await streamPipeline($("#target").value.trim()); }
     catch (e) { $("#err").textContent = e.message; $("#err").classList.remove("hidden"); }
-    finally { btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = "Analyze & Seal"; running = false; } });
+    finally {
+      btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = "Analyze & Seal";
+      targetEl.disabled = false;
+      lenses.forEach(l => { l.disabled = false; });
+      running = false;
+    } });
   $("#dl").addEventListener("click", async () => { if (!lastEvidence) return;
-    const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
-    if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
-    const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href); });
+    const btn = $("#dl");
+    const origHtml = btn.innerHTML;
+    btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = "Generating PDF…";
+    try {
+      const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
+      if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
+      const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href);
+    } finally {
+      btn.disabled = false; btn.removeAttribute("aria-busy"); btn.innerHTML = origHtml;
+    } });
 
   // ── reveal-on-scroll + count-up (atmospheric, non-blocking) ─────────────
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
