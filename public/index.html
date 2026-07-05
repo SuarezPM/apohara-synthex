@@ -154,7 +154,8 @@ input[type=text][aria-invalid="true"]:focus-visible { outline: 2px solid var(--r
 input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: var(--lime); }
 .lenses { display:flex; gap:8px; flex-wrap:wrap; margin: 18px 0; }
 .lens { padding: 9px 15px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 12px; cursor: pointer; transition: .2s var(--ease); }
-.lens:hover { border-color: var(--lime); color: var(--bone); } .lens:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.lens:hover:not(:disabled) { border-color: var(--lime); color: var(--bone); } .lens:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.lens:disabled { opacity: 0.55; cursor: not-allowed; }
 .lens[aria-pressed=true] { background: var(--lime); border-color: var(--lime); color: #06140a; font-weight: 700; }
 .run { width:100%; padding: 15px; border:0; border-radius: 7px; background: var(--lime); color:#06140a; font-family: var(--mono); font-weight: 700; font-size: 14px; cursor: pointer; transition: .2s var(--ease); }
 .run:hover { background: var(--lime-2); } .run:active { transform: translateY(1px); } .run:disabled { opacity: .55; cursor: progress; }
@@ -181,7 +182,8 @@ input[type=text]:focus-visible { outline: 2px solid var(--lime); border-color: v
 .custody { font-family: var(--mono); font-size: 11px; color: var(--muted); word-break: break-all; border-top: 1px solid var(--line); padding-top: 13px; }
 .finding { border-top: 1px solid var(--line); padding: 12px 0; } .finding .sev { font-family: var(--mono); font-weight: 700; } .finding .sig { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .dl { margin-top: 16px; padding: 14px 20px; border: 1px solid var(--lime); background: transparent; color: var(--bone); border-radius: 7px; font-family: var(--mono); font-size: 13px; cursor: pointer; }
-.dl:hover { background: rgba(37,177,63,0.12); } .dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.dl:hover:not(:disabled) { background: rgba(37,177,63,0.12); } .dl:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.dl:disabled { opacity: 0.55; cursor: progress; }
 .err { color: var(--red); font-size: 14px; margin-top: 12px; } .hidden { display:none; }
 
 /* honesty + competitive */
@@ -491,7 +493,7 @@ body { font-feature-settings: 'ss01' 1, 'cv11' 1, 'cv09' 1; }
 /* Live console — premium glow on focus inputs */
 .console { box-shadow: 0 30px 90px rgba(0,0,0,0.6), 0 0 0 1px rgba(37,177,63,0.04), inset 0 1px 0 rgba(255,255,255,0.02); }
 .lens { transition: border-color .2s var(--ease), color .2s var(--ease), background .2s var(--ease), transform .2s var(--ease); }
-.lens:hover { transform: translateY(-1px); }
+.lens:hover:not(:disabled) { transform: translateY(-1px); }
 
 /* Subtle text gradient on headline em-emphasis (atmospheric polish) */
 h2.head em {
@@ -1143,15 +1145,34 @@ $ openssl ts -reply -in synthex.tsr -text
     }
     targetEl.removeAttribute("aria-invalid");
     running = true;
+    targetEl.disabled = true;
+    document.querySelectorAll(".lens").forEach(el => el.disabled = true);
     const btn = $("#run"); btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = "Running pipeline…";
     $("#panel").classList.remove("hidden"); $("#evidence").classList.add("hidden"); $("#err").classList.add("hidden"); $("#dl").classList.add("hidden"); resetLane();
     try { await streamPipeline($("#target").value.trim()); }
     catch (e) { $("#err").textContent = e.message; $("#err").classList.remove("hidden"); }
-    finally { btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = "Analyze & Seal"; running = false; } });
+    finally {
+      btn.disabled = false; btn.removeAttribute("aria-busy"); btn.textContent = "Analyze & Seal";
+      targetEl.disabled = false;
+      document.querySelectorAll(".lens").forEach(el => el.disabled = false);
+      running = false;
+    } });
   $("#dl").addEventListener("click", async () => { if (!lastEvidence) return;
-    const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
-    if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
-    const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href); });
+    const btn = $("#dl");
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
+    btn.textContent = "Generating PDF...";
+    try {
+      const res = await fetch("/api/report", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ evidence: lastEvidence }) });
+      if (!res.ok) { $("#err").textContent = "PDF generation failed"; $("#err").classList.remove("hidden"); return; }
+      const blob = await res.blob(), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "synthex-evidence.pdf"; a.click(); URL.revokeObjectURL(a.href);
+    } finally {
+      btn.innerHTML = origHtml;
+      btn.disabled = false;
+      btn.removeAttribute("aria-busy");
+    }
+  });
 
   // ── reveal-on-scroll + count-up (atmospheric, non-blocking) ─────────────
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
