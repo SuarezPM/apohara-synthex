@@ -12,6 +12,7 @@ test("guard: bloquea SSRF (localhost, loopback, metadata, rangos privados)", () 
   for (const bad of [
     "http://localhost/admin", "http://127.0.0.1:8080", "http://169.254.169.254/latest/meta-data",
     "http://10.0.0.5", "http://192.168.1.1", "http://172.16.0.1", "https://foo.local",
+    "http://localhost.", "http://[::127.0.0.1]/"
   ]) {
     assert.throws(() => assertSafeTarget(bad), /SSRF|privado|interno/i, `debería bloquear ${bad}`);
   }
