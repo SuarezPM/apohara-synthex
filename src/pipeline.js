@@ -279,9 +279,20 @@ export async function runPipeline(target, opts = {}) {
   // does not). Scoped to the injection class ONLY — reverse-shell / SSRF rows do NOT escalate, so
   // L3 stays low-volume. The doc is pulled from `safe` (kept post-D5). Closes a defense-in-depth gap.
   const _isInjectionRow = (d) => /(?:^|[-_/])PI[-_]|prompt.?injection|injection|jailbreak/i.test(String(d.reason ?? d.layer ?? ""));
+
+  // ⚡ Bolt: O(1) map lookup for pipeline cross-referencing.
+  // Replaces O(N²) algorithmic bottleneck caused by safe.find() inside a loop.
+  // We use lazy initialization and iterate manually to preserve first-match semantics.
+  let safeMap = null;
   for (const d of [...djlReviewed, ...prefReviewed]) {
     if (reviewBand.has(d.url) || !_isInjectionRow(d)) continue;
-    const doc = safe.find((s) => s.url === d.url);
+    if (!safeMap) {
+      safeMap = new Map();
+      for (const s of safe) {
+        if (!safeMap.has(s.url)) safeMap.set(s.url, s);
+      }
+    }
+    const doc = safeMap.get(d.url);
     if (doc) reviewBand.set(d.url, doc);
   }
   // Docs an L3 BLOCK removes from the CLASSIFY set: an active injection must NEVER reach the
