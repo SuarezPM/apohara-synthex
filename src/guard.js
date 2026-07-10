@@ -37,13 +37,18 @@ export function assertSafeTarget(target) {
   let u;
   try { u = new URL(s); } catch { throw new Error("URL inválida"); }
   if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("solo se permite http/https");
+  // Strip FQDN trailing dot (e.g., localhost.)
+  const hostname = u.hostname.replace(/\.$/, '');
+
+  // IPv4-mapped IPv6 normalization bypass (e.g., [::127.0.0.1] -> [::7f00:1] or [::ffff:169.254.169.254] -> [::ffff:a9fe:a9fe])
+  if (/^\[?::(?:ffff:)?[0-9a-f:]*\]?$/i.test(hostname)) throw new Error("IPv4-mapped IPv6 privado bloqueado (SSRF)");
   // IPs ofuscadas (decimal/octal/hex) que evaden el match textual de rangos privados.
-  if (/^\d+$/.test(u.hostname) || /^0x[0-9a-f]+$/i.test(u.hostname)) throw new Error("IP ofuscada bloqueada (SSRF)");
+  if (/^\d+$/.test(hostname) || /^0x[0-9a-f]+$/i.test(hostname)) throw new Error("IP ofuscada bloqueada (SSRF)");
   // IPv6 link-local (fe80::/10) y ULA (fc00::/7) llegan como "[fe80::1]".
-  if (/^\[?(fe80|fc|fd)[0-9a-f:]*\]?$/i.test(u.hostname)) throw new Error("IPv6 privado bloqueado (SSRF)");
-  if (PRIVATE_HOSTS.some((re) => re.test(u.hostname))) throw new Error("destino privado/interno bloqueado (SSRF)");
+  if (/^\[?(fe80|fc|fd)[0-9a-f:]*\]?$/i.test(hostname)) throw new Error("IPv6 privado bloqueado (SSRF)");
+  if (PRIVATE_HOSTS.some((re) => re.test(hostname))) throw new Error("destino privado/interno bloqueado (SSRF)");
   const allow = (process.env.SYNTHEX_ALLOWED_DOMAINS || "").split(",").map((s) => s.trim()).filter(Boolean);
-  if (allow.length && !allow.some((d) => u.hostname === d || u.hostname.endsWith("." + d))) {
+  if (allow.length && !allow.some((d) => hostname === d || hostname.endsWith("." + d))) {
     throw new Error(`dominio fuera de la allowlist: ${u.hostname}`);
   }
 }
